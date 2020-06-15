@@ -1,6 +1,6 @@
-#include "pch.h"
 #include "data_types.h"
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
 namespace Yarc
