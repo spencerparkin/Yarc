@@ -19,12 +19,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\client.cpp" />
     <ClCompile Include="Source\data_types.cpp" />
     <ClCompile Include="Source\dllmain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\client.h" />
     <ClInclude Include="Source\data_types.h" />
-    <ClInclude Include="Source\framework.h" />
+    <ClInclude Include="Source\api.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

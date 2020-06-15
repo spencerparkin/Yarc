@@ -13,12 +13,18 @@
     <ClCompile Include="Source\dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\client.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\data_types.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\framework.h">
+    <ClInclude Include="Source\client.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\api.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
