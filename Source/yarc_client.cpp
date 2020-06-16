@@ -62,6 +62,7 @@ namespace Yarc
 
 	bool Client::Update(bool canBlock /*= false*/)
 	{
+		bool processedResponse = false;
 		bool tryRead = false;
 
 		if (canBlock)
@@ -129,6 +130,8 @@ namespace Yarc
 			DataType* dataType = DataType::ParseTree(protocolData, protocolDataSize);
 			if (dataType)
 			{
+				processedResponse = true;
+
 				this->bufferParseOffset += protocolDataSize;
 
 				Callback callback = *this->fallbackCallback;
@@ -148,7 +151,7 @@ namespace Yarc
 			}
 		}
 
-		return true;
+		return processedResponse;
 	}
 
 	bool Client::MakeRequestAsync(const DataType* requestData, Callback callback)
