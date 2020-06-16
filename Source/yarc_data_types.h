@@ -1,6 +1,6 @@
 #pragma once
 
-#include "api.h"
+#include "yarc_api.h"
 #include <stdint.h>
 
 namespace Yarc

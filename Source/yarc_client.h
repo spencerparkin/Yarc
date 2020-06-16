@@ -1,10 +1,10 @@
 #pragma once
 
-#include "api.h"
+#include "yarc_api.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
 #include <functional>
-#include "linked_list.h"
+#include "yarc_linked_list.h"
 
 namespace Yarc
 {

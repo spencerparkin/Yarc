@@ -1,5 +1,5 @@
-#include "client.h"
-#include "data_types.h"
+#include "yarc_client.h"
+#include "yarc_data_types.h"
 #include <assert.h>
 
 #pragma comment(lib, "Ws2_32.lib")

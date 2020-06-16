@@ -19,15 +19,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\client.cpp" />
-    <ClCompile Include="Source\data_types.cpp" />
-    <ClCompile Include="Source\dllmain.cpp" />
+    <ClCompile Include="Source\yarc_client.cpp" />
+    <ClCompile Include="Source\yarc_data_types.cpp" />
+    <ClCompile Include="Source\yarc_dllmain.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Source\client.h" />
-    <ClInclude Include="Source\data_types.h" />
-    <ClInclude Include="Source\api.h" />
-    <ClInclude Include="Source\linked_list.h" />
+    <ClInclude Include="Source\yarc_client.h" />
+    <ClInclude Include="Source\yarc_data_types.h" />
+    <ClInclude Include="Source\yarc_api.h" />
+    <ClInclude Include="Source\yarc_linked_list.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

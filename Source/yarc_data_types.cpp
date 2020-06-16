@@ -1,5 +1,5 @@
-#include "data_types.h"
-#include "linked_list.h"
+#include "yarc_data_types.h"
+#include "yarc_linked_list.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
