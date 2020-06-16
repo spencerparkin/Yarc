@@ -11,7 +11,7 @@ namespace Yarc
 		DataType();
 		virtual ~DataType();
 
-		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const = 0;
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const = 0;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) = 0;
 
 		// Parse the given buffer of the given size.  If successful, a data-type tree is
@@ -35,7 +35,7 @@ namespace Yarc
 		Error();
 		virtual ~Error();
 
-		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 	private:
@@ -48,7 +48,7 @@ namespace Yarc
 		Nil();
 		virtual ~Nil();
 
-		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 	};
 
@@ -58,7 +58,7 @@ namespace Yarc
 		SimpleString();
 		virtual ~SimpleString();
 
-		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 	private:
@@ -71,7 +71,7 @@ namespace Yarc
 		BulkString();
 		virtual ~BulkString();
 
-		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 		void SetBuffer(const uint8_t* givenBuffer, uint32_t givenBufferSize);
@@ -90,7 +90,7 @@ namespace Yarc
 		Integer();
 		virtual ~Integer();
 
-		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 	private:
@@ -103,7 +103,7 @@ namespace Yarc
 		Array();
 		virtual ~Array();
 
-		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 		void Resize(uint32_t size);

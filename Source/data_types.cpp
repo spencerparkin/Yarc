@@ -149,12 +149,13 @@ namespace Yarc
 		delete[] this->errorMessage;
 	}
 
-	/*virtual*/ bool Error::Print(uint8_t* protocolData, uint32_t protocolDataSize) const
+	/*virtual*/ bool Error::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		if (!this->errorMessage)
 			return false;
 
 		sprintf_s((char*)protocolData, protocolDataSize, "-%s\r\n", this->errorMessage);
+		protocolDataSize = (uint32_t)strlen((char*)protocolData);
 		return true;
 	}
 
@@ -175,9 +176,10 @@ namespace Yarc
 	{
 	}
 
-	/*virtual*/ bool Nil::Print(uint8_t* protocolData, uint32_t protocolDataSize) const
+	/*virtual*/ bool Nil::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		sprintf_s((char*)protocolData, protocolDataSize, "$-1\r\n");
+		protocolDataSize = (uint32_t)strlen((char*)protocolData);
 		return true;
 	}
 
@@ -198,12 +200,13 @@ namespace Yarc
 		delete[] this->string;
 	}
 
-	/*virtual*/ bool SimpleString::Print(uint8_t* protocolData, uint32_t protocolDataSize) const
+	/*virtual*/ bool SimpleString::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		if (!this->string)
 			return false;
 
 		sprintf_s((char*)protocolData, protocolDataSize, "+%s\r\n", this->string);
+		protocolDataSize = (uint32_t)strlen((char*)protocolData);
 		return true;
 	}
 
@@ -239,7 +242,7 @@ namespace Yarc
 		}
 	}
 
-	/*virtual*/ bool BulkString::Print(uint8_t* protocolData, uint32_t protocolDataSize) const
+	/*virtual*/ bool BulkString::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		sprintf_s((char*)protocolData, protocolDataSize, "$%d\r\n", this->bufferSize);
 
@@ -256,6 +259,7 @@ namespace Yarc
 		protocolData[i++] = '\n';
 		protocolData[i] = '\0';
 
+		protocolDataSize = (uint32_t)strlen((char*)protocolData);
 		return true;
 	}
 
@@ -291,9 +295,10 @@ namespace Yarc
 	{
 	}
 
-	/*virtual*/ bool Integer::Print(uint8_t* protocolData, uint32_t protocolDataSize) const
+	/*virtual*/ bool Integer::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		sprintf_s((char*)protocolData, protocolDataSize, ":%d\r\n", this->number);
+		protocolDataSize = (uint32_t)strlen((char*)protocolData);
 		return true;
 	}
 
@@ -346,7 +351,7 @@ namespace Yarc
 			this->dataTypeArray[i] = dataType;
 	}
 
-	/*virtual*/ bool Array::Print(uint8_t* protocolData, uint32_t protocolDataSize) const
+	/*virtual*/ bool Array::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		bool success = true;
 
@@ -365,7 +370,8 @@ namespace Yarc
 				{
 					uint8_t* subProtocolData = new uint8_t[protocolDataSize];
 
-					if (dataType->Print(subProtocolData, protocolDataSize))
+					uint32_t j = protocolDataSize;
+					if (dataType->Print(subProtocolData, j))
 						strcat_s((char*)protocolData, protocolDataSize, (char*)subProtocolData);
 					else
 						success = false;
@@ -374,6 +380,9 @@ namespace Yarc
 				}
 			}
 		}
+
+		if(success)
+			protocolDataSize = (uint32_t)strlen((char*)protocolData);
 
 		return success;
 	}

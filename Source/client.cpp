@@ -199,9 +199,9 @@ namespace Yarc
 
 		// Note that by blocking here, we ensure that we don't starve socket
 		// threads that need to run for us to get the data from the server.
-		while (!requestServiced)
+		while (!requestServiced && this->IsConnected())
 			this->Update(true);
 
-		return true;
+		return requestServiced;
 	}
 }
