@@ -32,9 +32,15 @@ namespace Yarc
 
 		WSADATA data;
 		int result = ::WSAStartup(MAKEWORD(2, 2), &data);
-		assert(result == 0);
+		if (result != 0)
+			return false;
 
 		this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
+
+		DWORD optval = 1;
+		result = ::setsockopt(this->socket, SOL_SOCKET, SO_KEEPALIVE, (char*)&optval, sizeof(DWORD));
+		if (result == SOCKET_ERROR)
+			return false;
 
 		sockaddr_in sockaddr;
 		sockaddr.sin_family = AF_INET;
@@ -116,7 +122,8 @@ namespace Yarc
 			if (count == SOCKET_ERROR)
 			{
 				int error = ::WSAGetLastError();
-				error = 0;
+				this->Disconnect();
+				return false;
 			}
 
 			this->bufferReadOffset += count;
@@ -165,7 +172,11 @@ namespace Yarc
 		{
 			uint32_t j = ::send(this->socket, (char*)&protocolData[i], protocolDataSize - i, 0);
 			if (j == SOCKET_ERROR)
+			{
+				int error = ::WSAGetLastError();
+				this->Disconnect();
 				return false;
+			}
 
 			i += j;
 		}

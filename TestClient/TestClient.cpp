@@ -12,31 +12,37 @@ int main()
 
 	if (client->Connect("127.0.0.1", 6379))
 	{
-		std::cout << "Command: ";
-		std::flush(std::cout);
-
-		std::string command;
-		std::getline(std::cin, command);
-
-		DataType* commandData = DataType::ParseCommand(command.c_str());
-		if (!commandData)
-			std::cout << "Failed to parse!" << std::endl;
-		else
+		while (client->IsConnected())
 		{
-			DataType* resultData = nullptr;
-			if (!client->MakeReqeustSync(commandData, resultData))
-				std::cout << "Failed to issue command!" << std::endl;
+			std::cout << "Command: ";
+			std::flush(std::cout);
+
+			std::string command;
+			std::getline(std::cin, command);
+
+			if (command == "exit")
+				break;
+
+			DataType* commandData = DataType::ParseCommand(command.c_str());
+			if (!commandData)
+				std::cout << "Failed to parse!" << std::endl;
 			else
 			{
-				uint8_t protocolData[10 * 1024];
-				uint32_t protocolDataSize = sizeof(protocolData);
+				DataType* resultData = nullptr;
+				if (!client->MakeReqeustSync(commandData, resultData))
+					std::cout << "Failed to issue command!" << std::endl;
+				else
+				{
+					uint8_t protocolData[10 * 1024];
+					uint32_t protocolDataSize = sizeof(protocolData);
 
-				resultData->Print(protocolData, protocolDataSize);
+					resultData->Print(protocolData, protocolDataSize);
 
-				std::cout << protocolData << std::endl;
+					std::cout << protocolData << std::endl;
+				}
+
+				delete resultData;
 			}
-
-			delete resultData;
 		}
 	}
 

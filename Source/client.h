@@ -22,6 +22,7 @@ namespace Yarc
 
 		bool Connect(const char* address, uint16_t port, uint32_t timeout = 30);
 		bool Disconnect();
+		bool IsConnected() { return this->socket != INVALID_SOCKET; }
 		bool Update(bool canBlock = false);
 		bool MakeRequestAsync(const DataType* requestData, Callback callback);
 		bool MakeReqeustSync(const DataType* requestData, DataType*& responseData);
