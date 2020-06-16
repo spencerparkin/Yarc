@@ -1,5 +1,6 @@
 #pragma once
 
+#include "api.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
 #include <functional>
@@ -9,7 +10,7 @@ namespace Yarc
 {
 	class DataType;
 
-	class Client
+	class YARC_API Client
 	{
 	public:
 
@@ -24,14 +25,14 @@ namespace Yarc
 		bool Update(bool canBlock = false);
 		bool MakeRequestAsync(const DataType* requestData, Callback callback);
 		bool MakeReqeustSync(const DataType* requestData, DataType*& responseData);
-		void SetFallbackCallback(Callback callback) { this->fallbackCallback = callback; }
+		void SetFallbackCallback(Callback callback) { *this->fallbackCallback = callback; }
 
 	private:
 
 		typedef LinkedList<Callback> CallbackList;
-		CallbackList callbackList;
+		CallbackList* callbackList;
 
-		Callback fallbackCallback;
+		Callback* fallbackCallback;
 
 		SOCKET socket;
 

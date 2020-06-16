@@ -13,11 +13,15 @@ namespace Yarc
 		this->buffer = new uint8_t[this->bufferSize];
 		this->bufferReadOffset = 0;
 		this->bufferParseOffset = 0;
+		this->callbackList = new CallbackList();
+		this->fallbackCallback = new Callback;
 	}
 
 	/*virtual*/ Client::~Client()
 	{
 		delete[] this->buffer;
+		delete this->callbackList;
+		delete this->fallbackCallback;
 	}
 
 	bool Client::Connect(const char* address, uint16_t port, uint32_t timeout /*= 30*/)
@@ -112,12 +116,12 @@ namespace Yarc
 			DataType* dataType = DataType::ParseTree(protocolData, protocolDataSize);
 			if (dataType)
 			{
-				Callback callback = this->fallbackCallback;
+				Callback callback = *this->fallbackCallback;
 
-				if (this->callbackList.GetCount() > 0)
+				if (this->callbackList->GetCount() > 0)
 				{
-					callback = this->callbackList.GetHead()->value;
-					this->callbackList.Remove(this->callbackList.GetHead());
+					callback = this->callbackList->GetHead()->value;
+					this->callbackList->Remove(this->callbackList->GetHead());
 				}
 
 				bool freeDataType = true;
@@ -143,7 +147,7 @@ namespace Yarc
 		if (!requestData->Print(protocolData, protocolDataSize))
 			return false;
 
-		this->callbackList.AddTail(callback);
+		this->callbackList->AddTail(callback);
 
 		uint32_t i = 0;
 		while (i < protocolDataSize)
