@@ -36,8 +36,11 @@ namespace Yarc
 
 			void Couple()
 			{
-				this->next->prev = this;
-				this->prev->next = this;
+				if(this->next)
+					this->next->prev = this;
+
+				if(this->prev)
+					this->prev->next = this;
 			}
 
 			void Decouple()
@@ -80,6 +83,8 @@ namespace Yarc
 				node->prev = after;
 				node->next = after->next;
 				node->Couple();
+				if (!node->next)
+					this->tail = node;
 			}
 
 			this->count++;
@@ -96,6 +101,8 @@ namespace Yarc
 				node->next = before;
 				node->prev = before->pref;
 				node->Couple();
+				if (!node->prev)
+					this->prev = node;
 			}
 
 			this->count++;

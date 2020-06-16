@@ -1,6 +1,8 @@
 #include <iostream>
+#include <string>
 #include <client.h>
 #include <data_types.h>
+#include <stdio.h>
 
 using namespace Yarc;
 
@@ -11,9 +13,10 @@ int main()
 	if (client->Connect("127.0.0.1", 6379))
 	{
 		std::cout << "Command: ";
+		std::flush(std::cout);
 
 		std::string command;
-		std::cin >> command;
+		std::getline(std::cin, command);
 
 		DataType* commandData = DataType::ParseCommand(command.c_str());
 		if (!commandData)

@@ -19,6 +19,7 @@ namespace Yarc
 
 	/*virtual*/ Client::~Client()
 	{
+		(void)this->Disconnect();
 		delete[] this->buffer;
 		delete this->callbackList;
 		delete this->fallbackCallback;
@@ -29,6 +30,10 @@ namespace Yarc
 		if (this->socket != INVALID_SOCKET)
 			return false;
 
+		WSADATA data;
+		int result = ::WSAStartup(MAKEWORD(2, 2), &data);
+		assert(result == 0);
+
 		this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
 
 		sockaddr_in sockaddr;
@@ -36,7 +41,7 @@ namespace Yarc
 		::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
 		sockaddr.sin_port = ::htons(port);
 
-		int result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
+		result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
 		if (result == SOCKET_ERROR)
 			return false;
 
@@ -108,6 +113,12 @@ namespace Yarc
 			}
 
 			uint32_t count = ::recv(this->socket, (char*)&this->buffer[this->bufferReadOffset], this->bufferSize - this->bufferReadOffset, 0);
+			if (count == SOCKET_ERROR)
+			{
+				int error = ::WSAGetLastError();
+				error = 0;
+			}
+
 			this->bufferReadOffset += count;
 
 			const uint8_t* protocolData = &this->buffer[this->bufferParseOffset];

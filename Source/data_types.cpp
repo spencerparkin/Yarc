@@ -53,11 +53,10 @@ namespace Yarc
 
 		LinkedList<Word> wordList;
 		Word newWord;
-
-		uint32_t j = 0;
+		uint32_t i = 0, j = 0;
 		bool inQuotedText = false;
 
-		for(uint32_t i = 0; command[i] != '\0'; i++)
+		while(true)
 		{
 			if (j == sizeof(newWord.string))
 				return nullptr;
@@ -65,19 +64,21 @@ namespace Yarc
 			char ch = command[i];
 			if (ch == '"')
 				inQuotedText = !inQuotedText;
+			else if (ch == '\0' || (ch == ' ' && !inQuotedText))
+			{
+				newWord.string[j] = '\0';
+				wordList.AddTail(newWord);
+				j = 0;
+			}
 			else
 			{
-				if (ch == ' ' && !inQuotedText)
-				{
-					newWord.string[j] = '\0';
-					wordList.AddTail(newWord);
-					j = 0;
-				}
-				else
-				{
-					newWord.string[j++] = ch;
-				}
+				newWord.string[j++] = ch;
 			}
+
+			if (ch == '\0')
+				break;
+
+			i++;
 		}
 
 		Array* wordArray = new Array();
@@ -245,14 +246,15 @@ namespace Yarc
 		uint32_t i = FindCRLF(protocolData, protocolDataSize) + 2;
 		for(uint32_t j = 0; j < this->bufferSize; j++)
 		{
-			if (i >= protocolDataSize - 2)
+			if (i >= protocolDataSize - 3)
 				return false;
 
 			protocolData[i++] = this->buffer[j];
 		}
 
 		protocolData[i++] = '\r';
-		protocolData[i] = '\n';
+		protocolData[i++] = '\n';
+		protocolData[i] = '\0';
 
 		return true;
 	}
