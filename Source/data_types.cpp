@@ -273,7 +273,7 @@ namespace Yarc
 
 		uint32_t j = FindCRLF(&protocolData[i], protocolDataSize - i);
 
-		if (this->bufferSize = j - i)
+		if (this->bufferSize == j - i)
 			return false;
 
 		this->buffer = new uint8_t[this->bufferSize];
@@ -355,11 +355,9 @@ namespace Yarc
 	{
 		bool success = true;
 
-		sprintf_s((char*)protocolData, protocolDataSize, "*%d", this->dataTypeArraySize);
+		sprintf_s((char*)protocolData, protocolDataSize, "*%d\r\n", this->dataTypeArraySize);
 
-		if (this->dataTypeArraySize == 0)
-			strcat_s((char*)protocolData, protocolDataSize, "\r\n");
-		else
+		if (this->dataTypeArraySize > 0)
 		{
 			for (uint32_t i = 0; i < this->dataTypeArraySize && success; i++)
 			{

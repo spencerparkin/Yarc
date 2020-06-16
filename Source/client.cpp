@@ -37,11 +37,6 @@ namespace Yarc
 
 		this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
 
-		DWORD optval = 1;
-		result = ::setsockopt(this->socket, SOL_SOCKET, SO_KEEPALIVE, (char*)&optval, sizeof(DWORD));
-		if (result == SOCKET_ERROR)
-			return false;
-
 		sockaddr_in sockaddr;
 		sockaddr.sin_family = AF_INET;
 		::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
