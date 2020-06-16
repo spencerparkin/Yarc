@@ -27,6 +27,7 @@
     <ClInclude Include="Source\client.h" />
     <ClInclude Include="Source\data_types.h" />
     <ClInclude Include="Source\api.h" />
+    <ClInclude Include="Source\linked_list.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

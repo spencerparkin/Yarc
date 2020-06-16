@@ -1,6 +1,7 @@
 #pragma once
 
 #include "api.h"
+#include <stdint.h>
 
 namespace Yarc
 {
@@ -10,12 +11,22 @@ namespace Yarc
 		DataType();
 		virtual ~DataType();
 
-		virtual bool Print(char* protocolData, unsigned int protocolDataSize) const = 0;
-		virtual bool Parse(const char* protocolData, unsigned int protocolDataSize) = 0;
+		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const = 0;
+		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) = 0;
 
-		static DataType* ParseTree(const char* protocolData, unsigned int protocolDataSize);
-		static int ParseInt(const char* protocolData, unsigned int protocolDataSize);
-		static char* ParseString(const char* protocolData, unsigned int protocolDataSize);
+		// Parse the given buffer of the given size.  If successful, a data-type tree is
+		// returned along with the amount of data parsed in the given buffer.  If unsuccessful,
+		// null is returned and the given size parameter is left untouched.
+		static DataType* ParseTree(const uint8_t* protocolData, uint32_t& protocolDataSize);
+		
+		static int32_t ParseInt(const uint8_t* protocolData, uint32_t& protocolDataSize);
+		static uint8_t* ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize);
+		
+		// Parse a command as you might enter it into any redis client.
+		static DataType* ParseCommand(const char* command);
+
+	protected:
+		static uint32_t FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize);
 	};
 
 	class YARC_API Error : public DataType
@@ -24,11 +35,11 @@ namespace Yarc
 		Error();
 		virtual ~Error();
 
-		virtual bool Print(char* protocolData, unsigned int protocolDataSize) const override;
-		virtual bool Parse(const char* protocolData, unsigned int protocolDataSize) override;
+		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 	private:
-		char* errorMessage;
+		uint8_t* errorMessage;
 	};
 
 	class YARC_API Nil : public DataType
@@ -37,8 +48,8 @@ namespace Yarc
 		Nil();
 		virtual ~Nil();
 
-		virtual bool Print(char* protocolData, unsigned int protocolDataSize) const override;
-		virtual bool Parse(const char* protocolData, unsigned int protocolDataSize) override;
+		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 	};
 
 	class YARC_API SimpleString : public DataType
@@ -47,11 +58,11 @@ namespace Yarc
 		SimpleString();
 		virtual ~SimpleString();
 
-		virtual bool Print(char* protocolData, unsigned int protocolDataSize) const override;
-		virtual bool Parse(const char* protocolData, unsigned int protocolDataSize) override;
+		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 	private:
-		char* string;
+		uint8_t* string;
 	};
 
 	class YARC_API BulkString : public DataType
@@ -60,12 +71,17 @@ namespace Yarc
 		BulkString();
 		virtual ~BulkString();
 
-		virtual bool Print(char* protocolData, unsigned int protocolDataSize) const override;
-		virtual bool Parse(const char* protocolData, unsigned int protocolDataSize) override;
+		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
+
+		void SetBuffer(const uint8_t* givenBuffer, uint32_t givenBufferSize);
+		uint8_t* GetBuffer() { return this->buffer; }
+		const uint8_t* GetBuffer() const { return this->buffer; }
+		uint32_t GetBufferSize() const { return this->bufferSize; }
 
 	private:
-		char* buffer;
-		unsigned int bufferSize;
+		uint8_t* buffer;
+		uint32_t bufferSize;
 	};
 
 	class YARC_API Integer : public DataType
@@ -74,11 +90,11 @@ namespace Yarc
 		Integer();
 		virtual ~Integer();
 
-		virtual bool Print(char* protocolData, unsigned int protocolDataSize) const override;
-		virtual bool Parse(const char* protocolData, unsigned int protocolDataSize) override;
+		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
 	private:
-		int number;
+		int32_t number;
 	};
 
 	class YARC_API Array : public DataType
@@ -87,11 +103,16 @@ namespace Yarc
 		Array();
 		virtual ~Array();
 
-		virtual bool Print(char* protocolData, unsigned int protocolDataSize) const override;
-		virtual bool Parse(const char* protocolData, unsigned int protocolDataSize) override;
+		virtual bool Print(uint8_t* protocolData, uint32_t protocolDataSize) const override;
+		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
+
+		void Resize(uint32_t size);
+		DataType* GetElement(uint32_t i);
+		const DataType* GetElement(uint32_t i) const;
+		void SetElement(uint32_t i, DataType* dataType);
 
 	private:
 		DataType** dataTypeArray;
-		unsigned int dataTypeArraySize;
+		uint32_t dataTypeArraySize;
 	};
 }

@@ -27,5 +27,8 @@
     <ClInclude Include="Source\api.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\linked_list.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
