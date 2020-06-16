@@ -122,6 +122,7 @@ namespace Yarc
 		uint32_t i = FindCRLF(protocolData, protocolDataSize);
 		uint8_t buffer[128];
 		memcpy(buffer, &protocolData[1], i);
+		buffer[i] = '\0';
 		int32_t result = atoi((const char*)buffer);
 		protocolDataSize = i + 2;
 		return result;
@@ -185,7 +186,11 @@ namespace Yarc
 
 	/*virtual*/ bool Nil::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
 	{
-		return 0 == strncmp((const char*)protocolData, "$-1\r\n", 5);
+		if (0 != strncmp((const char*)protocolData, "$-1\r\n", 5) && 0 != strncmp((const char*)protocolData, "*-1\r\n", 5))
+			return false;
+
+		protocolDataSize = 5;
+		return true;
 	}
 
 	//----------------------------------------- SimpleString -----------------------------------------
@@ -279,7 +284,7 @@ namespace Yarc
 		this->buffer = new uint8_t[this->bufferSize];
 		memcpy(this->buffer, &protocolData[i], this->bufferSize);
 
-		protocolDataSize = j + 2;
+		protocolDataSize = i + j + 2;
 
 		return true;
 	}
@@ -318,8 +323,11 @@ namespace Yarc
 
 	/*virtual*/ Array::~Array()
 	{
-		for (uint32_t i = 0; i < this->dataTypeArraySize; i++)
-			delete this->dataTypeArray[i];
+		if (this->dataTypeArray)
+		{
+			for (uint32_t i = 0; i < this->dataTypeArraySize; i++)
+				delete this->dataTypeArray[i];
+		}
 
 		delete[] this->dataTypeArray;
 	}
@@ -401,16 +409,16 @@ namespace Yarc
 
 			while(unsigned(dataType - this->dataTypeArray) < this->dataTypeArraySize)
 			{
-				uint32_t j = this->FindCRLF(&protocolData[i], protocolDataSize - i);
-				uint32_t k = j - i;
-				*dataType = this->ParseTree(&protocolData[i], k);
+				uint32_t j = protocolDataSize - i;
+				*dataType = this->ParseTree(&protocolData[i], j);
 				if (*dataType == nullptr)
 					return false;
-				i = j;
+				dataType++;
+				i += j;
 			}
 		}
 
-		protocolDataSize = i + 2;
+		protocolDataSize = i;
 		return true;
 	}
 }

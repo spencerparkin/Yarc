@@ -12,6 +12,7 @@ int main()
 
 	if (client->Connect("127.0.0.1", 6379))
 	{
+#if false
 		while (client->IsConnected())
 		{
 			std::cout << "Command: ";
@@ -44,6 +45,21 @@ int main()
 				delete resultData;
 			}
 		}
+#else
+		Client::Callback callback = [](const DataType* publishedData) {
+				std::cout << "=====================================" << std::endl;
+				uint8_t protocolData[10 * 1024];
+				uint32_t protocolDataSize = sizeof(protocolData);
+				publishedData->Print(protocolData, protocolDataSize);
+				std::cout << protocolData << std::endl;
+				return true;
+			};
+		client->SetFallbackCallback(callback);
+		DataType* commandData = DataType::ParseCommand("subscribe FrameUpdate");
+		client->MakeRequestAsync(commandData, callback);
+		while (client->IsConnected())
+			client->Update(true);
+#endif
 	}
 
 	delete client;

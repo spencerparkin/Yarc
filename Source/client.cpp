@@ -129,6 +129,8 @@ namespace Yarc
 			DataType* dataType = DataType::ParseTree(protocolData, protocolDataSize);
 			if (dataType)
 			{
+				this->bufferParseOffset += protocolDataSize;
+
 				Callback callback = *this->fallbackCallback;
 
 				if (this->callbackList->GetCount() > 0)
