@@ -61,6 +61,9 @@ namespace Yarc
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
+		void SetString(const uint8_t* givenString);
+		const uint8_t* GetString() const { return this->string; }
+
 	private:
 		uint8_t* string;
 	};
@@ -92,6 +95,9 @@ namespace Yarc
 
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
+
+		void SetNumber(int32_t givenNumber) { this->number = givenNumber; }
+		int32_t GetNumber() const { return this->number; }
 
 	private:
 		int32_t number;

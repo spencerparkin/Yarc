@@ -90,7 +90,7 @@ namespace Yarc
 			const Word& word = node->value;
 
 			BulkString* bulkString = new BulkString();
-			bulkString->SetBuffer((uint8_t*)word.string, strlen(word.string));
+			bulkString->SetBuffer((uint8_t*)word.string, (uint32_t)strlen(word.string));
 
 			wordArray->SetElement(j++, bulkString);
 		}
@@ -203,6 +203,14 @@ namespace Yarc
 	/*virtual*/ SimpleString::~SimpleString()
 	{
 		delete[] this->string;
+	}
+
+	void SimpleString::SetString(const uint8_t* givenString)
+	{
+		delete[] this->string;
+		uint32_t len = (uint32_t)strlen((const char*)givenString);
+		this->string = new uint8_t[len + 1];
+		strcpy_s((char*)this->string, len, (const char*)givenString);
 	}
 
 	/*virtual*/ bool SimpleString::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
