@@ -82,7 +82,7 @@ namespace Yarc
 		}
 
 		Array* wordArray = new Array();
-		wordArray->Resize(wordList.GetCount());
+		wordArray->SetSize(wordList.GetCount());
 		j = 0;
 
 		for (LinkedList<Word>::Node* node = wordList.GetHead(); node; node = node->GetNext())
@@ -340,7 +340,7 @@ namespace Yarc
 		delete[] this->dataTypeArray;
 	}
 
-	void Array::Resize(uint32_t size)
+	void Array::SetSize(uint32_t size)
 	{
 		delete[] this->dataTypeArray;
 		this->dataTypeArraySize = size;

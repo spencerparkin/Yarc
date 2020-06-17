@@ -5,6 +5,14 @@
 
 namespace Yarc
 {
+	class DataType;
+
+	template<typename T>
+	inline T* Cast(DataType* dataType)
+	{
+		return dynamic_cast<T*>(dataType);
+	}
+
 	class YARC_API DataType
 	{
 	public:
@@ -37,6 +45,8 @@ namespace Yarc
 
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
+
+		const uint8_t* GetErrorMessage() const { return this->errorMessage; }
 
 	private:
 		uint8_t* errorMessage;
@@ -112,7 +122,8 @@ namespace Yarc
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
-		void Resize(uint32_t size);
+		void SetSize(uint32_t size);
+		uint32_t GetSize() const { return this->dataTypeArraySize; }
 		DataType* GetElement(uint32_t i);
 		const DataType* GetElement(uint32_t i) const;
 		void SetElement(uint32_t i, DataType* dataType);
