@@ -412,7 +412,7 @@ namespace Yarc
 		if (this->dataTypeArraySize > 0)
 		{
 			this->dataTypeArray = new DataType*[this->dataTypeArraySize];
-			memset(this->dataTypeArray, 0, this->dataTypeArraySize);
+			memset(this->dataTypeArray, 0, this->dataTypeArraySize * sizeof(DataType*));
 			DataType** dataType = this->dataTypeArray;
 
 			while(unsigned(dataType - this->dataTypeArray) < this->dataTypeArraySize)

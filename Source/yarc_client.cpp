@@ -127,6 +127,8 @@ namespace Yarc
 			const uint8_t* protocolData = &this->buffer[this->bufferParseOffset];
 			uint32_t protocolDataSize = this->bufferSize - this->bufferParseOffset;
 
+			// Note that it's not an error to fail to parse here.  If that happens, it means
+			// we have not yet read enough data from the socket stream to be parseable.
 			DataType* dataType = DataType::ParseTree(protocolData, protocolDataSize);
 			if (dataType)
 			{
