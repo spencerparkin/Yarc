@@ -5,19 +5,23 @@
 
 namespace Yarc
 {
-	class DataType;
-
-	template<typename T>
-	inline T* Cast(DataType* dataType)
-	{
-		return dynamic_cast<T*>(dataType);
-	}
-
 	class YARC_API DataType
 	{
 	public:
 		DataType();
 		virtual ~DataType();
+
+		enum Kind
+		{
+			KIND_ERROR,
+			KIND_NIL,
+			KIND_SIMPLE_STRING,
+			KIND_BULK_STRING,
+			KIND_INTEGER,
+			KIND_ARRAY
+		};
+
+		virtual Kind GetDynamicKind() const = 0;
 
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const = 0;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) = 0;
@@ -37,11 +41,34 @@ namespace Yarc
 		static uint32_t FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize);
 	};
 
+	template<typename T>
+	inline T* Cast(DataType* dataType)
+	{
+#if defined YARC_USE_DYNAMIC_CAST
+		return dynamic_cast<T*>(dataType);
+#else
+		return (dataType->GetDynamicKind() == T::GetStaticKind()) ? (T*)dataType : nullptr;
+#endif
+	}
+
+	template<typename T>
+	inline const T* Cast(const DataType* dataType)
+	{
+#if defined YARC_USE_DYNAMIC_CAST
+		return dynamic_cast<const T*>(dataType);
+#else
+		return (dataType->GetDynamicKind() == T::GetStaticKind()) ? (const T*)dataType : nullptr;
+#endif
+	}
+
 	class YARC_API Error : public DataType
 	{
 	public:
 		Error();
 		virtual ~Error();
+
+		virtual Kind GetDynamicKind() const override { return KIND_ERROR; }
+		static Kind GetStaticKind() { return KIND_ERROR; }
 
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
@@ -58,6 +85,9 @@ namespace Yarc
 		Nil();
 		virtual ~Nil();
 
+		virtual Kind GetDynamicKind() const override { return KIND_NIL; }
+		static Kind GetStaticKind() { return KIND_NIL; }
+
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 	};
@@ -67,6 +97,9 @@ namespace Yarc
 	public:
 		SimpleString();
 		virtual ~SimpleString();
+
+		virtual Kind GetDynamicKind() const override { return KIND_SIMPLE_STRING; }
+		static Kind GetStaticKind() { return KIND_SIMPLE_STRING; }
 
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
@@ -83,6 +116,9 @@ namespace Yarc
 	public:
 		BulkString();
 		virtual ~BulkString();
+
+		virtual Kind GetDynamicKind() const override { return KIND_BULK_STRING; }
+		static Kind GetStaticKind() { return KIND_BULK_STRING; }
 
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
@@ -103,6 +139,9 @@ namespace Yarc
 		Integer();
 		virtual ~Integer();
 
+		virtual Kind GetDynamicKind() const override { return KIND_INTEGER; }
+		static Kind GetStaticKind() { return KIND_INTEGER; }
+
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
 
@@ -118,6 +157,9 @@ namespace Yarc
 	public:
 		Array();
 		virtual ~Array();
+
+		virtual Kind GetDynamicKind() const override { return KIND_ARRAY; }
+		static Kind GetStaticKind() { return KIND_ARRAY; }
 
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
