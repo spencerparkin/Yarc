@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 namespace Yarc
 {
@@ -16,13 +17,16 @@ namespace Yarc
 	{
 	}
 
-	/*static*/ DataType* DataType::ParseTree(const uint8_t* protocolData, uint32_t& protocolDataSize)
+	/*static*/ DataType* DataType::ParseTree(const uint8_t* protocolData, uint32_t& protocolDataSize, bool* validStart /*= nullptr*/)
 	{
+		if (validStart)
+			*validStart = true;
+
 		DataType* dataType = nullptr;
 
 		if (protocolDataSize > 0)
 		{
-			switch(protocolData[0])
+			switch (protocolData[0])
 			{
 				case '+': dataType = new SimpleString();	break;
 				case '-': dataType = new Error();			break;
@@ -31,7 +35,12 @@ namespace Yarc
 				case '*': dataType = new Array();			break;
 			}
 
-			if (dataType)
+			if (!dataType)
+			{
+				if(validStart)
+					*validStart = false;
+			}
+			else
 			{
 				if (!dataType->Parse(protocolData, protocolDataSize))
 				{
@@ -99,41 +108,52 @@ namespace Yarc
 		return wordArray;
 	}
 
-	/*static*/ uint32_t DataType::FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize)
+	/*static*/ bool DataType::FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize, uint32_t& i)
 	{
-		if (protocolDataSize < 2)
-			return -1;
+		if (protocolDataSize == 0)
+			return false;
 
-		uint32_t i = 0;
-
-		while (i < protocolDataSize - 2)
+		while (i < protocolDataSize - 1)
 		{
 			if (protocolData[i] == '\r' && protocolData[i + 1] == '\n')
-				break;
+				return true;
 
 			i++;
 		}
 
-		return i;
+		return false;
 	}
 
-	/*static*/ int32_t DataType::ParseInt(const uint8_t* protocolData, uint32_t& protocolDataSize)
+	/*static*/ bool DataType::ParseInt(const uint8_t* protocolData, uint32_t& protocolDataSize, int32_t& result)
 	{
-		uint32_t i = FindCRLF(protocolData, protocolDataSize);
+		uint32_t i = 0;
+		if (!FindCRLF(protocolData, protocolDataSize, i))
+			return false;
+
 		uint8_t buffer[128];
-		memcpy(buffer, &protocolData[1], i);
+		uint32_t bufferSize = sizeof(buffer) / sizeof(uint8_t);
+		assert(i + 1 <= bufferSize);
+
+		memcpy_s(buffer, sizeof(buffer), &protocolData[1], i);
 		buffer[i] = '\0';
-		int32_t result = atoi((const char*)buffer);
+
+		result = atoi((const char*)buffer);
 		protocolDataSize = i + 2;
-		return result;
+		return true;
 	}
 
-	/*static*/ uint8_t* DataType::ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize)
+	/*static*/ bool DataType::ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize, uint8_t*& result)
 	{
-		uint32_t i = FindCRLF(protocolData, protocolDataSize);
-		uint8_t* result = new uint8_t[i];
-		memcpy(result, &protocolData[1], i - 1);
+		result = nullptr;
+
+		uint32_t i = 0;
+		if (!FindCRLF(protocolData, protocolDataSize, i))
+			return false;
+
+		result = new uint8_t[i];
+		memcpy_s(result, i, &protocolData[1], i - 1);
 		result[i - 1] = '\0';
+
 		protocolDataSize = i + 2;
 		return result;
 	}
@@ -163,8 +183,8 @@ namespace Yarc
 	/*virtual*/ bool Error::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
 	{
 		delete[] this->errorMessage;
-		this->errorMessage = this->ParseString(protocolData, protocolDataSize);
-		return this->errorMessage != nullptr;
+		this->errorMessage = nullptr;
+		return this->ParseString(protocolData, protocolDataSize, this->errorMessage);
 	}
 
 	//----------------------------------------- Nil -----------------------------------------
@@ -226,8 +246,8 @@ namespace Yarc
 	/*virtual*/ bool SimpleString::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
 	{
 		delete[] this->string;
-		this->string = this->ParseString(protocolData, protocolDataSize);
-		return this->string != nullptr;
+		this->string = nullptr;
+		return this->ParseString(protocolData, protocolDataSize, this->string);
 	}
 
 	//----------------------------------------- BulkString -----------------------------------------
@@ -259,7 +279,10 @@ namespace Yarc
 	{
 		sprintf_s((char*)protocolData, protocolDataSize, "$%d\r\n", this->bufferSize);
 
-		uint32_t i = FindCRLF(protocolData, protocolDataSize) + 2;
+		uint32_t i = 0;
+		FindCRLF(protocolData, protocolDataSize, i);
+		i += 2;
+
 		for(uint32_t j = 0; j < this->bufferSize; j++)
 		{
 			if (i >= protocolDataSize - 3)
@@ -282,18 +305,18 @@ namespace Yarc
 		this->buffer = nullptr;
 
 		uint32_t i = protocolDataSize;
-		this->bufferSize = (unsigned)this->ParseInt(protocolData, i);
+		if (!this->ParseInt(protocolData, i, (int32_t&)this->bufferSize))
+			return false;
 
-		uint32_t j = FindCRLF(&protocolData[i], protocolDataSize - i);
-
-		if (this->bufferSize == j - i)
+		// Note we skip a bunch looking for the CRLF, because a CRLF may exist in the bulk data.
+		uint32_t j = this->bufferSize;
+		if (!FindCRLF(&protocolData[i], protocolDataSize - i, j))
 			return false;
 
 		this->buffer = new uint8_t[this->bufferSize];
 		memcpy(this->buffer, &protocolData[i], this->bufferSize);
 
 		protocolDataSize = i + j + 2;
-
 		return true;
 	}
 
@@ -317,8 +340,8 @@ namespace Yarc
 
 	/*virtual*/ bool Integer::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
 	{
-		this->number = ParseInt(protocolData, protocolDataSize);
-		return true;
+		this->number = 0;
+		return ParseInt(protocolData, protocolDataSize, this->number);
 	}
 
 	//----------------------------------------- Array -----------------------------------------
@@ -407,7 +430,8 @@ namespace Yarc
 		this->dataTypeArray = nullptr;
 
 		uint32_t i = protocolDataSize;
-		this->dataTypeArraySize = this->ParseInt(protocolData, i);
+		if (!this->ParseInt(protocolData, i, (int32_t&)this->dataTypeArraySize))
+			return false;
 
 		if (this->dataTypeArraySize > 0)
 		{

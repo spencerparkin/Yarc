@@ -29,16 +29,16 @@ namespace Yarc
 		// Parse the given buffer of the given size.  If successful, a data-type tree is
 		// returned along with the amount of data parsed in the given buffer.  If unsuccessful,
 		// null is returned and the given size parameter is left untouched.
-		static DataType* ParseTree(const uint8_t* protocolData, uint32_t& protocolDataSize);
+		static DataType* ParseTree(const uint8_t* protocolData, uint32_t& protocolDataSize, bool* validStart = nullptr);
 		
-		static int32_t ParseInt(const uint8_t* protocolData, uint32_t& protocolDataSize);
-		static uint8_t* ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize);
+		static bool ParseInt(const uint8_t* protocolData, uint32_t& protocolDataSize, int32_t& result);
+		static bool ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize, uint8_t*& result);
 		
 		// Parse a command as you might enter it into any redis client.
 		static DataType* ParseCommand(const char* command);
 
 	protected:
-		static uint32_t FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize);
+		static bool FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize, uint32_t& i);
 	};
 
 	template<typename T>
