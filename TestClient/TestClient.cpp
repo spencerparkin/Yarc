@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
-#include <client.h>
-#include <data_types.h>
+#include <yarc_client.h>
+#include <yarc_data_types.h>
 #include <stdio.h>
 
 using namespace Yarc;
