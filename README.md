@@ -6,7 +6,7 @@ I'm sure there's room for improvement and extra features, but none of those will
 
 Here is the hello-world of the Yarc library...
 
-```
+```C++
 #include <yarc_client.h>
 #include <yarc_data_types.h>
 #include <stdio.h>
@@ -34,5 +34,7 @@ int main()
 		client->Disconnect();
 		delete client;
 	}
+	
+	return 0;
 }
 ```
