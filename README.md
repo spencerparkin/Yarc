@@ -1,2 +1,5 @@
-# Yarc
-Yet Another Redis Client
+# Yarc -- Yet Another Redis Client
+
+I looked around for a C++ Redis client library for a while, but none of them satisfied me.  Either the API was stupid, or it just didn't make sense to me.  Yarc is fantastic because it's super simple and minimalistic.  I find that the smarter a library tries to be, the more assumptions it makes about how you want to use it, and consequently, the more inflexible it often becomes.  Yarc tries to be as bare-bones as possible.  If you want to write your own layer of software that wraps it, then by all means, do so.  All it does is expose the Redis protocol as a slightly higher level using a simple parser.  It then provides a simple asynchronous request API.  And that's it!  That's all you need.  Keep it simple stupid.
+
+I'm sure there's room for improvement and extra features, but none of those will ever get in the way of its low-level nature.  Software should be simple and should just work.
