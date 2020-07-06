@@ -1,6 +1,6 @@
 #include <iostream>
 #include <string>
-#include <yarc_client.h>
+#include <yarc_simple_client.h>
 #include <yarc_data_types.h>
 #include <stdio.h>
 
@@ -8,11 +8,10 @@ using namespace Yarc;
 
 int main()
 {
-	Client* client = new Client();
+	ClientInterface* client = new SimpleClient();
 
 	if (client->Connect("127.0.0.1", 6379))
 	{
-#if false
 		while (client->IsConnected())
 		{
 			std::cout << "Command: ";
@@ -30,7 +29,7 @@ int main()
 			else
 			{
 				DataType* resultData = nullptr;
-				if (!client->MakeReqeustSync(commandData, resultData))
+				if (!client->MakeRequestSync(commandData, resultData))
 					std::cout << "Failed to issue command!" << std::endl;
 				else
 				{
@@ -45,21 +44,6 @@ int main()
 				delete resultData;
 			}
 		}
-#else
-		Client::Callback callback = [](const DataType* publishedData) {
-				std::cout << "=====================================" << std::endl;
-				uint8_t protocolData[10 * 1024];
-				uint32_t protocolDataSize = sizeof(protocolData);
-				publishedData->Print(protocolData, protocolDataSize);
-				std::cout << protocolData << std::endl;
-				return true;
-			};
-		client->SetFallbackCallback(callback);
-		DataType* commandData = DataType::ParseCommand("subscribe FrameUpdate");
-		client->MakeRequestAsync(commandData, callback);
-		while (client->IsConnected())
-			client->Update(true);
-#endif
 	}
 
 	delete client;

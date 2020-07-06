@@ -1,4 +1,4 @@
-#include "yarc_client.h"
+#include "yarc_simple_client.h"
 #include "yarc_data_types.h"
 #include <assert.h>
 
@@ -6,7 +6,7 @@
 
 namespace Yarc
 {
-	Client::Client()
+	SimpleClient::SimpleClient()
 	{
 		this->socket = INVALID_SOCKET;
 		this->bufferSize = 10 * 1024;
@@ -14,18 +14,16 @@ namespace Yarc
 		this->bufferReadOffset = 0;
 		this->bufferParseOffset = 0;
 		this->callbackList = new CallbackList();
-		this->fallbackCallback = new Callback;
 	}
 
-	/*virtual*/ Client::~Client()
+	/*virtual*/ SimpleClient::~SimpleClient()
 	{
 		(void)this->Disconnect();
 		delete[] this->buffer;
 		delete this->callbackList;
-		delete this->fallbackCallback;
 	}
 
-	bool Client::Connect(const char* address, uint16_t port, uint32_t timeout /*= 30*/)
+	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port, uint32_t timeout /*= 30*/)
 	{
 		if (this->socket != INVALID_SOCKET)
 			return false;
@@ -49,7 +47,7 @@ namespace Yarc
 		return true;
 	}
 
-	bool Client::Disconnect()
+	/*virtual*/ bool SimpleClient::Disconnect()
 	{
 		if (this->socket == INVALID_SOCKET)
 			return false;
@@ -60,7 +58,7 @@ namespace Yarc
 		return true;
 	}
 
-	bool Client::Update(bool canBlock /*= false*/)
+	/*virtual*/ bool SimpleClient::Update(bool canBlock /*= false*/)
 	{
 		bool processedResponse = false;
 		bool tryRead = false;
@@ -160,7 +158,7 @@ namespace Yarc
 		return processedResponse;
 	}
 
-	bool Client::MakeRequestAsync(const DataType* requestData, Callback callback)
+	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback)
 	{
 		if (this->socket == INVALID_SOCKET)
 			return false;
@@ -188,26 +186,5 @@ namespace Yarc
 		}
 
 		return true;
-	}
-
-	bool Client::MakeReqeustSync(const DataType* requestData, DataType*& responseData)
-	{
-		bool requestServiced = false;
-
-		Callback callback = [&](const DataType* dataType) {
-			responseData = const_cast<DataType*>(dataType);
-			requestServiced = true;
-			return false;
-		};
-
-		if (!this->MakeRequestAsync(requestData, callback))
-			return false;
-
-		// Note that by blocking here, we ensure that we don't starve socket
-		// threads that need to run for us to get the data from the server.
-		while (!requestServiced && this->IsConnected())
-			this->Update(true);
-
-		return requestServiced;
 	}
 }

@@ -7,13 +7,19 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\yarc_client.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\yarc_data_types.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\yarc_dllmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\yarc_simple_client.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\yarc_client_iface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\yarc_cluster_client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -21,13 +27,19 @@
     <ClInclude Include="Source\yarc_api.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\yarc_client.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="Source\yarc_data_types.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\yarc_linked_list.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\yarc_client_iface.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\yarc_simple_client.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\yarc_cluster_client.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
