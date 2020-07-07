@@ -158,6 +158,16 @@ namespace Yarc
 		return result;
 	}
 
+	/*static*/ DataType* DataType::Clone(const DataType* dataType)
+	{
+		uint8_t protocolData[10 * 1024];
+		uint32_t protocolDataSize = sizeof(protocolData);
+		if (!dataType->Print(protocolData, protocolDataSize))
+			return nullptr;
+
+		return DataType::ParseTree(protocolData, protocolDataSize);
+	}
+
 	//----------------------------------------- Error -----------------------------------------
 
 	Error::Error()

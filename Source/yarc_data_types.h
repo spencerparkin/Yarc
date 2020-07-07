@@ -37,6 +37,8 @@ namespace Yarc
 		// Parse a command as you might enter it into any redis client.
 		static DataType* ParseCommand(const char* command);
 
+		static DataType* Clone(const DataType* dataType);
+
 	protected:
 		static bool FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize, uint32_t& i);
 	};

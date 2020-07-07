@@ -42,6 +42,7 @@ int main()
 				}
 
 				delete resultData;
+				delete commandData;
 			}
 		}
 	}

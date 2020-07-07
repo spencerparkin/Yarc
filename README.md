@@ -21,6 +21,7 @@ int main()
 	{
 		DataType* requestData = DataType::ParseCommand("set a 1");
 		client->MakeRequestAsync(requestData, [](const DataType*) { return true; });
+		delete requestData;
 
 		requestData = DataType::ParseCommand("get a");
 		DataType* responseData = nullptr;
@@ -30,7 +31,8 @@ int main()
 			if (integer)
 				printf("a = %d\n", integer->GetNumber());
 		}
-	
+		
+		delete requestData;
 		client->Disconnect();
 		delete client;
 	}
