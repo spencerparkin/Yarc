@@ -242,22 +242,29 @@ namespace Yarc
 				ClusterNode* clusterNode = clusterClient->FindClusterNodeForSlot(slot);
 				if (!clusterNode)
 				{
-					clusterClient->state = ClusterClient::STATE_CLUSTER_CONFIG_DIRTY;
+					clusterClient->state = STATE_CLUSTER_CONFIG_DIRTY;
 					processResult = PROC_RESULT_BAIL;
 				}
 				else
 				{
-					clusterNode->client->MakeRequestAsync(this->requestData, [&](const DataType* responseData) {
+					bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [&](const DataType* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;	// We've taken ownership of the memory.
 					});
 
-					this->state = STATE_PENDING;
+					if (requestMade)
+						this->state = STATE_PENDING;
+					else
+					{
+						processResult = PROC_RESULT_DELETE;
+						// TODO: Maybe call callback with error?
+					}
 				}
 				
 				break;
 			}
+			case STATE_ASKING:
 			case STATE_PENDING:
 			{
 				// Nothing to do here but wait.
@@ -265,9 +272,100 @@ namespace Yarc
 			}
 			case STATE_READY:
 			{
-				// TODO: Examine the response data.  If it's a redirect, handle that.  If it's an ask, handle that.  If neither of those, give it to the callback and we're done.
-				//       We should dirty the cluster config if we get a redirect.
+				// There are two kinds of redirections we need to handle here: -ASK and -MOVED.
+				// Those of the first kind are an intermediate form of redirection used during
+				// the migration of keys for a slot from one node to another.  In this case, we
+				// must perform the redirection, but proceed as if the cluster configuration has
+				// not yet changed.  Only once the migration is complete should there be considered
+				// a change in configuration, but we need not watch for that.  Queries to the
+				// migrated slot will eventually result in a redirect of the second kind, at which
+				// point we will not only perform a redirection, but also invalidate our current
+				// understanding of the entire cluster configuration.  This is recommended as it is
+				// likely that if one slot has migrated, then so too have many slots migrated.
+				const Error* error = Cast<Error>(this->responseData);
+				if (error)
+				{
+					const char* errorMessage = (const char*)error->GetErrorMessage();
+					if (strstr(errorMessage, "ASK") == errorMessage)
+					{
+						const char* ipAddress = nullptr;  // TODO: Get from response data.
+						uint16_t port = 0;	// TODO: Get from response data.
 
+						delete this->responseData;
+						this->responseData = nullptr;
+
+						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);
+						if (!clusterNode)
+						{
+							processResult = PROC_RESULT_DELETE;
+							// TODO: Maybe call callback with error?
+							break;
+						}
+
+						DataType* askingCommandData = DataType::ParseCommand("ASKING");
+						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [&](const DataType* askingResponseData) {
+							// TODO: Make sure response is +OK.
+							
+							bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [&](const DataType* responseData) {
+								this->responseData = responseData;
+								this->state = STATE_READY;
+								return false;
+							});
+
+							return true;
+						});
+
+						delete askingCommandData;
+
+						if (askingRequestMade)
+							this->state = STATE_ASKING;
+						else
+						{
+							processResult = PROC_RESULT_DELETE;
+							// TODO: Maybe call callback with error?
+						}
+
+						break;
+					}
+					else if (strstr(errorMessage, "MOVED") == errorMessage)
+					{
+						const char* ipAddress = nullptr;  // TODO: Get from response data.
+						uint16_t port = 0;	// TODO: Get from response data.
+
+						delete this->responseData;
+						this->responseData = nullptr;
+
+						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);
+						if (!clusterNode)
+						{
+							processResult = PROC_RESULT_DELETE;
+							// TODO: Maybe call callback with error?
+							break;
+						}
+
+						bool requestMade = clusterNode->client->MakeRequestAsync(responseData, [&](const DataType* responseData) {
+							this->responseData = responseData;
+							this->state = STATE_READY;
+							return false;
+						});
+
+						if (requestMade)
+						{
+							this->state = STATE_PENDING;
+							clusterClient->state = STATE_CLUSTER_CONFIG_DIRTY;
+							processResult = PROC_RESULT_BAIL;
+						}
+						else
+						{
+							processResult = PROC_RESULT_DELETE;
+							// TODO: Call callback with error?
+						}
+						
+						break;
+					}
+				}
+				
+				// If we get here, the client gets to handle the response.
 				if (!this->callback(this->responseData))
 					this->responseData = nullptr;	// The callback took ownership of the memory.
 
@@ -276,6 +374,7 @@ namespace Yarc
 			}
 			default:
 			{
+				processResult = PROC_RESULT_DELETE;
 				break;
 			}
 		}

@@ -34,6 +34,9 @@
     <ClInclude Include="Source\yarc_api.h" />
     <ClInclude Include="Source\yarc_linked_list.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{7BA30713-DC9A-4DA8-8A23-3D24475B498F}</ProjectGuid>
