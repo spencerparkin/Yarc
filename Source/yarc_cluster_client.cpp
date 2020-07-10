@@ -59,6 +59,12 @@ namespace Yarc
 		return false;
 	}
 
+	void ClusterClient::SignalClusterConfigDirty(void)
+	{
+		if (this->state == STATE_CLUSTER_CONFIG_STABLE)
+			this->state = STATE_CLUSTER_CONFIG_DIRTY;
+	}
+
 	/*virtual*/ bool ClusterClient::Update(bool canBlock /*= false*/)
 	{
 		Processable::ProcessList(this->clusterNodeList, this);
@@ -244,7 +250,7 @@ namespace Yarc
 				ClusterNode* clusterNode = clusterClient->FindClusterNodeForSlot(slot);
 				if (!clusterNode)
 				{
-					clusterClient->state = STATE_CLUSTER_CONFIG_DIRTY;
+					clusterClient->SignalClusterConfigDirty();
 					processResult = PROC_RESULT_BAIL;
 				}
 				else
@@ -270,8 +276,8 @@ namespace Yarc
 			case STATE_READY:
 			{
 				// There are two kinds of redirections we need to handle here: -ASK and -MOVED.
-				// Those of the first kind are an intermediate form of redirection used during
-				// the migration of keys for a slot from one node to another.  In this case, we
+				// Those of the first kind are a form of redirection used during the intermediate
+				// stages of key migration for a slot from one node to another.  In this case, we
 				// must perform the redirection, but proceed as if the cluster configuration has
 				// not yet changed.  Only once the migration is complete should there be considered
 				// a change in configuration, but we need not watch for that.  Queries to the
@@ -299,7 +305,6 @@ namespace Yarc
 
 						DataType* askingCommandData = DataType::ParseCommand("ASKING");
 						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const DataType* askingResponseData) {
-							// TODO: Make sure response is +OK.
 							
 							// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
 							ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
@@ -356,7 +361,7 @@ namespace Yarc
 						else
 							this->state = STATE_UNSENT;
 
-						clusterClient->state = STATE_CLUSTER_CONFIG_DIRTY;
+						clusterClient->SignalClusterConfigDirty();
 						processResult = PROC_RESULT_BAIL;
 						
 						break;

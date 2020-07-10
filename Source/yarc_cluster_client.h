@@ -104,6 +104,7 @@ namespace Yarc
 		ClusterNode* FindClusterNodeForIPPort(const char* ipAddress, uint16_t port);
 		ClusterNode* GetRandomClusterNode();
 		void ProcessClusterConfig(const DataType* responseData);
+		void SignalClusterConfigDirty(void);
 
 		ProcessableList* requestList;
 		ProcessableList* clusterNodeList;
