@@ -222,6 +222,8 @@ namespace Yarc
 		this->responseData = nullptr;
 		this->callback = givenCallback;
 		this->state = STATE_UNSENT;
+		this->redirectAddress[0] = '\0';
+		this->redirectPort = 0;
 	}
 
 	/*virtual*/ ClusterClient::Request::~Request()
@@ -283,13 +285,12 @@ namespace Yarc
 					const char* errorMessage = (const char*)error->GetString();
 					if (strstr(errorMessage, "ASK") == errorMessage)
 					{
-						const char* ipAddress = nullptr;  // TODO: Get from response data.
-						uint16_t port = 0;	// TODO: Get from response data.
+						// TODO: Read redirect address into this->redirectAddress/port.
 
 						delete this->responseData;
 						this->responseData = nullptr;
 
-						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);
+						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
 						if (!clusterNode)
 						{
 							this->state = STATE_UNSENT;
@@ -301,7 +302,7 @@ namespace Yarc
 							// TODO: Make sure response is +OK.
 							
 							// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
-							ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);	// Oops, stale address pointer here!
+							ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
 							if (!clusterNode)
 								this->state = STATE_UNSENT;
 							else
@@ -332,13 +333,12 @@ namespace Yarc
 					}
 					else if (strstr(errorMessage, "MOVED") == errorMessage)
 					{
-						const char* ipAddress = nullptr;  // TODO: Get from response data.
-						uint16_t port = 0;	// TODO: Get from response data.
+						// TODO: Read redirect address into this->redirectAddress/port.
 
 						delete this->responseData;
 						this->responseData = nullptr;
 
-						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);
+						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
 						if (!clusterNode)
 						{
 							this->state = STATE_UNSENT;

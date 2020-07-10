@@ -74,7 +74,8 @@ namespace Yarc
 			const DataType* requestData;
 			const DataType* responseData;
 			Callback callback;
-			// TODO: Cache redirect address here.
+			char redirectAddress[64];
+			uint16_t redirectPort;
 		};
 
 		class ClusterNode : public Processable
