@@ -247,7 +247,7 @@ namespace Yarc
 				}
 				else
 				{
-					bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [&](const DataType* responseData) {
+					bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [=](const DataType* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;	// We've taken ownership of the memory.
@@ -255,11 +255,6 @@ namespace Yarc
 
 					if (requestMade)
 						this->state = STATE_PENDING;
-					else
-					{
-						processResult = PROC_RESULT_DELETE;
-						// TODO: Maybe call callback with error?
-					}
 				}
 				
 				break;
@@ -285,7 +280,7 @@ namespace Yarc
 				const Error* error = Cast<Error>(this->responseData);
 				if (error)
 				{
-					const char* errorMessage = (const char*)error->GetErrorMessage();
+					const char* errorMessage = (const char*)error->GetString();
 					if (strstr(errorMessage, "ASK") == errorMessage)
 					{
 						const char* ipAddress = nullptr;  // TODO: Get from response data.
@@ -297,20 +292,31 @@ namespace Yarc
 						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);
 						if (!clusterNode)
 						{
-							processResult = PROC_RESULT_DELETE;
-							// TODO: Maybe call callback with error?
+							this->state = STATE_UNSENT;
 							break;
 						}
 
 						DataType* askingCommandData = DataType::ParseCommand("ASKING");
-						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [&](const DataType* askingResponseData) {
+						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const DataType* askingResponseData) {
 							// TODO: Make sure response is +OK.
 							
-							bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [&](const DataType* responseData) {
-								this->responseData = responseData;
-								this->state = STATE_READY;
-								return false;
-							});
+							// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
+							ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);	// Oops, stale address pointer here!
+							if (!clusterNode)
+								this->state = STATE_UNSENT;
+							else
+							{
+								bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [=](const DataType* responseData) {
+									this->responseData = responseData;
+									this->state = STATE_READY;
+									return false;
+								});
+
+								if (requestMade)
+									this->state = STATE_PENDING;
+								else
+									this->state = STATE_UNSENT;
+							}
 
 							return true;
 						});
@@ -320,10 +326,7 @@ namespace Yarc
 						if (askingRequestMade)
 							this->state = STATE_ASKING;
 						else
-						{
-							processResult = PROC_RESULT_DELETE;
-							// TODO: Maybe call callback with error?
-						}
+							this->state = STATE_UNSENT;
 
 						break;
 					}
@@ -338,28 +341,23 @@ namespace Yarc
 						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(ipAddress, port);
 						if (!clusterNode)
 						{
-							processResult = PROC_RESULT_DELETE;
-							// TODO: Maybe call callback with error?
+							this->state = STATE_UNSENT;
 							break;
 						}
 
-						bool requestMade = clusterNode->client->MakeRequestAsync(responseData, [&](const DataType* responseData) {
+						bool requestMade = clusterNode->client->MakeRequestAsync(responseData, [=](const DataType* responseData) {
 							this->responseData = responseData;
 							this->state = STATE_READY;
 							return false;
 						});
 
 						if (requestMade)
-						{
 							this->state = STATE_PENDING;
-							clusterClient->state = STATE_CLUSTER_CONFIG_DIRTY;
-							processResult = PROC_RESULT_BAIL;
-						}
 						else
-						{
-							processResult = PROC_RESULT_DELETE;
-							// TODO: Call callback with error?
-						}
+							this->state = STATE_UNSENT;
+
+						clusterClient->state = STATE_CLUSTER_CONFIG_DIRTY;
+						processResult = PROC_RESULT_BAIL;
 						
 						break;
 					}
@@ -372,6 +370,7 @@ namespace Yarc
 				processResult = PROC_RESULT_DELETE;
 				break;
 			}
+			case STATE_NONE:
 			default:
 			{
 				processResult = PROC_RESULT_DELETE;

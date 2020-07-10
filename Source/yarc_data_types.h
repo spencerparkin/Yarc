@@ -63,24 +63,6 @@ namespace Yarc
 #endif
 	}
 
-	class YARC_API Error : public DataType
-	{
-	public:
-		Error();
-		virtual ~Error();
-
-		virtual Kind GetDynamicKind() const override { return KIND_ERROR; }
-		static Kind GetStaticKind() { return KIND_ERROR; }
-
-		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
-		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
-
-		const uint8_t* GetErrorMessage() const { return this->errorMessage; }
-
-	private:
-		uint8_t* errorMessage;
-	};
-
 	class YARC_API Nil : public DataType
 	{
 	public:
@@ -109,8 +91,20 @@ namespace Yarc
 		void SetString(const uint8_t* givenString);
 		const uint8_t* GetString() const { return this->string; }
 
-	private:
+	protected:
 		uint8_t* string;
+	};
+
+	class YARC_API Error : public SimpleString
+	{
+	public:
+		Error();
+		virtual ~Error();
+
+		virtual Kind GetDynamicKind() const override { return KIND_ERROR; }
+		static Kind GetStaticKind() { return KIND_ERROR; }
+
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 	};
 
 	class YARC_API BulkString : public DataType

@@ -172,29 +172,20 @@ namespace Yarc
 
 	Error::Error()
 	{
-		this->errorMessage = nullptr;
 	}
 
 	/*virtual*/ Error::~Error()
 	{
-		delete[] this->errorMessage;
 	}
 
 	/*virtual*/ bool Error::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
-		if (!this->errorMessage)
+		if (!this->string)
 			return false;
 
-		sprintf_s((char*)protocolData, protocolDataSize, "-%s\r\n", this->errorMessage);
+		sprintf_s((char*)protocolData, protocolDataSize, "-%s\r\n", this->string);
 		protocolDataSize = (uint32_t)strlen((char*)protocolData);
 		return true;
-	}
-
-	/*virtual*/ bool Error::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
-	{
-		delete[] this->errorMessage;
-		this->errorMessage = nullptr;
-		return this->ParseString(protocolData, protocolDataSize, this->errorMessage);
 	}
 
 	//----------------------------------------- Nil -----------------------------------------
