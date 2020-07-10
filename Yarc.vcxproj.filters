@@ -42,5 +42,8 @@
     <ClInclude Include="Source\yarc_cluster_client.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\yarc_dynamic_array.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

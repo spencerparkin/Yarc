@@ -110,7 +110,76 @@ namespace Yarc
 
 	void ClusterClient::ProcessClusterConfig(const DataType* responseData)
 	{
-		// See: https://redis.io/commands/cluster-slots
+		const Array* clusterNodeArray = Cast<Array>(responseData);
+		if (clusterNodeArray)
+		{
+			ProcessableList::Node* node = nullptr;
+			for (node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
+			{
+				ClusterNode* clusterNode = (ClusterNode*)node->value;
+				clusterNode->slotRangeArray.SetCount(0);
+			}
+
+			for (uint32_t i = 0; i < clusterNodeArray->GetSize(); i++)
+			{
+				const Array* clusterNodeInfoArray = Cast<Array>(clusterNodeArray->GetElement(i));
+				if (clusterNodeInfoArray && clusterNodeInfoArray->GetSize() >= 3)
+				{
+					const Integer* clusterNodeMinSlotInteger = Cast<Integer>(clusterNodeInfoArray->GetElement(0));
+					const Integer* clusterNodeMaxSlotInteger = Cast<Integer>(clusterNodeInfoArray->GetElement(1));
+
+					ClusterNode::SlotRange slotRange;
+					slotRange.minSlot = clusterNodeMinSlotInteger ? clusterNodeMinSlotInteger->GetNumber() : 0;
+					slotRange.maxSlot = clusterNodeMaxSlotInteger ? clusterNodeMaxSlotInteger->GetNumber() : 0;
+
+					const Array* clusterNodeIPPortArray = Cast<Array>(clusterNodeInfoArray->GetElement(2));
+					if (clusterNodeIPPortArray && clusterNodeIPPortArray->GetSize() >= 2)
+					{
+						const SimpleString* clustNodeIPString = Cast<SimpleString>(clusterNodeIPPortArray->GetElement(0));
+						const Integer* clusterNodePortInteger = Cast<Integer>(clusterNodeIPPortArray->GetElement(1));
+
+						const char* ipAddress = clustNodeIPString ? (const char*)clustNodeIPString->GetString() : nullptr;
+						uint16_t port = clusterNodePortInteger ? clusterNodePortInteger->GetNumber() : 0;
+
+						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress, port);
+						if (!clusterNode)
+						{
+							clusterNode = new ClusterNode();
+							if (clusterNode->client->Connect(ipAddress, port))
+								this->clusterNodeList->AddTail(clusterNode);
+							else
+							{
+								delete clusterNode;
+								clusterNode = nullptr;
+							}
+						}
+
+						if (clusterNode)
+						{
+							clusterNode->slotRangeArray.SetCount(clusterNode->slotRangeArray.GetCount() + 1);
+							clusterNode->slotRangeArray[clusterNode->slotRangeArray.GetCount() - 1] = slotRange;
+						}
+					}
+				}
+			}
+
+			// If the slot ranges of a cluster node were not updated, then the cluster node is stale.
+			node = this->clusterNodeList->GetHead();
+			while (node)
+			{
+				ProcessableList::Node* nextNode = node->GetNext();
+
+				ClusterNode* clusterNode = (ClusterNode*)node->value;
+				if (clusterNode->slotRangeArray.GetCount() == 0)
+				{
+					clusterNode->client->Disconnect();
+					delete clusterNode;
+					this->clusterNodeList->Remove(node);
+				}
+
+				node = nextNode;
+			}
+		}
 	}
 
 	//----------------------------------------- Processable -----------------------------------------
@@ -219,13 +288,23 @@ namespace Yarc
 	ClusterClient::ClusterNode::ClusterNode()
 	{
 		this->client = new SimpleClient();
-		this->minSlot = 0;
-		this->maxSlot = 0;
 	}
 
 	/*virtual*/ ClusterClient::ClusterNode::~ClusterNode()
 	{
 		delete this->client;
+	}
+
+	bool ClusterClient::ClusterNode::HandlesSlot(uint16_t slot) const
+	{
+		for (unsigned int i = 0; i < this->slotRangeArray.GetCount(); i++)
+		{
+			const SlotRange& slotRange = this->slotRangeArray[i];
+			if (slotRange.minSlot <= slot && slot <= slotRange.maxSlot)
+				return true;
+		}
+
+		return false;
 	}
 
 	/*virtual*/ ClusterClient::Processable::ProcessResult ClusterClient::ClusterNode::Process(ClusterClient* clusterClient)
@@ -253,6 +332,19 @@ namespace Yarc
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
 			if (clusterNode->HandlesSlot(slot))
 				return clusterNode;
+		}
+
+		return nullptr;
+	}
+
+	ClusterClient::ClusterNode* ClusterClient::FindClusterNodeForIPPort(const char* ipAddress, uint16_t port)
+	{
+		for (ProcessableList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
+		{
+			ClusterNode* clusterNode = (ClusterNode*)node->value;
+			if (::strcmp(clusterNode->client->GetAddress(), ipAddress) == 0)
+				if (clusterNode->client->GetPort() == port)
+					return clusterNode;
 		}
 
 		return nullptr;

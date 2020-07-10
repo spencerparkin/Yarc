@@ -5,6 +5,7 @@
 #include "yarc_linked_list.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
+#include <string>
 
 namespace Yarc
 {
@@ -21,6 +22,9 @@ namespace Yarc
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
 
+		const char* GetAddress() const { return this->address->c_str(); }
+		uint16_t GetPort() const { return this->port; }
+
 	private:
 
 		typedef LinkedList<Callback> CallbackList;
@@ -32,5 +36,8 @@ namespace Yarc
 		uint32_t bufferSize;
 		uint32_t bufferReadOffset;
 		uint32_t bufferParseOffset;
+
+		std::string* address;
+		uint16_t port;
 	};
 }

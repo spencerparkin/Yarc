@@ -14,6 +14,8 @@ namespace Yarc
 		this->bufferReadOffset = 0;
 		this->bufferParseOffset = 0;
 		this->callbackList = new CallbackList();
+		this->address = new std::string();
+		this->port = 0;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -21,6 +23,7 @@ namespace Yarc
 		(void)this->Disconnect();
 		delete[] this->buffer;
 		delete this->callbackList;
+		delete this->address;
 	}
 
 	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port, uint32_t timeout /*= 30*/)
@@ -43,6 +46,9 @@ namespace Yarc
 		result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
 		if (result == SOCKET_ERROR)
 			return false;
+
+		*this->address = address;
+		this->port = port;
 
 		return true;
 	}

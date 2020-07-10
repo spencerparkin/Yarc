@@ -3,6 +3,7 @@
 #include "yarc_client_iface.h"
 #include "yarc_simple_client.h"
 #include "yarc_linked_list.h"
+#include "yarc_dynamic_array.h"
 
 namespace Yarc
 {
@@ -83,14 +84,21 @@ namespace Yarc
 
 			virtual ProcessResult Process(ClusterClient* clusterClient) override;
 
-			bool HandlesSlot(uint16_t slot) const { return this->minSlot <= slot && slot <= maxSlot; }
+			bool HandlesSlot(uint16_t slot) const;
 
 			SimpleClient* client;
-			uint16_t minSlot, maxSlot;
+			
+			struct SlotRange
+			{
+				uint16_t minSlot, maxSlot;
+			};
+
+			DynamicArray<SlotRange> slotRangeArray;
 		};
 
 		uint16_t CalculateSlot(const DataType* requestData);
 		ClusterNode* FindClusterNodeForSlot(uint16_t slot);
+		ClusterNode* FindClusterNodeForIPPort(const char* ipAddress, uint16_t port);
 		ClusterNode* GetRandomClusterNode();
 		void ProcessClusterConfig(const DataType* responseData);
 
