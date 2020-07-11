@@ -22,6 +22,9 @@
     <ClCompile Include="Source\yarc_cluster_client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\yarc_crc16.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\yarc_api.h">
@@ -43,6 +46,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\yarc_dynamic_array.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\yarc_crc16.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

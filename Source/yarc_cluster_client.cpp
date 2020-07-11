@@ -246,7 +246,7 @@ namespace Yarc
 		{
 			case STATE_UNSENT:
 			{
-				uint16_t slot = clusterClient->CalculateSlot(this->requestData);
+				uint16_t slot = DataType::CalcCommandHashSlot(this->requestData);
 				ClusterNode* clusterNode = clusterClient->FindClusterNodeForSlot(slot);
 				if (!clusterNode)
 				{
@@ -418,12 +418,6 @@ namespace Yarc
 			return PROC_RESULT_DELETE;
 
 		return PROC_RESULT_NONE;
-	}
-
-	uint16_t ClusterClient::CalculateSlot(const DataType* requestData)
-	{
-		// TODO: Write this.  Use the CRC16 hash on the documentation page.  Multiple keys is the only tricky part, I think.
-		return 0;
 	}
 
 	ClusterClient::ClusterNode* ClusterClient::FindClusterNodeForSlot(uint16_t slot)

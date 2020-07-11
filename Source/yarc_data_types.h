@@ -23,6 +23,7 @@ namespace Yarc
 
 		virtual Kind GetDynamicKind() const = 0;
 
+		// All data-types provide the conversion functionality to/from protocol-data and tree-form.
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const = 0;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) = 0;
 
@@ -31,12 +32,20 @@ namespace Yarc
 		// null is returned and the given size parameter is left untouched.
 		static DataType* ParseTree(const uint8_t* protocolData, uint32_t& protocolDataSize, bool* validStart = nullptr);
 		
+		// Provide generic parsing of integer and string protocol data to be used by various data-types, not just integers and strings.
 		static bool ParseInt(const uint8_t* protocolData, uint32_t& protocolDataSize, int32_t& result);
 		static bool ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize, uint8_t*& result);
 		
-		// Parse a command as you might enter it into any redis client.
+		// Parse a Redis command as you might enter it into any redis client.
 		static DataType* ParseCommand(const char* command);
 
+		// Assuming the given data-tree is a Redis command, return they key used in the command.
+		static const char* FindCommandKey(const DataType* commandData);
+		
+		// For Redis Cluster, calculate the hash-slot associated with the key of the given command.
+		static uint16_t CalcCommandHashSlot(const DataType* commandData);
+
+		// Return a new allocation that is a copy of the given data-tree.
 		static DataType* Clone(const DataType* dataType);
 
 	protected:

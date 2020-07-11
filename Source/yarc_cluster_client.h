@@ -99,7 +99,6 @@ namespace Yarc
 			DynamicArray<SlotRange> slotRangeArray;
 		};
 
-		uint16_t CalculateSlot(const DataType* requestData);
 		ClusterNode* FindClusterNodeForSlot(uint16_t slot);
 		ClusterNode* FindClusterNodeForIPPort(const char* ipAddress, uint16_t port);
 		ClusterNode* GetRandomClusterNode();

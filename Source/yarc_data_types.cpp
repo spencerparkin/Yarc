@@ -1,5 +1,6 @@
 #include "yarc_data_types.h"
 #include "yarc_linked_list.h"
+#include "yarc_crc16.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -156,6 +157,59 @@ namespace Yarc
 
 		protocolDataSize = i + 2;
 		return result;
+	}
+
+	/*static*/ const char* DataType::FindCommandKey(const DataType* commandData)
+	{
+		// I have not yet run into a Redis command who's syntax was not of
+		// the form: command [key] ..., so here we just return the second
+		// bulk-string in the array.  However, if I find an exception to this,
+		// we can update the logic in this subroutine.
+		const Array* commandArray = Cast<Array>(commandData);
+		if (commandArray && commandArray->GetSize() >= 2)
+		{
+			const BulkString* keyString = Cast<BulkString>(commandArray->GetElement(1));
+			if (keyString)
+				return (const char*)keyString->GetBuffer();
+		}
+
+		return nullptr;
+	}
+
+	/*static*/ uint16_t DataType::CalcCommandHashSlot(const DataType* commandData)
+	{
+		const char* key = FindCommandKey(commandData);
+		int keylen = strlen(key);
+
+		// Note that we can't just hash the command key here, because
+		// we want to provide support for hash tags.  The hash tag feature
+		// provides a way for users to make keys that are different, yet
+		// guarenteed to hash to the same hash slot.  This is necessary
+		// for the use of the MULTI command where multiple commands, each
+		// with their own key, are going to be executed by a single node
+		// as a single (atomic?) transaction.
+		//
+		// The following code was taken directly from https://redis.io/topics/cluster-spec.
+
+		int s, e; /* start-end indexes of { and } */
+
+		/* Search the first occurrence of '{'. */
+		for (s = 0; s < keylen; s++)
+			if (key[s] == '{') break;
+
+		/* No '{' ? Hash the whole key. This is the base case. */
+		if (s == keylen) return crc16(key, keylen) & 16383;
+
+		/* '{' found? Check if we have the corresponding '}'. */
+		for (e = s + 1; e < keylen; e++)
+			if (key[e] == '}') break;
+
+		/* No '}' or nothing between {} ? Hash the whole key. */
+		if (e == keylen || e == s + 1) return crc16(key, keylen) & 16383;
+
+		/* If we are here there is both a { and a } on its right. Hash
+		 * what is in the middle between { and }. */
+		return crc16(key + s + 1, e - s - 1) & 16383;
 	}
 
 	/*static*/ DataType* DataType::Clone(const DataType* dataType)
