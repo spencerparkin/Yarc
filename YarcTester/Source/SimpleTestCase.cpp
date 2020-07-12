@@ -13,6 +13,7 @@ SimpleTestCase::SimpleTestCase()
 {
 	this->client = new Yarc::SimpleClient();
 
+	// TODO: If we fail to connect, start a redis server?  Or start one then connect to it?
 	return this->client->Connect("127.0.0.1", 6379);
 }
 

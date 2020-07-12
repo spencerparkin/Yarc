@@ -41,6 +41,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	font.SetFaceName("Courier New");
 	font.SetFamily(wxFONTFAMILY_MODERN);
 	this->inputText->SetFont(font);
+	this->outputText->SetFont(font);
 
 	wxBoxSizer* boxSizer = new wxBoxSizer(wxVERTICAL);
 	boxSizer->Add(this->outputText, 1, wxALL | wxGROW, 0);
@@ -137,10 +138,11 @@ void Frame::OnCharHook(wxKeyEvent& event)
 							responseData->Print(protocolData, protocolDataSize);
 							wxString responseText = protocolData;
 							this->outputText->AppendText(responseText);
-							this->outputText->AppendText("\n\n");
+							this->outputText->AppendText("\n");
 							return true;
 						}))
 					{
+						this->outputText->AppendText("------------------------------------\n");
 						this->outputText->AppendText(redisCommand);
 						this->outputText->AppendText("\n");
 					}

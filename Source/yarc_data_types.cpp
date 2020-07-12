@@ -46,7 +46,13 @@ namespace Yarc
 				if (!dataType->Parse(protocolData, protocolDataSize))
 				{
 					delete dataType;
-					dataType = nullptr;
+					dataType = new Nil();
+
+					if (!dataType->Parse(protocolData, protocolDataSize))
+					{
+						delete dataType;
+						dataType = nullptr;
+					}
 				}
 			}
 		}
@@ -261,6 +267,9 @@ namespace Yarc
 
 	/*virtual*/ bool Nil::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
 	{
+		if (protocolDataSize < 5)
+			return false;
+
 		if (0 != strncmp((const char*)protocolData, "$-1\r\n", 5) && 0 != strncmp((const char*)protocolData, "*-1\r\n", 5))
 			return false;
 
@@ -360,8 +369,14 @@ namespace Yarc
 		this->buffer = nullptr;
 
 		uint32_t i = protocolDataSize;
-		if (!this->ParseInt(protocolData, i, (int32_t&)this->bufferSize))
+		int32_t parsedInteger = 0;
+		if (!this->ParseInt(protocolData, i, parsedInteger))
 			return false;
+
+		if (parsedInteger < 0)
+			return false;
+
+		this->bufferSize = (unsigned)parsedInteger;
 
 		// Note we skip a bunch looking for the CRLF, because a CRLF may exist in the bulk data.
 		uint32_t j = this->bufferSize;
@@ -485,8 +500,14 @@ namespace Yarc
 		this->dataTypeArray = nullptr;
 
 		uint32_t i = protocolDataSize;
-		if (!this->ParseInt(protocolData, i, (int32_t&)this->dataTypeArraySize))
+		int32_t parsedInteger = 0;
+		if (!this->ParseInt(protocolData, i, parsedInteger))
 			return false;
+
+		if (parsedInteger < 0)
+			return false;
+
+		this->dataTypeArraySize = (unsigned)parsedInteger;
 
 		if (this->dataTypeArraySize > 0)
 		{
