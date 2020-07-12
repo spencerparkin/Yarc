@@ -4,6 +4,7 @@
 #include <wx/menu.h>
 #include <wx/aboutdlg.h>
 #include <wx/sizer.h>
+#include <wx/utils.h>
 #include <yarc_data_types.h>
 
 Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame(parent, wxID_ANY, "Yarc Tester", pos, size), timer(this, ID_Timer)
@@ -66,7 +67,17 @@ void Frame::OnExit(wxCommandEvent& event)
 void Frame::OnTimer(wxTimerEvent& event)
 {
 	if (this->testCase)
-		this->testCase->GetClientInterface()->Update();
+	{
+		Yarc::ClientInterface* client = this->testCase->GetClientInterface();
+		if (client->IsConnected())
+			client->Update();
+		else
+		{
+			this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
+			this->outputText->AppendText("Client lost connection!\n");
+			this->SetTestCase(nullptr);
+		}
+	}
 }
 
 void Frame::OnSimpleTestCase(wxCommandEvent& event)
@@ -81,6 +92,10 @@ void Frame::OnClusterTestCase(wxCommandEvent& event)
 
 void Frame::SetTestCase(TestCase* givenTestCase)
 {
+	this->outputText->SetDefaultStyle(wxTextAttr(*wxBLACK));
+
+	wxBusyCursor busyCursor;
+
 	if (this->testCase)
 	{
 		this->testCase->Shutdown();
@@ -128,36 +143,43 @@ void Frame::OnCharHook(wxKeyEvent& event)
 
 			if (this->testCase)
 			{
+				this->outputText->SetDefaultStyle(wxTextAttr(*wxBLACK));
+				this->outputText->AppendText("------------------------------------\n");
+				this->outputText->AppendText(redisCommand + "\n");
+
 				Yarc::DataType* commandData = Yarc::DataType::ParseCommand(redisCommand.c_str());
-				if (commandData)
+				if (!commandData)
+				{
+					this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
+					this->outputText->AppendText("Failed to parse command!  Command not sent.\n");
+				}
+				else
 				{
 					Yarc::ClientInterface* client = this->testCase->GetClientInterface();
-					if (client->MakeRequestAsync(commandData, [=](const Yarc::DataType* responseData) {
+					if (!client->MakeRequestAsync(commandData, [=](const Yarc::DataType* responseData) {
 							
-							const Yarc::Error* error = Yarc::Cast<Yarc::Error>(responseData);
-							if (error)
-							{
-								this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
-								this->outputText->AppendText(error->GetString());
-							}
-							else
-							{
-								uint8_t protocolData[10 * 1024];
-								uint32_t protocolDataSize = sizeof(protocolData);
-								responseData->Print(protocolData, protocolDataSize);
-								wxString responseText = protocolData;
-								this->outputText->SetDefaultStyle(wxTextAttr(*wxGREEN));
-								this->outputText->AppendText(responseText);
-							}
+						const Yarc::Error* error = Yarc::Cast<Yarc::Error>(responseData);
+						if (error)
+						{
+							this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
+							this->outputText->AppendText(error->GetString());
+						}
+						else
+						{
+							uint8_t protocolData[10 * 1024];
+							uint32_t protocolDataSize = sizeof(protocolData);
+							responseData->Print(protocolData, protocolDataSize);
+							wxString responseText = protocolData;
+							this->outputText->SetDefaultStyle(wxTextAttr(*wxGREEN));
+							this->outputText->AppendText(responseText);
+						}
 							
-							this->outputText->AppendText("\n");
-							return true;
-						}))
-					{
-						this->outputText->SetDefaultStyle(wxTextAttr(*wxBLACK));
-						this->outputText->AppendText("------------------------------------\n");
-						this->outputText->AppendText(redisCommand);
 						this->outputText->AppendText("\n");
+						return true;
+					}))
+					{
+						this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
+						this->outputText->AppendText("Failed to send command!\n");
 					}
 
 					delete commandData;
