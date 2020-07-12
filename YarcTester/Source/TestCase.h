@@ -1,12 +1,14 @@
 #pragma once
 
 #include <yarc_client_iface.h>
+#include <streambuf>
+#include <ostream>
 
 class TestCase
 {
 public:
 
-	TestCase();
+	TestCase(std::streambuf* givenLogStream);
 	virtual ~TestCase();
 
 	virtual bool Setup() = 0;
@@ -17,4 +19,5 @@ public:
 protected:
 
 	Yarc::ClientInterface* client;
+	std::ostream logStream;
 };

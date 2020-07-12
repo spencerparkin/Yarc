@@ -1,6 +1,6 @@
 #include "ClusterTestCase.h"
 
-ClusterTestCase::ClusterTestCase()
+ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(givenLogStream)
 {
 }
 

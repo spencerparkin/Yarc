@@ -34,7 +34,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 
 	this->SetStatusBar(new wxStatusBar(this));
 
-	this->outputText = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_MULTILINE | wxTE_READONLY | wxHSCROLL | wxTE_LEFT);
+	this->outputText = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_RICH | wxTE_MULTILINE | wxTE_READONLY | wxHSCROLL | wxTE_LEFT);
 	this->inputText = new wxTextCtrl(this, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxTE_LEFT | wxTE_PROCESS_ENTER);
 
 	wxFont font;
@@ -71,12 +71,12 @@ void Frame::OnTimer(wxTimerEvent& event)
 
 void Frame::OnSimpleTestCase(wxCommandEvent& event)
 {
-	this->SetTestCase(new SimpleTestCase());
+	this->SetTestCase(new SimpleTestCase(this->outputText));
 }
 
 void Frame::OnClusterTestCase(wxCommandEvent& event)
 {
-	this->SetTestCase(new ClusterTestCase());
+	this->SetTestCase(new ClusterTestCase(this->outputText));
 }
 
 void Frame::SetTestCase(TestCase* givenTestCase)
@@ -133,15 +133,28 @@ void Frame::OnCharHook(wxKeyEvent& event)
 				{
 					Yarc::ClientInterface* client = this->testCase->GetClientInterface();
 					if (client->MakeRequestAsync(commandData, [=](const Yarc::DataType* responseData) {
-							uint8_t protocolData[10 * 1024];
-							uint32_t protocolDataSize = sizeof(protocolData);
-							responseData->Print(protocolData, protocolDataSize);
-							wxString responseText = protocolData;
-							this->outputText->AppendText(responseText);
+							
+							const Yarc::Error* error = Yarc::Cast<Yarc::Error>(responseData);
+							if (error)
+							{
+								this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
+								this->outputText->AppendText(error->GetString());
+							}
+							else
+							{
+								uint8_t protocolData[10 * 1024];
+								uint32_t protocolDataSize = sizeof(protocolData);
+								responseData->Print(protocolData, protocolDataSize);
+								wxString responseText = protocolData;
+								this->outputText->SetDefaultStyle(wxTextAttr(*wxGREEN));
+								this->outputText->AppendText(responseText);
+							}
+							
 							this->outputText->AppendText("\n");
 							return true;
 						}))
 					{
+						this->outputText->SetDefaultStyle(wxTextAttr(*wxBLACK));
 						this->outputText->AppendText("------------------------------------\n");
 						this->outputText->AppendText(redisCommand);
 						this->outputText->AppendText("\n");

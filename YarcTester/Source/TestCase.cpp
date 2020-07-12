@@ -1,6 +1,6 @@
 #include "TestCase.h"
 
-TestCase::TestCase()
+TestCase::TestCase(std::streambuf* givenLogStream) : logStream(givenLogStream)
 {
 	this->client = nullptr;
 }

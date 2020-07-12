@@ -6,7 +6,7 @@ class SimpleTestCase : public TestCase
 {
 public:
 
-	SimpleTestCase();
+	SimpleTestCase(std::streambuf* givenLogStream);
 	virtual ~SimpleTestCase();
 
 	virtual bool Setup() override;

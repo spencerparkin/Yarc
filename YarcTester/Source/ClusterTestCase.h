@@ -6,7 +6,7 @@ class ClusterTestCase : public TestCase
 {
 public:
 
-	ClusterTestCase();
+	ClusterTestCase(std::streambuf* givenLogStream);
 	virtual ~ClusterTestCase();
 
 	virtual bool Setup() override;
