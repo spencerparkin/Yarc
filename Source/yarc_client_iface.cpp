@@ -32,4 +32,12 @@ namespace Yarc
 
 		return requestServiced;
 	}
+
+	/*virtual*/ bool ClientInterface::MakeTransactionRequest(const DynamicArray<DataType*>& requestDataArray, Callback callback)
+	{
+		// TODO: Issue MULTI command synchronously, make sure it succeeds.
+		//       If it does, then issue all requests async.  Wait for all to successfully queue.
+		//       If all is queued, issue EXEC command synchronously and return result.
+		return false;
+	}
 }

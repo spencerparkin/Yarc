@@ -19,6 +19,7 @@ namespace Yarc
 		virtual bool IsConnected() override;
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
+		virtual bool MakeTransactionRequest(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
 
 	private:
 

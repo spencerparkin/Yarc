@@ -114,6 +114,17 @@ namespace Yarc
 		return true;
 	}
 
+	/*virtual*/ bool ClusterClient::MakeTransactionRequest(const DynamicArray<DataType*>& requestDataArray, Callback callback)
+	{
+		// TODO: First make sure all given requests go to the same hash-slot.  Fail here if they don't.
+		//       Cache the hash-slot on the TransactionRequest object.
+
+		// TODO: Second, add a TransactionRequest object to the request list.  When it processes,
+		//       Try to handle the transaction on the node for the hash slot.  Handle redirects
+		//       as necessary.
+		return false;
+	}
+
 	void ClusterClient::ProcessClusterConfig(const DataType* responseData)
 	{
 		const Array* clusterNodeArray = Cast<Array>(responseData);
