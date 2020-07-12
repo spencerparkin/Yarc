@@ -6,7 +6,7 @@
 #include <wx/sizer.h>
 #include <yarc_data_types.h>
 
-Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame(parent, wxID_ANY, "Yarc Tester", pos, size)
+Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame(parent, wxID_ANY, "Yarc Tester", pos, size), timer(this, ID_Timer)
 {
 	this->testCase = nullptr;
 
@@ -30,6 +30,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	this->Bind(wxEVT_MENU, &Frame::OnClusterTestCase, this, ID_ClusterTestCase);
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_SimpleTestCase);
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_ClusterTestCase);
+	this->Bind(wxEVT_TIMER, &Frame::OnTimer, this, ID_Timer);
 
 	this->SetStatusBar(new wxStatusBar(this));
 
@@ -47,6 +48,8 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	this->SetSizer(boxSizer);
 
 	this->Bind(wxEVT_CHAR_HOOK, &Frame::OnCharHook, this);
+
+	this->timer.Start(0);
 }
 
 /*virtual*/ Frame::~Frame()
@@ -57,6 +60,12 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 void Frame::OnExit(wxCommandEvent& event)
 {
 	this->Close(true);
+}
+
+void Frame::OnTimer(wxTimerEvent& event)
+{
+	if (this->testCase)
+		this->testCase->GetClientInterface()->Update();
 }
 
 void Frame::OnSimpleTestCase(wxCommandEvent& event)
