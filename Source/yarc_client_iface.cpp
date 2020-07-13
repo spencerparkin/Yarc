@@ -1,4 +1,5 @@
 #include "yarc_client_iface.h"
+#include "yarc_data_types.h"
 
 namespace Yarc
 {
@@ -33,11 +34,61 @@ namespace Yarc
 		return requestServiced;
 	}
 
-	/*virtual*/ bool ClientInterface::MakeTransactionRequest(const DynamicArray<DataType*>& requestDataArray, Callback callback)
+	/*virtual*/ bool ClientInterface::MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback)
 	{
-		// TODO: Issue MULTI command synchronously, make sure it succeeds.
-		//       If it does, then issue all requests async.  Wait for all to successfully queue.
-		//       If all is queued, issue EXEC command synchronously and return result.
-		return false;
+		DataType* responseData = nullptr;
+		if (!this->MakeRequestSync(DataType::ParseCommand("MULTI"), responseData))
+			return false;
+		
+		bool commandSucceded = !Cast<Error>(responseData);
+		delete responseData;
+		if (!commandSucceded)
+			return false;
+
+		unsigned int queuedCount = 0;
+
+		if (this->RequestOrderPreserved())
+		{
+			unsigned int j = 0;
+
+			for (unsigned int i = 0; i < requestDataArray.GetCount(); i++)
+			{
+				if (!this->MakeRequestAsync(requestDataArray[i], [&](const DataType* responseData) {
+						j++;
+						if (!Cast<Error>(responseData))
+							queuedCount++;
+						return true;
+					}))
+				{
+					return false;
+				}
+			}
+
+			while (j < requestDataArray.GetCount())
+			{
+				if (!this->IsConnected())
+					return false;
+
+				this->Update(true);
+			}
+		}
+		else
+		{
+			for (unsigned int i = 0; i < requestDataArray.GetCount(); i++)
+			{
+				if (!this->MakeRequestSync(requestDataArray[i], responseData))
+					return false;
+				
+				if (!Cast<Error>(responseData))
+					queuedCount++;
+
+				delete responseData;
+			}
+		}
+
+		if (queuedCount < requestDataArray.GetCount())
+			return false;
+
+		return this->MakeRequestAsync(DataType::ParseCommand("EXEC"), callback);
 	}
 }

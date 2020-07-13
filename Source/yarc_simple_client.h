@@ -20,6 +20,7 @@ namespace Yarc
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
 		virtual bool Update(bool canBlock = false) override;
+		virtual bool RequestOrderPreserved(void) override { return true; }
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
 
 		const char* GetAddress() const { return this->address->c_str(); }

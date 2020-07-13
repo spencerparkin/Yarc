@@ -166,31 +166,42 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback)
 	{
-		if (this->socket == INVALID_SOCKET)
-			return false;
+		bool success = true;
 
-		uint8_t protocolData[10 * 1024];
-		uint32_t protocolDataSize = sizeof(protocolData);
-		
-		if (!requestData->Print(protocolData, protocolDataSize))
-			return false;
-
-		this->callbackList->AddTail(callback);
-
-		uint32_t i = 0;
-		while (i < protocolDataSize)
+		try
 		{
-			uint32_t j = ::send(this->socket, (char*)&protocolData[i], protocolDataSize - i, 0);
-			if (j == SOCKET_ERROR)
-			{
-				int error = ::WSAGetLastError();
-				this->Disconnect();
-				return false;
-			}
+			if (this->socket == INVALID_SOCKET)
+				throw;
 
-			i += j;
+			uint8_t protocolData[10 * 1024];
+			uint32_t protocolDataSize = sizeof(protocolData);
+
+			if (!requestData->Print(protocolData, protocolDataSize))
+				throw;
+
+			this->callbackList->AddTail(callback);
+
+			uint32_t i = 0;
+			while (i < protocolDataSize)
+			{
+				uint32_t j = ::send(this->socket, (char*)& protocolData[i], protocolDataSize - i, 0);
+				if (j == SOCKET_ERROR)
+				{
+					int error = ::WSAGetLastError();
+					this->Disconnect();
+					throw;
+				}
+
+				i += j;
+			}
+		}
+		catch (...)
+		{
+			success = false;
 		}
 
-		return true;
+		delete requestData;
+
+		return success;
 	}
 }

@@ -36,6 +36,13 @@ namespace Yarc
 			return this->data[i];
 		}
 
+		void operator=(const DynamicArray<T>& dynamicArray)
+		{
+			this->SetCount(dynamicArray.GetCount());
+			for (unsigned int i = 0; i < dynamicArray.GetCount(); i++)
+				this->data[i] = dynamicArray.data[i];
+		}
+
 		unsigned int GetCount() const { return this->count; }
 
 		void SetCount(unsigned int newCount)

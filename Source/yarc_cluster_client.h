@@ -19,7 +19,8 @@ namespace Yarc
 		virtual bool IsConnected() override;
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
-		virtual bool MakeTransactionRequest(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
+		virtual bool RequestOrderPreserved(void) override { return false; }
+		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
 
 	private:
 
@@ -53,14 +54,19 @@ namespace Yarc
 
 		typedef LinkedList<Processable*> ProcessableList;
 
+		class ClusterNode;
+
 		class Request : public Processable
 		{
 		public:
 
-			Request(const DataType* givenRequestData, Callback givenCallback);
+			Request(Callback givenCallback);
 			virtual ~Request();
 
 			virtual ProcessResult Process(ClusterClient* clusterClient) override;
+
+			virtual uint16_t CalcHashSlot() = 0;
+			virtual bool MakeRequestAsync(ClusterNode* clusterNode, Callback callback) = 0;
 
 			enum State
 			{
@@ -72,11 +78,35 @@ namespace Yarc
 			};
 
 			State state;
-			const DataType* requestData;
+			
 			const DataType* responseData;
 			Callback callback;
 			char redirectAddress[64];
 			uint16_t redirectPort;
+		};
+
+		class SingleRequest : public Request
+		{
+		public:
+			SingleRequest(Callback givenCallback);
+			virtual ~SingleRequest();
+
+			uint16_t CalcHashSlot() override;
+			virtual bool MakeRequestAsync(ClusterNode* clusterNode, Callback callback) override;
+
+			const DataType* requestData;
+		};
+
+		class MultiRequest : public Request
+		{
+		public:
+			MultiRequest(Callback givenCallback);
+			virtual ~MultiRequest();
+
+			uint16_t CalcHashSlot() override;
+			virtual bool MakeRequestAsync(ClusterNode* clusterNode, Callback callback) override;
+
+			DynamicArray<DataType*> requestDataArray;
 		};
 
 		class ClusterNode : public Processable

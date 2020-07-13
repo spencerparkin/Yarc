@@ -181,8 +181,6 @@ void Frame::OnCharHook(wxKeyEvent& event)
 						this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
 						this->outputText->AppendText("Failed to send command!\n");
 					}
-
-					delete commandData;
 				}
 			}
 

@@ -109,20 +109,38 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback)
 	{
-		Request* request = new Request(requestData, callback);
+		SingleRequest* request = new SingleRequest(callback);
+		request->requestData = requestData;
 		this->requestList->AddTail(request);
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeTransactionRequest(const DynamicArray<DataType*>& requestDataArray, Callback callback)
+	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback)
 	{
-		// TODO: First make sure all given requests go to the same hash-slot.  Fail here if they don't.
-		//       Cache the hash-slot on the TransactionRequest object.
+		if (requestDataArray.GetCount() == 0)
+			return false;
 
-		// TODO: Second, add a TransactionRequest object to the request list.  When it processes,
-		//       Try to handle the transaction on the node for the hash slot.  Handle redirects
-		//       as necessary.
-		return false;
+		if (requestDataArray.GetCount() == 1)
+			return this->MakeRequestAsync(requestDataArray[0], callback);
+
+		MultiRequest* request = new MultiRequest(callback);
+		request->requestDataArray = requestDataArray;
+
+		uint16_t hashSlot = DataType::CalcCommandHashSlot(requestDataArray[0]);
+
+		unsigned int i;
+		for (i = 1; i < requestDataArray.GetCount(); i++)
+			if (DataType::CalcCommandHashSlot(requestDataArray[i]) != hashSlot)
+				break;
+
+		if (i != requestDataArray.GetCount())
+		{
+			delete request;
+			return false;
+		}
+		
+		this->requestList->AddTail(request);
+		return true;
 	}
 
 	void ClusterClient::ProcessClusterConfig(const DataType* responseData)
@@ -233,9 +251,8 @@ namespace Yarc
 
 	//----------------------------------------- Request -----------------------------------------
 
-	ClusterClient::Request::Request(const DataType* givenRequestData, Callback givenCallback)
+	ClusterClient::Request::Request(Callback givenCallback)
 	{
-		this->requestData = DataType::Clone(givenRequestData);
 		this->responseData = nullptr;
 		this->callback = givenCallback;
 		this->state = STATE_UNSENT;
@@ -245,7 +262,6 @@ namespace Yarc
 
 	/*virtual*/ ClusterClient::Request::~Request()
 	{
-		delete this->requestData;
 		delete this->responseData;
 	}
 
@@ -257,8 +273,8 @@ namespace Yarc
 		{
 			case STATE_UNSENT:
 			{
-				uint16_t slot = DataType::CalcCommandHashSlot(this->requestData);
-				ClusterNode* clusterNode = clusterClient->FindClusterNodeForSlot(slot);
+				uint16_t hashSlot = this->CalcHashSlot();
+				ClusterNode* clusterNode = clusterClient->FindClusterNodeForSlot(hashSlot);
 				if (!clusterNode)
 				{
 					clusterClient->SignalClusterConfigDirty();
@@ -266,7 +282,7 @@ namespace Yarc
 				}
 				else
 				{
-					bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [=](const DataType* responseData) {
+					bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;	// We've taken ownership of the memory.
@@ -323,7 +339,7 @@ namespace Yarc
 								this->state = STATE_UNSENT;
 							else
 							{
-								bool requestMade = clusterNode->client->MakeRequestAsync(this->requestData, [=](const DataType* responseData) {
+								bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
 									this->responseData = responseData;
 									this->state = STATE_READY;
 									return false;
@@ -395,6 +411,51 @@ namespace Yarc
 		}
 
 		return processResult;
+	}
+
+	//----------------------------------------- SingleRequest -----------------------------------------
+
+	ClusterClient::SingleRequest::SingleRequest(Callback givenCallback) : Request(givenCallback)
+	{
+		this->requestData = nullptr;
+	}
+
+	/*virtual*/ ClusterClient::SingleRequest::~SingleRequest()
+	{
+		delete this->requestData;
+	}
+
+	uint16_t ClusterClient::SingleRequest::CalcHashSlot()
+	{
+		return DataType::CalcCommandHashSlot(this->requestData);
+	}
+
+	/*virtual*/ bool ClusterClient::SingleRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
+	{
+		return clusterNode->client->MakeRequestAsync(this->requestData, callback);
+	}
+
+	//----------------------------------------- MultiRequest -----------------------------------------
+
+	ClusterClient::MultiRequest::MultiRequest(Callback givenCallback) : Request(givenCallback)
+	{
+	}
+
+	/*virtual*/ ClusterClient::MultiRequest::~MultiRequest()
+	{
+		for (unsigned int i = 0; i < this->requestDataArray.GetCount(); i++)
+			delete this->requestDataArray[i];
+	}
+
+	uint16_t ClusterClient::MultiRequest::CalcHashSlot()
+	{
+		// It's already been verified that all commands in the array hash to the same slot.
+		return DataType::CalcCommandHashSlot(this->requestDataArray[0]);
+	}
+
+	/*virtual*/ bool ClusterClient::MultiRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
+	{
+		return clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback);
 	}
 
 	//----------------------------------------- ClusterNode -----------------------------------------
