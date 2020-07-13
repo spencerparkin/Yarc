@@ -19,21 +19,19 @@ int main()
 
 	if (client->Connect("127.0.0.1", 6379))
 	{
-		DataType* requestData = DataType::ParseCommand("set a 1");
-		client->MakeRequestAsync(requestData, [](const DataType*) { return true; });
-		delete requestData;
+		client->MakeRequestAsync(DataType::ParseCommand("set a 1"), [](const DataType*) { return true; });
 
-		requestData = DataType::ParseCommand("get a");
 		DataType* responseData = nullptr;
-		if (client->MakeRequestSync(requestData, responeData))
+
+		if (client->MakeRequestSync(DataType::ParseCommand("get a"), responeData))
 		{
 			Integer* integer = Cast<Integer>(responseData);
 			if (integer)
 				printf("a = %d\n", integer->GetNumber());
+		
+			delete responseData;
 		}
 		
-		delete requestData;
-		client->Disconnect();
 		delete client;
 	}
 	
