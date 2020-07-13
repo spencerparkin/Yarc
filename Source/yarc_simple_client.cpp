@@ -6,6 +6,8 @@
 
 namespace Yarc
 {
+	//------------------------------ SimpleClient ------------------------------
+
 	SimpleClient::SimpleClient()
 	{
 		this->socket = INVALID_SOCKET;
@@ -16,6 +18,7 @@ namespace Yarc
 		this->callbackList = new CallbackList();
 		this->address = new std::string();
 		this->port = 0;
+		this->pendingTransactionList = new ReductionObjectList();
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -24,6 +27,8 @@ namespace Yarc
 		delete[] this->buffer;
 		delete this->callbackList;
 		delete this->address;
+		DeleteList<ReductionObject>(*this->pendingTransactionList);
+		delete this->pendingTransactionList;
 	}
 
 	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port, uint32_t timeout /*= 30*/)
@@ -66,6 +71,8 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(bool canBlock /*= false*/)
 	{
+		ReductionObject::ReduceList(this->pendingTransactionList);
+
 		bool processedResponse = false;
 		bool tryRead = false;
 
@@ -203,5 +210,77 @@ namespace Yarc
 		delete requestData;
 
 		return success;
+	}
+
+	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback)
+	{
+		PendingTransaction* pendingTransaction = new PendingTransaction();
+		pendingTransaction->callback = callback;
+		pendingTransaction->queueCount = 0;
+
+		if (this->MakeRequestAsync(DataType::ParseCommand("MULTI"), [=](const DataType* responseData) {
+				if (!Cast<Error>(responseData))
+					pendingTransaction->multiCommandOkay = true;
+				return true;
+			}))
+		{
+			// It's important to point out that while in typical asynchronous systems, requests are
+			// not guarenteed to be fulfilled in the same order that they were made, that is not
+			// the case here.  In other words, these commands will be executed on the database
+			// server in the same order that they're given here.
+			for (unsigned int i = 0; i < requestDataArray.GetCount(); i++)
+			{
+				if (this->MakeRequestAsync(requestDataArray[i], [=](const DataType* responseData) {
+						if (!Cast<Error>(responseData))
+							pendingTransaction->queueCount--;
+						return true;
+					}))
+				{
+					pendingTransaction->queueCount++;
+				}
+			}
+
+			if (pendingTransaction->queueCount == requestDataArray.GetCount())
+			{
+				if (this->MakeRequestAsync(DataType::ParseCommand("EXEC"), [=](const DataType* responseData) {
+						pendingTransaction->responseData = const_cast<DataType*>(responseData);
+						return false;
+					}))
+				{
+					this->pendingTransactionList->AddTail(pendingTransaction);
+					return true;
+				}
+			}
+		}
+
+		delete pendingTransaction;
+		return false;
+	}
+
+	//------------------------------ PendingTransaction ------------------------------
+
+	SimpleClient::PendingTransaction::PendingTransaction()
+	{
+		this->multiCommandOkay = false;
+		this->queueCount = -1;
+		this->responseData = nullptr;
+	}
+
+	/*virtual*/ SimpleClient::PendingTransaction::~PendingTransaction()
+	{
+		delete this->responseData;
+	}
+
+	/*virtual*/ ReductionObject::ReductionResult SimpleClient::PendingTransaction::Reduce()
+	{
+		if (this->multiCommandOkay && this->queueCount == 0 && this->responseData)
+		{
+			if (!this->callback(this->responseData))
+				this->responseData = nullptr;
+
+			return RESULT_DELETE;
+		}
+
+		return RESULT_NONE;
 	}
 }

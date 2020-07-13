@@ -4,6 +4,7 @@
 #include "yarc_simple_client.h"
 #include "yarc_linked_list.h"
 #include "yarc_dynamic_array.h"
+#include "yarc_reducer.h"
 
 namespace Yarc
 {
@@ -19,7 +20,6 @@ namespace Yarc
 		virtual bool IsConnected() override;
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
-		virtual bool RequestOrderPreserved(void) override { return false; }
 		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
 
 	private:
@@ -34,36 +34,16 @@ namespace Yarc
 
 		State state;
 
-		class Processable
-		{
-		public:
-			Processable();
-			virtual ~Processable();
-
-			enum ProcessResult
-			{
-				PROC_RESULT_NONE,
-				PROC_RESULT_DELETE,
-				PROC_RESULT_BAIL
-			};
-
-			virtual ProcessResult Process(ClusterClient* clusterClient) = 0;
-
-			static void ProcessList(LinkedList<Processable*>* processableList, ClusterClient* clusterClient);
-		};
-
-		typedef LinkedList<Processable*> ProcessableList;
-
 		class ClusterNode;
 
-		class Request : public Processable
+		class Request : public ReductionObject
 		{
 		public:
 
-			Request(Callback givenCallback);
+			Request(Callback givenCallback, ClusterClient* givenClusterClient);
 			virtual ~Request();
 
-			virtual ProcessResult Process(ClusterClient* clusterClient) override;
+			virtual ReductionResult Reduce() override;
 
 			virtual uint16_t CalcHashSlot() = 0;
 			virtual bool MakeRequestAsync(ClusterNode* clusterNode, Callback callback) = 0;
@@ -78,7 +58,7 @@ namespace Yarc
 			};
 
 			State state;
-			
+			ClusterClient* clusterClient;
 			const DataType* responseData;
 			Callback callback;
 			char redirectAddress[64];
@@ -88,7 +68,7 @@ namespace Yarc
 		class SingleRequest : public Request
 		{
 		public:
-			SingleRequest(Callback givenCallback);
+			SingleRequest(Callback givenCallback, ClusterClient* givenClusterClient);
 			virtual ~SingleRequest();
 
 			uint16_t CalcHashSlot() override;
@@ -100,7 +80,7 @@ namespace Yarc
 		class MultiRequest : public Request
 		{
 		public:
-			MultiRequest(Callback givenCallback);
+			MultiRequest(Callback givenCallback, ClusterClient* givenClusterClient);
 			virtual ~MultiRequest();
 
 			uint16_t CalcHashSlot() override;
@@ -109,14 +89,14 @@ namespace Yarc
 			DynamicArray<DataType*> requestDataArray;
 		};
 
-		class ClusterNode : public Processable
+		class ClusterNode : public ReductionObject
 		{
 		public:
 
 			ClusterNode();
 			virtual ~ClusterNode();
 
-			virtual ProcessResult Process(ClusterClient* clusterClient) override;
+			virtual ReductionResult Reduce() override;
 
 			bool HandlesSlot(uint16_t slot) const;
 
@@ -136,7 +116,7 @@ namespace Yarc
 		void ProcessClusterConfig(const DataType* responseData);
 		void SignalClusterConfigDirty(void);
 
-		ProcessableList* requestList;
-		ProcessableList* clusterNodeList;
+		ReductionObjectList* requestList;
+		ReductionObjectList* clusterNodeList;
 	};
 }

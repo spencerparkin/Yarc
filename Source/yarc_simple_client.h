@@ -3,6 +3,7 @@
 #include "yarc_api.h"
 #include "yarc_client_iface.h"
 #include "yarc_linked_list.h"
+#include "yarc_reducer.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
 #include <string>
@@ -20,8 +21,8 @@ namespace Yarc
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
 		virtual bool Update(bool canBlock = false) override;
-		virtual bool RequestOrderPreserved(void) override { return true; }
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
+		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
 
 		const char* GetAddress() const { return this->address->c_str(); }
 		uint16_t GetPort() const { return this->port; }
@@ -40,5 +41,22 @@ namespace Yarc
 
 		std::string* address;
 		uint16_t port;
+
+		class PendingTransaction : public ReductionObject
+		{
+		public:
+
+			PendingTransaction();
+			virtual ~PendingTransaction();
+
+			virtual ReductionResult Reduce() override;
+
+			bool multiCommandOkay;
+			int queueCount;
+			DataType* responseData;
+			Callback callback;
+		};
+
+		ReductionObjectList* pendingTransactionList;
 	};
 }

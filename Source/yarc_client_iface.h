@@ -29,15 +29,14 @@ namespace Yarc
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) = 0;
 		virtual bool MakeRequestSync(const DataType* requestData, DataType*& responseData);
-		
-		// If a sequence of requests are made asynchronously, are they nevertheless guarenteed
-		// to be fulfilled in the same order that they were sent?
-		virtual bool RequestOrderPreserved(void) = 0;
 
-		// Requests made individually may be interleaved with other client requests, but if
-		// batched here as a single transaction, the list of requests is fullfilled as a single
-		// atomic operation within the database.  This operation either succeeds or fails as a whole.
-		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback);
+		// This is a convenience routine for issuing a sequence of commands that are executed
+		// by the database server as a single atomic operation that fails or succeeds as a whole.
+		// It is also necessary to use this function rather than issue the MULTI and EXEC commands
+		// manually in the case that the client interface does not guarentee requests be fulfilled
+		// in the same order that they are issued asynchronously.  Alternatively, all commands
+		// comprising the transaction could be issued synchronously, but that's not as efficient.
+		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) = 0;
 
 		void SetFallbackCallback(Callback callback) { *this->fallbackCallback = callback; }
 

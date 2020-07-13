@@ -7,8 +7,8 @@ namespace Yarc
 
 	ClusterClient::ClusterClient()
 	{
-		this->clusterNodeList = new ProcessableList();
-		this->requestList = new ProcessableList();
+		this->clusterNodeList = new ReductionObjectList();
+		this->requestList = new ReductionObjectList();
 		this->state = STATE_NONE;
 	}
 
@@ -39,8 +39,8 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::Disconnect()
 	{
-		DeleteList<Processable>(*this->clusterNodeList);
-		DeleteList<Processable>(*this->requestList);
+		DeleteList<ReductionObject>(*this->clusterNodeList);
+		DeleteList<ReductionObject>(*this->requestList);
 		
 		this->state = STATE_NONE;
 
@@ -49,7 +49,7 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::IsConnected()
 	{
-		for (ProcessableList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
+		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 		{
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
 			if (clusterNode->client->IsConnected())
@@ -67,7 +67,7 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::Update(bool canBlock /*= false*/)
 	{
-		Processable::ProcessList(this->clusterNodeList, this);
+		ReductionObject::ReduceList(this->clusterNodeList);
 
 		switch (this->state)
 		{
@@ -95,7 +95,7 @@ namespace Yarc
 			}
 			case STATE_CLUSTER_CONFIG_STABLE:
 			{
-				Processable::ProcessList(this->requestList, this);
+				ReductionObject::ReduceList(this->requestList);
 				break;
 			}
 			default:
@@ -109,7 +109,7 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback)
 	{
-		SingleRequest* request = new SingleRequest(callback);
+		SingleRequest* request = new SingleRequest(callback, this);
 		request->requestData = requestData;
 		this->requestList->AddTail(request);
 		return true;
@@ -123,11 +123,13 @@ namespace Yarc
 		if (requestDataArray.GetCount() == 1)
 			return this->MakeRequestAsync(requestDataArray[0], callback);
 
-		MultiRequest* request = new MultiRequest(callback);
+		MultiRequest* request = new MultiRequest(callback, this);
 		request->requestDataArray = requestDataArray;
 
 		uint16_t hashSlot = DataType::CalcCommandHashSlot(requestDataArray[0]);
 
+		// All commands in the sequence must hash to the same slot.
+		// Hash-tagging is used to accommodate the use of multiple keys.
 		unsigned int i;
 		for (i = 1; i < requestDataArray.GetCount(); i++)
 			if (DataType::CalcCommandHashSlot(requestDataArray[i]) != hashSlot)
@@ -148,7 +150,7 @@ namespace Yarc
 		const Array* clusterNodeArray = Cast<Array>(responseData);
 		if (clusterNodeArray)
 		{
-			ProcessableList::Node* node = nullptr;
+			ReductionObjectList::Node* node = nullptr;
 			for (node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 			{
 				ClusterNode* clusterNode = (ClusterNode*)node->value;
@@ -202,7 +204,7 @@ namespace Yarc
 			node = this->clusterNodeList->GetHead();
 			while (node)
 			{
-				ProcessableList::Node* nextNode = node->GetNext();
+				ReductionObjectList::Node* nextNode = node->GetNext();
 
 				ClusterNode* clusterNode = (ClusterNode*)node->value;
 				if (clusterNode->slotRangeArray.GetCount() == 0)
@@ -219,42 +221,15 @@ namespace Yarc
 
 	//----------------------------------------- Processable -----------------------------------------
 
-	ClusterClient::Processable::Processable()
-	{
-	}
-
-	/*virtual*/ ClusterClient::Processable::~Processable()
-	{
-	}
-
-	/*static*/ void ClusterClient::Processable::ProcessList(ProcessableList* processableList, ClusterClient* clusterClient)
-	{
-		ProcessableList::Node* node = processableList->GetHead();
-		while (node)
-		{
-			ProcessableList::Node* nextNode = node->GetNext();
-			Processable* processable = node->value;
-
-			ProcessResult processResult = processable->Process(clusterClient);
-			if (processResult == PROC_RESULT_BAIL)
-				break;
-
-			if(processResult == PROC_RESULT_DELETE)
-			{
-				delete processable;
-				processableList->Remove(node);
-			}
-
-			node = nextNode;
-		}
-	}
+	
 
 	//----------------------------------------- Request -----------------------------------------
 
-	ClusterClient::Request::Request(Callback givenCallback)
+	ClusterClient::Request::Request(Callback givenCallback, ClusterClient* givenClusterClient)
 	{
 		this->responseData = nullptr;
 		this->callback = givenCallback;
+		this->clusterClient = givenClusterClient;
 		this->state = STATE_UNSENT;
 		this->redirectAddress[0] = '\0';
 		this->redirectPort = 0;
@@ -265,20 +240,20 @@ namespace Yarc
 		delete this->responseData;
 	}
 
-	/*virtual*/ ClusterClient::Processable::ProcessResult ClusterClient::Request::Process(ClusterClient* clusterClient)
+	/*virtual*/ ReductionObject::ReductionResult ClusterClient::Request::Reduce()
 	{
-		ProcessResult processResult = PROC_RESULT_NONE;
+		ReductionResult result = RESULT_NONE;
 
 		switch (this->state)
 		{
 			case STATE_UNSENT:
 			{
 				uint16_t hashSlot = this->CalcHashSlot();
-				ClusterNode* clusterNode = clusterClient->FindClusterNodeForSlot(hashSlot);
+				ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForSlot(hashSlot);
 				if (!clusterNode)
 				{
-					clusterClient->SignalClusterConfigDirty();
-					processResult = PROC_RESULT_BAIL;
+					this->clusterClient->SignalClusterConfigDirty();
+					result = RESULT_BAIL;
 				}
 				else
 				{
@@ -323,7 +298,7 @@ namespace Yarc
 						delete this->responseData;
 						this->responseData = nullptr;
 
-						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
+						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
 						if (!clusterNode)
 						{
 							this->state = STATE_UNSENT;
@@ -334,7 +309,7 @@ namespace Yarc
 						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const DataType* askingResponseData) {
 							
 							// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
-							ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
+							ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
 							if (!clusterNode)
 								this->state = STATE_UNSENT;
 							else
@@ -370,7 +345,7 @@ namespace Yarc
 						delete this->responseData;
 						this->responseData = nullptr;
 
-						ClusterNode* clusterNode = clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
+						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
 						if (!clusterNode)
 						{
 							this->state = STATE_UNSENT;
@@ -388,8 +363,8 @@ namespace Yarc
 						else
 							this->state = STATE_UNSENT;
 
-						clusterClient->SignalClusterConfigDirty();
-						processResult = PROC_RESULT_BAIL;
+						this->clusterClient->SignalClusterConfigDirty();
+						result = RESULT_BAIL;
 						
 						break;
 					}
@@ -399,23 +374,23 @@ namespace Yarc
 				if (!this->callback(this->responseData))
 					this->responseData = nullptr;	// The callback took ownership of the memory.
 
-				processResult = PROC_RESULT_DELETE;
+				result = RESULT_DELETE;
 				break;
 			}
 			case STATE_NONE:
 			default:
 			{
-				processResult = PROC_RESULT_DELETE;
+				result = RESULT_DELETE;
 				break;
 			}
 		}
 
-		return processResult;
+		return result;
 	}
 
 	//----------------------------------------- SingleRequest -----------------------------------------
 
-	ClusterClient::SingleRequest::SingleRequest(Callback givenCallback) : Request(givenCallback)
+	ClusterClient::SingleRequest::SingleRequest(Callback givenCallback, ClusterClient* givenClusterClient) : Request(givenCallback, givenClusterClient)
 	{
 		this->requestData = nullptr;
 	}
@@ -437,7 +412,7 @@ namespace Yarc
 
 	//----------------------------------------- MultiRequest -----------------------------------------
 
-	ClusterClient::MultiRequest::MultiRequest(Callback givenCallback) : Request(givenCallback)
+	ClusterClient::MultiRequest::MultiRequest(Callback givenCallback, ClusterClient* givenClusterClient) : Request(givenCallback, givenClusterClient)
 	{
 	}
 
@@ -482,21 +457,21 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ ClusterClient::Processable::ProcessResult ClusterClient::ClusterNode::Process(ClusterClient* clusterClient)
+	/*virtual*/ ReductionObject::ReductionResult ClusterClient::ClusterNode::Reduce()
 	{
 		this->client->Update(false);
 
 		if (!this->client->IsConnected())
-			return PROC_RESULT_DELETE;
+			return RESULT_DELETE;
 
-		return PROC_RESULT_NONE;
+		return RESULT_NONE;
 	}
 
 	ClusterClient::ClusterNode* ClusterClient::FindClusterNodeForSlot(uint16_t slot)
 	{
 		// A linear search here is fine since the number of nodes in
 		// practice should never be too far beyond 1000.
-		for (ProcessableList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
+		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 		{
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
 			if (clusterNode->HandlesSlot(slot))
@@ -508,7 +483,7 @@ namespace Yarc
 
 	ClusterClient::ClusterNode* ClusterClient::FindClusterNodeForIPPort(const char* ipAddress, uint16_t port)
 	{
-		for (ProcessableList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
+		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 		{
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
 			if (::strcmp(clusterNode->client->GetAddress(), ipAddress) == 0)
@@ -527,7 +502,7 @@ namespace Yarc
 		if (i > this->clusterNodeList->GetCount() - 1)
 			i = this->clusterNodeList->GetCount() - 1;
 
-		ProcessableList::Node* node = this->clusterNodeList->GetHead();
+		ReductionObjectList::Node* node = this->clusterNodeList->GetHead();
 		while (node && i-- > 0)
 			node = node->GetNext();
 
