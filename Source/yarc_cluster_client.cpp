@@ -19,7 +19,7 @@ namespace Yarc
 		delete this->requestList;
 	}
 
-	/*virtual*/ bool ClusterClient::Connect(const char* address, uint16_t port, uint32_t timeout /*= 30*/)
+	/*virtual*/ bool ClusterClient::Connect(const char* address, uint16_t port /*= 6379*/, uint32_t timeout /*= 30*/)
 	{
 		if (this->IsConnected())
 			return false;

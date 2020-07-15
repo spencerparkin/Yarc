@@ -2,6 +2,7 @@
 
 #include <wx/setup.h>
 #include <wx/app.h>
+#include <wx/string.h>
 
 class Frame;
 
@@ -14,6 +15,11 @@ public:
 
 	virtual bool OnInit() override;
 	virtual int OnExit() override;
+
+	wxString GetRedisClientExecutablePath();
+	wxString GetRedisServerExectuablePath();
+
+	wxString redisBinDir;
 
 private:
 

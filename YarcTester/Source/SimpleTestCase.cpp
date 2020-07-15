@@ -1,5 +1,7 @@
-#include "SimpleTestCase.h"
 #include <yarc_simple_client.h>
+#include "SimpleTestCase.h"
+#include "App.h"
+#include <wx/utils.h>
 
 SimpleTestCase::SimpleTestCase(std::streambuf* givenLogStream) : TestCase(givenLogStream)
 {
@@ -13,11 +15,22 @@ SimpleTestCase::SimpleTestCase(std::streambuf* givenLogStream) : TestCase(givenL
 {
 	this->client = new Yarc::SimpleClient();
 
-	// TODO: If we fail to connect, start a redis server?  Or start one then connect to it?
 	if (!this->client->Connect("127.0.0.1", 6379))
 	{
-		this->logStream << "Failed to connect to Redis server." << std::endl;
-		return false;
+		this->logStream << "Failed to connect to Redis server.  Trying to start a server..." << std::endl;
+
+		wxString command = wxGetApp().GetRedisServerExectuablePath();
+		long pid = wxExecute(command);
+		if (pid == 0)
+		{
+			this->logStream << "Failed to start local Redis server." << std::endl;
+			return false;
+		}
+		else if (!this->client->Connect("127.0.0.1", 6379))
+		{
+			this->logStream << "Failed to connect to Redis server.  Giving up!" << std::endl;
+			return false;
+		}
 	}
 
 	this->logStream << "Connected to Redis server!" << std::endl;

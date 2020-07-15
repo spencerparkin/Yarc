@@ -31,31 +31,41 @@ namespace Yarc
 		delete this->pendingTransactionList;
 	}
 
-	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port, uint32_t timeout /*= 30*/)
+	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port /*= 6379*/, uint32_t timeout /*= 30*/)
 	{
-		if (this->socket != INVALID_SOCKET)
-			return false;
+		bool success = false;
 
-		WSADATA data;
-		int result = ::WSAStartup(MAKEWORD(2, 2), &data);
-		if (result != 0)
-			return false;
+		do
+		{
+			if (this->socket != INVALID_SOCKET)
+				break;
 
-		this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
+			WSADATA data;
+			int result = ::WSAStartup(MAKEWORD(2, 2), &data);
+			if (result != 0)
+				break;
 
-		sockaddr_in sockaddr;
-		sockaddr.sin_family = AF_INET;
-		::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
-		sockaddr.sin_port = ::htons(port);
+			this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
 
-		result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
-		if (result == SOCKET_ERROR)
-			return false;
+			sockaddr_in sockaddr;
+			sockaddr.sin_family = AF_INET;
+			::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
+			sockaddr.sin_port = ::htons(port);
 
-		*this->address = address;
-		this->port = port;
+			result = ::connect(this->socket, (SOCKADDR*)& sockaddr, sizeof(sockaddr));
+			if (result == SOCKET_ERROR)
+				break;
 
-		return true;
+			*this->address = address;
+			this->port = port;
+			success = true;
+
+		} while (false);
+		
+		if (!success)
+			this->Disconnect();
+		
+		return success;
 	}
 
 	/*virtual*/ bool SimpleClient::Disconnect()

@@ -69,13 +69,16 @@ void Frame::OnTimer(wxTimerEvent& event)
 	if (this->testCase)
 	{
 		Yarc::ClientInterface* client = this->testCase->GetClientInterface();
-		if (client->IsConnected())
-			client->Update();
-		else
+		if (client)
 		{
-			this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
-			this->outputText->AppendText("Client lost connection!\n");
-			this->SetTestCase(nullptr);
+			if (client->IsConnected())
+				client->Update();
+			else
+			{
+				this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
+				this->outputText->AppendText("Client lost connection!\n");
+				this->SetTestCase(nullptr);
+			}
 		}
 	}
 }

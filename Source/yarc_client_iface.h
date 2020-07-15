@@ -17,7 +17,7 @@ namespace Yarc
 		// The return value indicates whether the callback takes ownership of the memory.
 		typedef std::function<bool(const DataType*)> Callback;
 
-		virtual bool Connect(const char* address, uint16_t port, uint32_t timeout = 30) = 0;
+		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) = 0;
 		virtual bool Disconnect() = 0;
 		virtual bool IsConnected() = 0;
 

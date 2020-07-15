@@ -17,7 +17,7 @@ namespace Yarc
 		SimpleClient();
 		virtual ~SimpleClient();
 
-		virtual bool Connect(const char* address, uint16_t port, uint32_t timeout = 30) override;
+		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) override;
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
 		virtual bool Update(bool canBlock = false) override;
