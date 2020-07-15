@@ -1,5 +1,6 @@
 #include "yarc_data_types.h"
 #include "yarc_linked_list.h"
+#include "yarc_crc16.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -45,7 +46,13 @@ namespace Yarc
 				if (!dataType->Parse(protocolData, protocolDataSize))
 				{
 					delete dataType;
-					dataType = nullptr;
+					dataType = new Nil();
+
+					if (!dataType->Parse(protocolData, protocolDataSize))
+					{
+						delete dataType;
+						dataType = nullptr;
+					}
 				}
 			}
 		}
@@ -158,33 +165,87 @@ namespace Yarc
 		return result;
 	}
 
+	/*static*/ const char* DataType::FindCommandKey(const DataType* commandData)
+	{
+		// I have not yet run into a Redis command who's syntax was not of
+		// the form: command [key] ..., so here we just return the second
+		// bulk-string in the array.  However, if I find an exception to this,
+		// we can update the logic in this subroutine.
+		const Array* commandArray = Cast<Array>(commandData);
+		if (commandArray && commandArray->GetSize() >= 2)
+		{
+			const BulkString* keyString = Cast<BulkString>(commandArray->GetElement(1));
+			if (keyString)
+				return (const char*)keyString->GetBuffer();
+		}
+
+		return nullptr;
+	}
+
+	/*static*/ uint16_t DataType::CalcCommandHashSlot(const DataType* commandData)
+	{
+		const char* key = FindCommandKey(commandData);
+		int keylen = strlen(key);
+
+		// Note that we can't just hash the command key here, because
+		// we want to provide support for hash tags.  The hash tag feature
+		// provides a way for users to make keys that are different, yet
+		// guarenteed to hash to the same hash slot.  This is necessary
+		// for the use of the MULTI command where multiple commands, each
+		// with their own key, are going to be executed by a single node
+		// as a single (atomic?) transaction.
+		//
+		// The following code was taken directly from https://redis.io/topics/cluster-spec.
+
+		int s, e; /* start-end indexes of { and } */
+
+		/* Search the first occurrence of '{'. */
+		for (s = 0; s < keylen; s++)
+			if (key[s] == '{') break;
+
+		/* No '{' ? Hash the whole key. This is the base case. */
+		if (s == keylen) return crc16(key, keylen) & 16383;
+
+		/* '{' found? Check if we have the corresponding '}'. */
+		for (e = s + 1; e < keylen; e++)
+			if (key[e] == '}') break;
+
+		/* No '}' or nothing between {} ? Hash the whole key. */
+		if (e == keylen || e == s + 1) return crc16(key, keylen) & 16383;
+
+		/* If we are here there is both a { and a } on its right. Hash
+		 * what is in the middle between { and }. */
+		return crc16(key + s + 1, e - s - 1) & 16383;
+	}
+
+	/*static*/ DataType* DataType::Clone(const DataType* dataType)
+	{
+		uint8_t protocolData[10 * 1024];
+		uint32_t protocolDataSize = sizeof(protocolData);
+		if (!dataType->Print(protocolData, protocolDataSize))
+			return nullptr;
+
+		return DataType::ParseTree(protocolData, protocolDataSize);
+	}
+
 	//----------------------------------------- Error -----------------------------------------
 
 	Error::Error()
 	{
-		this->errorMessage = nullptr;
 	}
 
 	/*virtual*/ Error::~Error()
 	{
-		delete[] this->errorMessage;
 	}
 
 	/*virtual*/ bool Error::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
-		if (!this->errorMessage)
+		if (!this->string)
 			return false;
 
-		sprintf_s((char*)protocolData, protocolDataSize, "-%s\r\n", this->errorMessage);
+		sprintf_s((char*)protocolData, protocolDataSize, "-%s\r\n", this->string);
 		protocolDataSize = (uint32_t)strlen((char*)protocolData);
 		return true;
-	}
-
-	/*virtual*/ bool Error::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
-	{
-		delete[] this->errorMessage;
-		this->errorMessage = nullptr;
-		return this->ParseString(protocolData, protocolDataSize, this->errorMessage);
 	}
 
 	//----------------------------------------- Nil -----------------------------------------
@@ -206,6 +267,9 @@ namespace Yarc
 
 	/*virtual*/ bool Nil::Parse(const uint8_t* protocolData, uint32_t& protocolDataSize)
 	{
+		if (protocolDataSize < 5)
+			return false;
+
 		if (0 != strncmp((const char*)protocolData, "$-1\r\n", 5) && 0 != strncmp((const char*)protocolData, "*-1\r\n", 5))
 			return false;
 
@@ -275,6 +339,11 @@ namespace Yarc
 		}
 	}
 
+	void BulkString::GetString(uint8_t* stringBuffer, uint32_t stringBufferSize) const
+	{
+		::strncpy_s((char*)stringBuffer, stringBufferSize, (const char*)this->buffer, this->bufferSize);
+	}
+
 	/*virtual*/ bool BulkString::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		sprintf_s((char*)protocolData, protocolDataSize, "$%d\r\n", this->bufferSize);
@@ -305,8 +374,14 @@ namespace Yarc
 		this->buffer = nullptr;
 
 		uint32_t i = protocolDataSize;
-		if (!this->ParseInt(protocolData, i, (int32_t&)this->bufferSize))
+		int32_t parsedInteger = 0;
+		if (!this->ParseInt(protocolData, i, parsedInteger))
 			return false;
+
+		if (parsedInteger < 0)
+			return false;
+
+		this->bufferSize = (unsigned)parsedInteger;
 
 		// Note we skip a bunch looking for the CRLF, because a CRLF may exist in the bulk data.
 		uint32_t j = this->bufferSize;
@@ -430,8 +505,14 @@ namespace Yarc
 		this->dataTypeArray = nullptr;
 
 		uint32_t i = protocolDataSize;
-		if (!this->ParseInt(protocolData, i, (int32_t&)this->dataTypeArraySize))
+		int32_t parsedInteger = 0;
+		if (!this->ParseInt(protocolData, i, parsedInteger))
 			return false;
+
+		if (parsedInteger < 0)
+			return false;
+
+		this->dataTypeArraySize = (unsigned)parsedInteger;
 
 		if (this->dataTypeArraySize > 0)
 		{

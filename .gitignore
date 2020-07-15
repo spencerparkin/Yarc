@@ -34,5 +34,6 @@
 # DevStudio stuff...
 .vs/
 *.user
+*.rdb
 Debug/
 Release/

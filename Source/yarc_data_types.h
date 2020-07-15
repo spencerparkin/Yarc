@@ -23,6 +23,7 @@ namespace Yarc
 
 		virtual Kind GetDynamicKind() const = 0;
 
+		// All data-types provide the conversion functionality to/from protocol-data and tree-form.
 		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const = 0;
 		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) = 0;
 
@@ -31,11 +32,21 @@ namespace Yarc
 		// null is returned and the given size parameter is left untouched.
 		static DataType* ParseTree(const uint8_t* protocolData, uint32_t& protocolDataSize, bool* validStart = nullptr);
 		
+		// Provide generic parsing of integer and string protocol data to be used by various data-types, not just integers and strings.
 		static bool ParseInt(const uint8_t* protocolData, uint32_t& protocolDataSize, int32_t& result);
 		static bool ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize, uint8_t*& result);
 		
-		// Parse a command as you might enter it into any redis client.
+		// Parse a Redis command as you might enter it into any redis client.
 		static DataType* ParseCommand(const char* command);
+
+		// Assuming the given data-tree is a Redis command, return they key used in the command.
+		static const char* FindCommandKey(const DataType* commandData);
+		
+		// For Redis Cluster, calculate the hash-slot associated with the key of the given command.
+		static uint16_t CalcCommandHashSlot(const DataType* commandData);
+
+		// Return a new allocation that is a copy of the given data-tree.
+		static DataType* Clone(const DataType* dataType);
 
 	protected:
 		static bool FindCRLF(const uint8_t* protocolData, uint32_t protocolDataSize, uint32_t& i);
@@ -60,24 +71,6 @@ namespace Yarc
 		return (dataType->GetDynamicKind() == T::GetStaticKind()) ? (const T*)dataType : nullptr;
 #endif
 	}
-
-	class YARC_API Error : public DataType
-	{
-	public:
-		Error();
-		virtual ~Error();
-
-		virtual Kind GetDynamicKind() const override { return KIND_ERROR; }
-		static Kind GetStaticKind() { return KIND_ERROR; }
-
-		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
-		virtual bool Parse(const uint8_t* protocolData, uint32_t& protocolDataSize) override;
-
-		const uint8_t* GetErrorMessage() const { return this->errorMessage; }
-
-	private:
-		uint8_t* errorMessage;
-	};
 
 	class YARC_API Nil : public DataType
 	{
@@ -107,8 +100,20 @@ namespace Yarc
 		void SetString(const uint8_t* givenString);
 		const uint8_t* GetString() const { return this->string; }
 
-	private:
+	protected:
 		uint8_t* string;
+	};
+
+	class YARC_API Error : public SimpleString
+	{
+	public:
+		Error();
+		virtual ~Error();
+
+		virtual Kind GetDynamicKind() const override { return KIND_ERROR; }
+		static Kind GetStaticKind() { return KIND_ERROR; }
+
+		virtual bool Print(uint8_t* protocolData, uint32_t& protocolDataSize) const override;
 	};
 
 	class YARC_API BulkString : public DataType
@@ -127,6 +132,7 @@ namespace Yarc
 		uint8_t* GetBuffer() { return this->buffer; }
 		const uint8_t* GetBuffer() const { return this->buffer; }
 		uint32_t GetBufferSize() const { return this->bufferSize; }
+		void GetString(uint8_t* stringBuffer, uint32_t stringBufferSize) const;
 
 	private:
 		uint8_t* buffer;

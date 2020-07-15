@@ -10,6 +10,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestClient", "TestClient\Te
 		{7BA30713-DC9A-4DA8-8A23-3D24475B498F} = {7BA30713-DC9A-4DA8-8A23-3D24475B498F}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "YarcTester", "YarcTester\YarcTester.vcxproj", "{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{7BA30713-DC9A-4DA8-8A23-3D24475B498F} = {7BA30713-DC9A-4DA8-8A23-3D24475B498F}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -34,6 +39,14 @@ Global
 		{F70537BA-1EDD-468B-8C86-2F3A4C8C7009}.Release|x64.Build.0 = Release|x64
 		{F70537BA-1EDD-468B-8C86-2F3A4C8C7009}.Release|x86.ActiveCfg = Release|Win32
 		{F70537BA-1EDD-468B-8C86-2F3A4C8C7009}.Release|x86.Build.0 = Release|Win32
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Debug|x64.ActiveCfg = Debug|x64
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Debug|x64.Build.0 = Debug|x64
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Debug|x86.ActiveCfg = Debug|Win32
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Debug|x86.Build.0 = Debug|Win32
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Release|x64.ActiveCfg = Release|x64
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Release|x64.Build.0 = Release|x64
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Release|x86.ActiveCfg = Release|Win32
+		{AE426057-F6BA-4BBE-9DBF-6DA5C557CA1C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
