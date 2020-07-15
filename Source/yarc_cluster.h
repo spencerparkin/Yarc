@@ -38,5 +38,6 @@ namespace Yarc
 		DynamicArray<Node>* nodeArray;
 
 		void FlushAllNodes(void);
+		void AddSlots(SimpleClient* client, uint32_t minSlot, uint32_t maxSlot);
 	};
 }

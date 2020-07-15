@@ -176,8 +176,7 @@ namespace Yarc
 			// STEP 6: Evenly distribute the slot-space over the master nodes in the cluster.
 			//
 
-			// TODO: How can we make this faster?  Why does async fail? -- not that it would be faster.
-			uint32_t totalSlots = 600; //16383;
+			uint32_t totalSlots = 16384;
 			uint32_t slotsPerMaster = totalSlots / this->numMasters;
 			uint32_t slotBase = 0;
 			
@@ -186,31 +185,15 @@ namespace Yarc
 				if ((i % (1 + this->numSlavesPerMaster)) == 0)
 				{
 					Node& masterNode = (*this->nodeArray)[i];
-
-					for (uint32_t j = 0; j < slotsPerMaster; j++)
-					{
-						sprintf_s(buffer, sizeof(buffer), "CLUSTER ADDSLOTS %d", slotBase + j);
-						commandData = DataType::ParseCommand(buffer);
-						//masterNode.client->MakeRequestAsync(commandData, [](const DataType*) { return true; });
-						masterNode.client->MakeRequestSync(commandData, responseData);
-						delete responseData;
-					}
-
+					this->AddSlots(masterNode.client, slotBase, slotBase + slotsPerMaster - 1);
 					slotBase += slotsPerMaster;
 				}
 			}
 
-			if (slotBase < totalSlots)
+			if (slotBase < totalSlots - 1)
 			{
 				Node& masterNode = (*this->nodeArray)[0];
-				for (uint32_t i = slotBase; i <= totalSlots; i++)
-				{
-					sprintf_s(buffer, sizeof(buffer), "CLUSTER ADDSLOTS %d", i);
-					commandData = DataType::ParseCommand(buffer);
-					//masterNode.client->MakeRequestAsync(commandData, [](const DataType*) { return true; });
-					masterNode.client->MakeRequestSync(commandData, responseData);
-					delete responseData;
-				}
+				this->AddSlots(masterNode.client, slotBase, totalSlots - 1);
 			}
 
 			this->FlushAllNodes();
@@ -242,6 +225,30 @@ namespace Yarc
 		}
 
 		return true;
+	}
+
+	void Cluster::AddSlots(SimpleClient* client, uint32_t minSlot, uint32_t maxSlot)
+	{
+		char commandBuffer[10 * 1024];
+
+		uint32_t slot = minSlot;
+		while (slot <= maxSlot)
+		{
+			strcpy_s(commandBuffer, sizeof(commandBuffer), "CLUSTER ADDSLOTS");
+
+			for (uint32_t i = 0; i < 100 && slot <= maxSlot; i++)
+			{
+				char slotBuffer[32];
+				sprintf_s(slotBuffer, sizeof(slotBuffer), " %d", slot++);
+				strcat_s(commandBuffer, sizeof(commandBuffer), slotBuffer);
+			}
+
+			DataType* commandData = DataType::ParseCommand(commandBuffer);
+			client->MakeRequestAsync(commandData, [](const DataType*) { return true; });
+
+			// Not sure why we have to do this, but as the saying goes...flush early, flush often.
+			client->Flush();
+		}
 	}
 
 	bool Cluster::Shutdown(void)
