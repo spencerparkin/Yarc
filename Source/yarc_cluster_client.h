@@ -8,6 +8,9 @@
 
 namespace Yarc
 {
+	// TODO: I've only done enough to get this client connecting and disconnecting.
+	//       I need to spend some time debugging this client, but don't yet have the time.
+	//       Come back and revisit this when I have the chance.
 	class YARC_API ClusterClient : public ClientInterface
 	{
 	public:
