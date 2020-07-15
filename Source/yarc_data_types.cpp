@@ -339,6 +339,11 @@ namespace Yarc
 		}
 	}
 
+	void BulkString::GetString(uint8_t* stringBuffer, uint32_t stringBufferSize) const
+	{
+		::strncpy_s((char*)stringBuffer, stringBufferSize, (const char*)this->buffer, this->bufferSize);
+	}
+
 	/*virtual*/ bool BulkString::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
 	{
 		sprintf_s((char*)protocolData, protocolDataSize, "$%d\r\n", this->bufferSize);

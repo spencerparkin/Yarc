@@ -181,6 +181,14 @@ namespace Yarc
 		return processedResponse;
 	}
 
+	/*virtual*/ bool SimpleClient::Flush(void)
+	{
+		while (this->callbackList->GetCount() > 0 && this->IsConnected())
+			this->Update(true);
+
+		return this->IsConnected();
+	}
+
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback)
 	{
 		bool success = true;

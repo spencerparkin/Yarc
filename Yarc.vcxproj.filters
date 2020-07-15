@@ -28,6 +28,9 @@
     <ClCompile Include="Source\yarc_reducer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\yarc_cluster.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\yarc_api.h">
@@ -55,6 +58,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\yarc_reducer.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\yarc_cluster.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

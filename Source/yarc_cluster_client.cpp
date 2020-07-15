@@ -107,6 +107,12 @@ namespace Yarc
 		return true;
 	}
 
+	/*virtual*/ bool ClusterClient::Flush(void)
+	{
+		// TODO: Write this.
+		return false;
+	}
+
 	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback)
 	{
 		SingleRequest* request = new SingleRequest(callback, this);
@@ -172,10 +178,15 @@ namespace Yarc
 					const Array* clusterNodeIPPortArray = Cast<Array>(clusterNodeInfoArray->GetElement(2));
 					if (clusterNodeIPPortArray && clusterNodeIPPortArray->GetSize() >= 2)
 					{
-						const SimpleString* clustNodeIPString = Cast<SimpleString>(clusterNodeIPPortArray->GetElement(0));
+						const BulkString* clusterNodeIPString = Cast<BulkString>(clusterNodeIPPortArray->GetElement(0));
 						const Integer* clusterNodePortInteger = Cast<Integer>(clusterNodeIPPortArray->GetElement(1));
 
-						const char* ipAddress = clustNodeIPString ? (const char*)clustNodeIPString->GetString() : nullptr;
+						char ipAddress[128];
+						if (clusterNodeIPString)
+							clusterNodeIPString->GetString((uint8_t*)ipAddress, sizeof(ipAddress));
+						else
+							ipAddress[0] = '\0';
+
 						uint16_t port = clusterNodePortInteger ? clusterNodePortInteger->GetNumber() : 0;
 
 						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress, port);
@@ -218,10 +229,6 @@ namespace Yarc
 			}
 		}
 	}
-
-	//----------------------------------------- Processable -----------------------------------------
-
-	
 
 	//----------------------------------------- Request -----------------------------------------
 

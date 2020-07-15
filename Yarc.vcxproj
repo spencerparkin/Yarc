@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\yarc_client_iface.cpp" />
+    <ClCompile Include="Source\yarc_cluster.cpp" />
     <ClCompile Include="Source\yarc_cluster_client.cpp" />
     <ClCompile Include="Source\yarc_crc16.cpp" />
     <ClCompile Include="Source\yarc_reducer.cpp" />
@@ -28,6 +29,7 @@
     <ClCompile Include="Source\yarc_dllmain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\yarc_cluster.h" />
     <ClInclude Include="Source\yarc_crc16.h" />
     <ClInclude Include="Source\yarc_dynamic_array.h" />
     <ClInclude Include="Source\yarc_cluster_client.h" />
@@ -114,6 +116,7 @@
       <PreprocessorDefinitions>YARC_EXPORT;WIN32;_DEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -130,6 +133,7 @@
       <PreprocessorDefinitions>YARC_EXPORT;_DEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -148,6 +152,7 @@
       <PreprocessorDefinitions>YARC_EXPORT;WIN32;NDEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -168,6 +173,7 @@
       <PreprocessorDefinitions>YARC_EXPORT;NDEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

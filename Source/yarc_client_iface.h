@@ -24,6 +24,9 @@ namespace Yarc
 		// This should be called in the same thread where requests are made.
 		virtual bool Update(bool canBlock = false) = 0;
 
+		// Wait for all pending requests to get responses.
+		virtual bool Flush(void) = 0;
+
 		// These always take ownership of the request data, so the caller should not delete or maintain their pointer.
 		// In the synchronous case, the caller takes ownership of the response data.
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.

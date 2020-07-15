@@ -132,6 +132,7 @@ namespace Yarc
 		uint8_t* GetBuffer() { return this->buffer; }
 		const uint8_t* GetBuffer() const { return this->buffer; }
 		uint32_t GetBufferSize() const { return this->bufferSize; }
+		void GetString(uint8_t* stringBuffer, uint32_t stringBufferSize) const;
 
 	private:
 		uint8_t* buffer;

@@ -21,6 +21,7 @@ namespace Yarc
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
 		virtual bool Update(bool canBlock = false) override;
+		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
 		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
 
