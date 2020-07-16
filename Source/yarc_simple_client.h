@@ -33,12 +33,21 @@ namespace Yarc
 		typedef LinkedList<Callback> CallbackList;
 		CallbackList* callbackList;
 
+		enum class ServerDataKind
+		{
+			RESPONSE,
+			MESSAGE
+		};
+
+		ServerDataKind ClassifyServerData(const DataType* serverData);
+
 		SOCKET socket;
 
 		uint8_t* buffer;
-		uint32_t bufferSize;
+		uint32_t bufferSize;	// One limitation we have is that no response can be greater than our fixed buffer size.
 		uint32_t bufferReadOffset;
 		uint32_t bufferParseOffset;
+		uint32_t pendingRequestFlushPoint;
 
 		std::string* address;
 		uint16_t port;

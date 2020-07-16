@@ -5,12 +5,12 @@ namespace Yarc
 {
 	ClientInterface::ClientInterface()
 	{
-		this->fallbackCallback = new Callback;
+		this->callbackMap = new CallbackMap();
 	}
 
 	/*virtual*/ ClientInterface::~ClientInterface()
 	{
-		delete this->fallbackCallback;
+		delete this->callbackMap;
 	}
 
 	/*virtual*/ bool ClientInterface::MakeRequestSync(const DataType* requestData, DataType*& responseData)
@@ -32,5 +32,44 @@ namespace Yarc
 			this->Update(true);
 
 		return requestServiced;
+	}
+
+	/*virtual*/ bool ClientInterface::RegisterSubscriptionCallback(const char* channel, Callback callback)
+	{
+		this->UnregisterSubscriptionCallback(channel);
+		std::string key = channel;
+		this->callbackMap->insert(std::pair<std::string, Callback>(key, callback));
+		return true;
+	}
+
+	/*virtual*/ bool ClientInterface::UnregisterSubscriptionCallback(const char* channel)
+	{
+		std::string key = channel;
+		CallbackMap::iterator iter = this->callbackMap->find(key);
+		if (iter != this->callbackMap->end())
+			this->callbackMap->erase(iter);
+
+		return true;
+	}
+
+	/*virtual*/ bool ClientInterface::MessageHandler(const DataType* messageData)
+	{
+		const Array* messageDataArray = Cast<Array>(messageData);
+		if (messageDataArray && messageDataArray->GetSize() >= 2)
+		{
+			const SimpleString* stringData = Cast<SimpleString>(messageDataArray->GetElement(1));
+			if (stringData)
+			{
+				std::string key = (const char*)stringData->GetString();
+				CallbackMap::iterator iter = this->callbackMap->find(key);
+				if (iter != this->callbackMap->end())
+				{
+					Callback callback = iter->second;
+					return callback(messageData);
+				}
+			}
+		}
+
+		return true;
 	}
 }

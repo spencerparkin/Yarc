@@ -19,6 +19,7 @@ namespace Yarc
 		this->address = new std::string();
 		this->port = 0;
 		this->pendingTransactionList = new ReductionObjectList();
+		this->pendingRequestFlushPoint = 100;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -83,7 +84,7 @@ namespace Yarc
 	{
 		ReductionObject::ReduceList(this->pendingTransactionList);
 
-		bool processedResponse = false;
+		bool processedServerData = false;
 		bool tryRead = false;
 
 		if (canBlock)
@@ -151,34 +152,57 @@ namespace Yarc
 			// Note that it's not an error to fail to parse here.  If that happens, it means
 			// we have not yet read enough data from the socket stream to be parseable.
 			bool validStart = true;
-			DataType* dataType = DataType::ParseTree(protocolData, protocolDataSize, &validStart);
+			DataType* serverData = DataType::ParseTree(protocolData, protocolDataSize, &validStart);
 			assert(validStart);
-			if (dataType)
+			if (serverData)
 			{
-				processedResponse = true;
+				processedServerData = true;
+				bool freeServerData = true;
 
 				this->bufferParseOffset += protocolDataSize;
 
-				Callback callback = *this->fallbackCallback;
-
-				if (this->callbackList->GetCount() > 0)
+				ServerDataKind serverDataKind = this->ClassifyServerData(serverData);
+				switch (serverDataKind)
 				{
-					callback = this->callbackList->GetHead()->value;
-					this->callbackList->Remove(this->callbackList->GetHead());
+					case ServerDataKind::MESSAGE:
+					{
+						freeServerData = this->MessageHandler(serverData);
+						break;
+					}
+					case ServerDataKind::RESPONSE:
+					{
+						if (this->callbackList->GetCount() > 0)
+						{
+							Callback callback = this->callbackList->GetHead()->value;
+							this->callbackList->Remove(this->callbackList->GetHead());
+							freeServerData = callback(serverData);
+						}
+
+						break;
+					}
 				}
 
-				bool freeDataType = true;
-				if (callback)
-					freeDataType = callback(dataType);
-
-				if (freeDataType)
-					delete dataType;
+				if (freeServerData)
+					delete serverData;
 			}
 
 			assert(this->bufferParseOffset <= this->bufferReadOffset);
 		}
 
-		return processedResponse;
+		return processedServerData;
+	}
+
+	SimpleClient::ServerDataKind SimpleClient::ClassifyServerData(const DataType* serverData)
+	{
+		const Array* serverDataArray = Cast<Array>(serverData);
+		if (serverDataArray && serverDataArray->GetSize() > 0)
+		{
+			const SimpleString* stringData = Cast<SimpleString>(serverDataArray->GetElement(0));
+			if (stringData && strcmp((const char*)stringData->GetString(), "message") == 0)
+				return ServerDataKind::MESSAGE;
+		}
+
+		return ServerDataKind::RESPONSE;
 	}
 
 	/*virtual*/ bool SimpleClient::Flush(void)
@@ -195,16 +219,21 @@ namespace Yarc
 
 		try
 		{
-			if (this->socket == INVALID_SOCKET)
+			if (!this->IsConnected())
 				throw;
+
+			// Internally, we check the size of our callback-list, and if it gets too big, we force a flush
+			// operation before sending any more requests to the server.  This prevents the server from needing
+			// to queue up too much memory before it's able to send responses.
+			if (this->callbackList->GetCount() > this->pendingRequestFlushPoint)
+				if (!this->Flush())
+					throw;
 
 			uint8_t protocolData[10 * 1024];
 			uint32_t protocolDataSize = sizeof(protocolData);
 
 			if (!requestData->Print(protocolData, protocolDataSize))
 				throw;
-
-			this->callbackList->AddTail(callback);
 
 			uint32_t i = 0;
 			while (i < protocolDataSize)
@@ -226,6 +255,9 @@ namespace Yarc
 		}
 
 		delete requestData;
+
+		if(success)
+			this->callbackList->AddTail(callback);
 
 		return success;
 	}

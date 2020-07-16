@@ -3,6 +3,8 @@
 #include "yarc_api.h"
 #include "yarc_dynamic_array.h"
 #include <functional>
+#include <string>
+#include <map>
 
 namespace Yarc
 {
@@ -15,7 +17,7 @@ namespace Yarc
 		virtual ~ClientInterface();
 
 		// The return value indicates whether the callback takes ownership of the memory.
-		typedef std::function<bool(const DataType*)> Callback;
+		typedef std::function<bool(const DataType* responseData)> Callback;
 
 		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) = 0;
 		virtual bool Disconnect() = 0;
@@ -41,10 +43,20 @@ namespace Yarc
 		// comprising the transaction could be issued synchronously, but that's not as efficient.
 		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) = 0;
 
-		void SetFallbackCallback(Callback callback) { *this->fallbackCallback = callback; }
+		// These routines are used in conjunction with the pub-sub mechanism.  The client can be
+		// thought of as always in pipelining mode.  However, when it receives a message from the
+		// server (which is not in response to any request), then it is dispatched to the appropriate
+		// subscription callback, if one has been registered.
+		virtual bool RegisterSubscriptionCallback(const char* channel, Callback callback);
+		virtual bool UnregisterSubscriptionCallback(const char* channel);
 
-	protected:
+		// This is used internally to dispatch messages for the pub-sub mechanism, but could also
+		// be overridden by users of the client for their own custom handling.
+		virtual bool MessageHandler(const DataType* messageData);
 
-		Callback* fallbackCallback;
+	private:
+
+		typedef std::map<std::string, Callback> CallbackMap;
+		CallbackMap* callbackMap;
 	};
 }

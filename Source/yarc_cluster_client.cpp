@@ -24,7 +24,7 @@ namespace Yarc
 		if (this->IsConnected())
 			return false;
 
-		ClusterNode* clusterNode = new ClusterNode();
+		ClusterNode* clusterNode = new ClusterNode(this);
 		if (!clusterNode->client->Connect(address, port, timeout))
 		{
 			delete clusterNode;
@@ -41,7 +41,7 @@ namespace Yarc
 	{
 		DeleteList<ReductionObject>(*this->clusterNodeList);
 		DeleteList<ReductionObject>(*this->requestList);
-		
+
 		this->state = STATE_NONE;
 
 		return true;
@@ -146,7 +146,7 @@ namespace Yarc
 			delete request;
 			return false;
 		}
-		
+
 		this->requestList->AddTail(request);
 		return true;
 	}
@@ -192,7 +192,7 @@ namespace Yarc
 						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress, port);
 						if (!clusterNode)
 						{
-							clusterNode = new ClusterNode();
+							clusterNode = new ClusterNode(this);
 							if (clusterNode->client->Connect(ipAddress, port))
 								this->clusterNodeList->AddTail(clusterNode);
 							else
@@ -228,6 +228,22 @@ namespace Yarc
 				node = nextNode;
 			}
 		}
+	}
+
+	//----------------------------------------- NodeClient -----------------------------------------
+
+	ClusterClient::NodeClient::NodeClient(ClusterClient* givenClusterClient)
+	{
+		this->clusterClient = givenClusterClient;
+	}
+
+	/*virtual*/ ClusterClient::NodeClient::~NodeClient()
+	{
+	}
+
+	/*virtual*/ bool ClusterClient::NodeClient::MessageHandler(const DataType* messageData)
+	{
+		return this->clusterClient->MessageHandler(messageData);
 	}
 
 	//----------------------------------------- Request -----------------------------------------
@@ -442,9 +458,9 @@ namespace Yarc
 
 	//----------------------------------------- ClusterNode -----------------------------------------
 
-	ClusterClient::ClusterNode::ClusterNode()
+	ClusterClient::ClusterNode::ClusterNode(ClusterClient* givenClusterClient)
 	{
-		this->client = new SimpleClient();
+		this->client = new NodeClient(givenClusterClient);
 	}
 
 	/*virtual*/ ClusterClient::ClusterNode::~ClusterNode()

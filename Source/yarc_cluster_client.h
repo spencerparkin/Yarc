@@ -38,6 +38,17 @@ namespace Yarc
 
 		State state;
 
+		class NodeClient : public SimpleClient
+		{
+		public:
+			NodeClient(ClusterClient* givenClusterClient);
+			virtual ~NodeClient();
+
+			virtual bool MessageHandler(const DataType* messageData) override;
+
+			ClusterClient* clusterClient;
+		};
+
 		class ClusterNode;
 
 		class Request : public ReductionObject
@@ -97,14 +108,14 @@ namespace Yarc
 		{
 		public:
 
-			ClusterNode();
+			ClusterNode(ClusterClient* givenClusterClient);
 			virtual ~ClusterNode();
 
 			virtual ReductionResult Reduce() override;
 
 			bool HandlesSlot(uint16_t slot) const;
 
-			SimpleClient* client;
+			NodeClient* client;
 			
 			struct SlotRange
 			{
