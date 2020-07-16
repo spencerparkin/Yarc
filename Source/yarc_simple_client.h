@@ -17,6 +17,10 @@ namespace Yarc
 		SimpleClient();
 		virtual ~SimpleClient();
 
+		// When used as a DLL, these ensure that the client is allocated and freed in the proper heap.
+		static SimpleClient* Create();
+		static void Destroy(SimpleClient* client);
+
 		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) override;
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
@@ -40,6 +44,8 @@ namespace Yarc
 		};
 
 		ServerDataKind ClassifyServerData(const DataType* serverData);
+
+		uint32_t updateCallCount;
 
 		SOCKET socket;
 

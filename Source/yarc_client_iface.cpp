@@ -57,10 +57,12 @@ namespace Yarc
 		const Array* messageDataArray = Cast<Array>(messageData);
 		if (messageDataArray && messageDataArray->GetSize() >= 2)
 		{
-			const SimpleString* stringData = Cast<SimpleString>(messageDataArray->GetElement(1));
+			const BulkString* stringData = Cast<BulkString>(messageDataArray->GetElement(1));
 			if (stringData)
 			{
-				std::string key = (const char*)stringData->GetString();
+				char buffer[512];
+				stringData->GetString((uint8_t*)buffer, sizeof(buffer));
+				std::string key = buffer;
 				CallbackMap::iterator iter = this->callbackMap->find(key);
 				if (iter != this->callbackMap->end())
 				{

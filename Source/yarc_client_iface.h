@@ -19,11 +19,14 @@ namespace Yarc
 		// The return value indicates whether the callback takes ownership of the memory.
 		typedef std::function<bool(const DataType* responseData)> Callback;
 
+		// These should be pretty self-explanatory.
 		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) = 0;
 		virtual bool Disconnect() = 0;
 		virtual bool IsConnected() = 0;
 
-		// This should be called in the same thread where requests are made.
+		// This should be called in the same thread where requests are made.  The API as a whole is not
+		// designed to be thread-safe, nor is it so.  This doesn't prevent you, of course, from using it
+		// in a dedicated thread, and then using your own thread-safe interface to that thread.
 		virtual bool Update(bool canBlock = false) = 0;
 
 		// Wait for all pending requests to get responses.
@@ -46,7 +49,11 @@ namespace Yarc
 		// These routines are used in conjunction with the pub-sub mechanism.  The client can be
 		// thought of as always in pipelining mode.  However, when it receives a message from the
 		// server (which is not in response to any request), then it is dispatched to the appropriate
-		// subscription callback, if one has been registered.
+		// subscription callback, if one has been registered.  Note that while you can still send
+		// requests and get responses when susbcribed to one or more channels, you are limited to
+		// only being able to issue the (P)SUBSCRIBE, (P)UNSUBSCRIBE, and QUIT commands.  This seems
+		// to me to be somewhat of a limitation of Redis, but perhaps there is a good reason for it.
+		// In any case, you can use multiple clients to overcome the limitation.
 		virtual bool RegisterSubscriptionCallback(const char* channel, Callback callback);
 		virtual bool UnregisterSubscriptionCallback(const char* channel);
 

@@ -63,6 +63,9 @@
     <ClInclude Include="Source\yarc_cluster.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\yarc_misc.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

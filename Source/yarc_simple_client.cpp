@@ -1,5 +1,6 @@
 #include "yarc_simple_client.h"
 #include "yarc_data_types.h"
+#include "yarc_misc.h"
 #include <assert.h>
 
 #pragma comment(lib, "Ws2_32.lib")
@@ -20,6 +21,7 @@ namespace Yarc
 		this->port = 0;
 		this->pendingTransactionList = new ReductionObjectList();
 		this->pendingRequestFlushPoint = 100;
+		this->updateCallCount = 0;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -32,19 +34,29 @@ namespace Yarc
 		delete this->pendingTransactionList;
 	}
 
+	/*static*/ SimpleClient* SimpleClient::Create()
+	{
+		return new SimpleClient();
+	}
+
+	/*static*/ void SimpleClient::Destroy(SimpleClient* client)
+	{
+		delete client;
+	}
+
 	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port /*= 6379*/, uint32_t timeout /*= 30*/)
 	{
-		bool success = false;
+		bool success = true;
 
-		do
+		try
 		{
 			if (this->socket != INVALID_SOCKET)
-				break;
+				throw new InternalException();
 
 			WSADATA data;
 			int result = ::WSAStartup(MAKEWORD(2, 2), &data);
 			if (result != 0)
-				break;
+				throw new InternalException();
 
 			this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
 
@@ -53,18 +65,19 @@ namespace Yarc
 			::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
 			sockaddr.sin_port = ::htons(port);
 
-			result = ::connect(this->socket, (SOCKADDR*)& sockaddr, sizeof(sockaddr));
+			result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
 			if (result == SOCKET_ERROR)
-				break;
+				throw new InternalException();
 
 			*this->address = address;
 			this->port = port;
-			success = true;
-
-		} while (false);
-		
-		if (!success)
+		}
+		catch (InternalException * exc)
+		{
+			success = false;
 			this->Disconnect();
+			delete exc;
+		}
 		
 		return success;
 	}
@@ -82,6 +95,10 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(bool canBlock /*= false*/)
 	{
+		RecursionGuard recursionGuard(&this->updateCallCount);
+		if (recursionGuard.IsRecursing())
+			return false;
+
 		ReductionObject::ReduceList(this->pendingTransactionList);
 
 		bool processedServerData = false;
@@ -197,9 +214,14 @@ namespace Yarc
 		const Array* serverDataArray = Cast<Array>(serverData);
 		if (serverDataArray && serverDataArray->GetSize() > 0)
 		{
-			const SimpleString* stringData = Cast<SimpleString>(serverDataArray->GetElement(0));
-			if (stringData && strcmp((const char*)stringData->GetString(), "message") == 0)
-				return ServerDataKind::MESSAGE;
+			const BulkString* stringData = Cast<BulkString>(serverDataArray->GetElement(0));
+			if (stringData)
+			{
+				char buffer[512];
+				stringData->GetString((uint8_t*)buffer, sizeof(buffer));
+				if (strcmp(buffer, "message") == 0)
+					return ServerDataKind::MESSAGE;
+			}
 		}
 
 		return ServerDataKind::RESPONSE;
@@ -208,7 +230,8 @@ namespace Yarc
 	/*virtual*/ bool SimpleClient::Flush(void)
 	{
 		while (this->callbackList->GetCount() > 0 && this->IsConnected())
-			this->Update(true);
+			if (!this->Update(true))
+				break;
 
 		return this->IsConnected();
 	}
@@ -220,20 +243,20 @@ namespace Yarc
 		try
 		{
 			if (!this->IsConnected())
-				throw;
+				throw new InternalException();
 
 			// Internally, we check the size of our callback-list, and if it gets too big, we force a flush
 			// operation before sending any more requests to the server.  This prevents the server from needing
 			// to queue up too much memory before it's able to send responses.
 			if (this->callbackList->GetCount() > this->pendingRequestFlushPoint)
 				if (!this->Flush())
-					throw;
+					throw new InternalException();
 
 			uint8_t protocolData[10 * 1024];
 			uint32_t protocolDataSize = sizeof(protocolData);
 
 			if (!requestData->Print(protocolData, protocolDataSize))
-				throw;
+				throw new InternalException();
 
 			uint32_t i = 0;
 			while (i < protocolDataSize)
@@ -243,21 +266,21 @@ namespace Yarc
 				{
 					int error = ::WSAGetLastError();
 					this->Disconnect();
-					throw;
+					throw new InternalException();
 				}
 
 				i += j;
 			}
+
+			this->callbackList->AddTail(callback);
 		}
-		catch (...)
+		catch (InternalException* exc)
 		{
 			success = false;
+			delete exc;
 		}
 
 		delete requestData;
-
-		if(success)
-			this->callbackList->AddTail(callback);
 
 		return success;
 	}
