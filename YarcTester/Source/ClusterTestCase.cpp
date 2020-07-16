@@ -24,7 +24,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 		this->cluster->numMasters = 3;
 		this->cluster->numSlavesPerMaster = 1;
 		*this->cluster->redisBinDir = wxGetApp().redisBinDir.c_str();
-		*this->cluster->clusterRootDir = "E:\\redis\\cluster";
+		*this->cluster->clusterRootDir = "D:\\sandbox\\redis\\cluster";
 
 		if (!this->cluster->Setup())
 		{
