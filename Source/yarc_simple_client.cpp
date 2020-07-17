@@ -20,7 +20,7 @@ namespace Yarc
 		this->address = new std::string();
 		this->port = 0;
 		this->pendingTransactionList = new ReductionObjectList();
-		this->pendingRequestFlushPoint = 100;
+		this->pendingRequestFlushPoint = 10000;
 		this->updateCallCount = 0;
 	}
 
@@ -144,7 +144,7 @@ namespace Yarc
 				{
 					uint32_t newBufferSize = this->bufferSize * 2;
 					uint8_t* newBuffer = new uint8_t[newBufferSize];
-					
+
 					for (uint32_t i = 0; i < this->bufferSize; i++)
 						newBuffer[i] = this->buffer[i];
 
@@ -163,47 +163,50 @@ namespace Yarc
 
 			this->bufferReadOffset += count;
 
-			const uint8_t* protocolData = &this->buffer[this->bufferParseOffset];
-			uint32_t protocolDataSize = this->bufferSize - this->bufferParseOffset;
-
-			// Note that it's not an error to fail to parse here.  If that happens, it means
-			// we have not yet read enough data from the socket stream to be parseable.
-			bool validStart = true;
-			DataType* serverData = DataType::ParseTree(protocolData, protocolDataSize, &validStart);
-			assert(validStart);
-			if (serverData)
+			// Parse and dispatch as much as we can based on what we have.
+			while (this->bufferParseOffset < this->bufferReadOffset)
 			{
-				processedServerData = true;
-				bool freeServerData = true;
+				const uint8_t* protocolData = &this->buffer[this->bufferParseOffset];
+				uint32_t protocolDataSize = this->bufferSize - this->bufferParseOffset;
 
-				this->bufferParseOffset += protocolDataSize;
-
-				ServerDataKind serverDataKind = this->ClassifyServerData(serverData);
-				switch (serverDataKind)
+				bool validStart = true;
+				DataType* serverData = DataType::ParseTree(protocolData, protocolDataSize, &validStart);
+				assert(validStart);
+				if (!serverData)
+					break;	// A parse error is not a bug here.  It just means we haven't yet read enough data from the socket.
+				else
 				{
-					case ServerDataKind::MESSAGE:
+					processedServerData = true;
+					bool freeServerData = true;
+
+					this->bufferParseOffset += protocolDataSize;
+					assert(this->bufferParseOffset <= this->bufferReadOffset);
+
+					ServerDataKind serverDataKind = this->ClassifyServerData(serverData);
+					switch (serverDataKind)
 					{
-						freeServerData = this->MessageHandler(serverData);
-						break;
-					}
-					case ServerDataKind::RESPONSE:
-					{
-						if (this->callbackList->GetCount() > 0)
+						case ServerDataKind::MESSAGE:
 						{
-							Callback callback = this->callbackList->GetHead()->value;
-							this->callbackList->Remove(this->callbackList->GetHead());
-							freeServerData = callback(serverData);
+							freeServerData = this->MessageHandler(serverData);
+							break;
 						}
+						case ServerDataKind::RESPONSE:
+						{
+							if (this->callbackList->GetCount() > 0)
+							{
+								Callback callback = this->callbackList->GetHead()->value;
+								this->callbackList->Remove(this->callbackList->GetHead());
+								freeServerData = callback(serverData);
+							}
 
-						break;
+							break;
+						}
 					}
+
+					if (freeServerData)
+						delete serverData;
 				}
-
-				if (freeServerData)
-					delete serverData;
 			}
-
-			assert(this->bufferParseOffset <= this->bufferReadOffset);
 		}
 
 		return processedServerData;
@@ -252,7 +255,7 @@ namespace Yarc
 				if (!this->Flush())
 					throw new InternalException();
 
-			uint8_t protocolData[10 * 1024];
+			uint8_t protocolData[1024 * 1024];
 			uint32_t protocolDataSize = sizeof(protocolData);
 
 			if (!requestData->Print(protocolData, protocolDataSize))

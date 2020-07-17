@@ -2,7 +2,7 @@
 #include "yarc_linked_list.h"
 #include "yarc_crc16.h"
 #include <stdio.h>
-#include <string.h>
+#include <string>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -64,51 +64,43 @@ namespace Yarc
 	{
 		struct Word
 		{
-			char string[512];
+			std::string str;
 		};
 
 		LinkedList<Word> wordList;
 		Word newWord;
-		uint32_t i = 0, j = 0;
+		uint32_t i = 0;
 		bool inQuotedText = false;
 
-		while(true)
+		for(i = 0; command[i] != '\0'; i++)
 		{
-			if (j == sizeof(newWord.string))
-				return nullptr;
-
 			char ch = command[i];
 			if (ch == '"')
 				inQuotedText = !inQuotedText;
-			else if (ch == '\0' || (ch == ' ' && !inQuotedText))
+			else if (ch == ' ' && !inQuotedText)
 			{
-				newWord.string[j] = '\0';
 				wordList.AddTail(newWord);
-				j = 0;
+				newWord.str = "";
 			}
 			else
-			{
-				newWord.string[j++] = ch;
-			}
-
-			if (ch == '\0')
-				break;
-
-			i++;
+				newWord.str += ch;
 		}
+
+		if(newWord.str.length() > 0)
+			wordList.AddTail(newWord);
 
 		Array* wordArray = new Array();
 		wordArray->SetSize(wordList.GetCount());
-		j = 0;
+		i = 0;
 
 		for (LinkedList<Word>::Node* node = wordList.GetHead(); node; node = node->GetNext())
 		{
 			const Word& word = node->value;
 
 			BulkString* bulkString = new BulkString();
-			bulkString->SetBuffer((uint8_t*)word.string, (uint32_t)strlen(word.string));
+			bulkString->SetBuffer((uint8_t*)word.str.c_str(), (uint32_t)word.str.length());
 
-			wordArray->SetElement(j++, bulkString);
+			wordArray->SetElement(i++, bulkString);
 		}
 
 		// Commands in the RESP are just arrays of bulk strings.
@@ -220,7 +212,7 @@ namespace Yarc
 
 	/*static*/ DataType* DataType::Clone(const DataType* dataType)
 	{
-		uint8_t protocolData[10 * 1024];
+		uint8_t protocolData[1024 * 1024];
 		uint32_t protocolDataSize = sizeof(protocolData);
 		if (!dataType->Print(protocolData, protocolDataSize))
 			return nullptr;

@@ -183,7 +183,7 @@ void Frame::OnCharHook(wxKeyEvent& event)
 						}
 						else
 						{
-							uint8_t protocolData[10 * 1024];
+							uint8_t protocolData[1024 * 1024];
 							uint32_t protocolDataSize = sizeof(protocolData);
 							responseData->Print(protocolData, protocolDataSize);
 							wxString responseText = protocolData;
