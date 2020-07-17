@@ -1,8 +1,10 @@
 #include "Frame.h"
+#include "App.h"
 #include "SimpleTestCase.h"
 #include "ClusterTestCase.h"
 #include <wx/menu.h>
 #include <wx/aboutdlg.h>
+#include <wx/dirdlg.h>
 #include <wx/sizer.h>
 #include <wx/utils.h>
 #include <yarc_data_types.h>
@@ -12,6 +14,8 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	this->testCase = nullptr;
 
 	wxMenu* mainMenu = new wxMenu();
+	mainMenu->Append(new wxMenuItem(mainMenu, ID_LocateRedisBinDir, "Locate Redis", "Browser to the folder location of the Redis binaries directory so that its processes can be invoked."));
+	mainMenu->AppendSeparator();
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_SimpleTestCase, "Simple Test Case", "Test Yarc's simple client.", wxITEM_CHECK));
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_ClusterTestCase, "Cluster Test Case", "Test Yarc's cluster client.", wxITEM_CHECK));
 	mainMenu->AppendSeparator();
@@ -29,6 +33,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	this->Bind(wxEVT_MENU, &Frame::OnAbout, this, ID_About);
 	this->Bind(wxEVT_MENU, &Frame::OnSimpleTestCase, this, ID_SimpleTestCase);
 	this->Bind(wxEVT_MENU, &Frame::OnClusterTestCase, this, ID_ClusterTestCase);
+	this->Bind(wxEVT_MENU, &Frame::OnLocateRedisBinDir, this, ID_LocateRedisBinDir);
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_SimpleTestCase);
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_ClusterTestCase);
 	this->Bind(wxEVT_TIMER, &Frame::OnTimer, this, ID_Timer);
@@ -80,6 +85,15 @@ void Frame::OnTimer(wxTimerEvent& event)
 				this->SetTestCase(nullptr);
 			}
 		}
+	}
+}
+
+void Frame::OnLocateRedisBinDir(wxCommandEvent& event)
+{
+	wxDirDialog dirDialog(this, "Please locate the Redis binaries directory on your system.", wxGetApp().redisBinDir, wxDD_DEFAULT_STYLE | wxDD_DIR_MUST_EXIST);
+	if (wxID_OK == dirDialog.ShowModal())
+	{
+		wxGetApp().redisBinDir = dirDialog.GetPath();
 	}
 }
 

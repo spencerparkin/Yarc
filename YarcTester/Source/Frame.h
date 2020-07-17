@@ -24,13 +24,15 @@ private:
 		ID_About,
 		ID_SimpleTestCase,
 		ID_ClusterTestCase,
-		ID_Timer
+		ID_Timer,
+		ID_LocateRedisBinDir
 	};
 
 	void OnExit(wxCommandEvent& event);
 	void OnAbout(wxCommandEvent& event);
 	void OnSimpleTestCase(wxCommandEvent& event);
 	void OnClusterTestCase(wxCommandEvent& event);
+	void OnLocateRedisBinDir(wxCommandEvent& event);
 	void OnCharHook(wxKeyEvent& event);
 	void OnUpdateMenuItemUI(wxUpdateUIEvent& event);
 	void OnTimer(wxTimerEvent& event);

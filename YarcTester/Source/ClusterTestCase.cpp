@@ -18,13 +18,19 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 /*virtual*/ bool ClusterTestCase::Setup()
 {
+	if (!wxFileExists(wxGetApp().GetRedisServerExectuablePath()))
+	{
+		this->logStream << "Failed to locate redis-server executable!" << std::endl;
+		return false;
+	}
+
 	if (!this->cluster)
 	{
 		this->cluster = new Yarc::Cluster();
 		this->cluster->numMasters = 3;
 		this->cluster->numSlavesPerMaster = 1;
 		*this->cluster->redisBinDir = wxGetApp().redisBinDir.c_str();
-		*this->cluster->clusterRootDir = "D:\\sandbox\\redis\\cluster";
+		*this->cluster->clusterRootDir = wxGetApp().redisBinDir + "\\cluster";
 
 		if (!this->cluster->Setup())
 		{
