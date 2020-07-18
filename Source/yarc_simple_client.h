@@ -3,7 +3,6 @@
 #include "yarc_api.h"
 #include "yarc_client_iface.h"
 #include "yarc_linked_list.h"
-#include "yarc_reducer.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
 #include <string>
