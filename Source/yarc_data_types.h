@@ -2,6 +2,7 @@
 
 #include "yarc_api.h"
 #include <stdint.h>
+#include <string>
 
 namespace Yarc
 {
@@ -40,7 +41,7 @@ namespace Yarc
 		static DataType* ParseCommand(const char* command);
 
 		// Assuming the given data-tree is a Redis command, return they key used in the command.
-		static const char* FindCommandKey(const DataType* commandData);
+		static std::string FindCommandKey(const DataType* commandData);
 		
 		// For Redis Cluster, calculate the hash-slot associated with the key of the given command.
 		static uint16_t CalcCommandHashSlot(const DataType* commandData);

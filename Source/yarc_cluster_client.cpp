@@ -430,7 +430,9 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::SingleRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		return clusterNode->client->MakeRequestAsync(this->requestData, callback);
+		bool requestSent = clusterNode->client->MakeRequestAsync(this->requestData, callback);
+		this->requestData = nullptr;
+		return requestSent;
 	}
 
 	//----------------------------------------- MultiRequest -----------------------------------------
@@ -453,7 +455,9 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::MultiRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		return clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback);
+		bool transactionSent = clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback);
+		this->requestDataArray.SetCount(0);
+		return transactionSent;
 	}
 
 	//----------------------------------------- ClusterNode -----------------------------------------

@@ -158,7 +158,7 @@ namespace Yarc
 		return result;
 	}
 
-	/*static*/ const char* DataType::FindCommandKey(const DataType* commandData)
+	/*static*/ std::string DataType::FindCommandKey(const DataType* commandData)
 	{
 		// I have not yet run into a Redis command who's syntax was not of
 		// the form: command [key] ..., so here we just return the second
@@ -169,7 +169,11 @@ namespace Yarc
 		{
 			const BulkString* keyString = Cast<BulkString>(commandArray->GetElement(1));
 			if (keyString)
-				return (const char*)keyString->GetBuffer();
+			{
+				char buffer[256];
+				keyString->GetString((uint8_t*)buffer, sizeof(buffer));
+				return buffer;
+			}
 		}
 
 		return nullptr;
@@ -177,7 +181,8 @@ namespace Yarc
 
 	/*static*/ uint16_t DataType::CalcCommandHashSlot(const DataType* commandData)
 	{
-		const char* key = FindCommandKey(commandData);
+		std::string keyStr = FindCommandKey(commandData);
+		const char* key = keyStr.c_str();
 		int keylen = strlen(key);
 
 		// Note that we can't just hash the command key here, because

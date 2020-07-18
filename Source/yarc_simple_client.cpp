@@ -298,12 +298,20 @@ namespace Yarc
 		pendingTransaction->callback = callback;
 		pendingTransaction->queueCount = 0;
 
-		if (this->MakeRequestAsync(DataType::ParseCommand("MULTI"), [=](const DataType* responseData) {
+		try
+		{
+			if (!this->MakeRequestAsync(DataType::ParseCommand("MULTI"), [=](const DataType* responseData) {
 				if (!Cast<Error>(responseData))
 					pendingTransaction->multiCommandOkay = true;
 				return true;
 			}))
-		{
+			{
+				for (int i = 0; i < requestDataArray.GetCount(); i++)
+					delete requestDataArray[i];
+
+				throw new InternalException();
+			}
+
 			// It's important to point out that while in typical asynchronous systems, requests are
 			// not guarenteed to be fulfilled in the same order that they were made, that is not
 			// the case here.  In other words, these commands will be executed on the database
@@ -311,30 +319,36 @@ namespace Yarc
 			for (unsigned int i = 0; i < requestDataArray.GetCount(); i++)
 			{
 				if (this->MakeRequestAsync(requestDataArray[i], [=](const DataType* responseData) {
-						if (!Cast<Error>(responseData))
-							pendingTransaction->queueCount--;
-						return true;
-					}))
+					if (!Cast<Error>(responseData))
+						pendingTransaction->queueCount--;
+					return true;
+				}))
 				{
 					pendingTransaction->queueCount++;
 				}
 			}
 
-			if (pendingTransaction->queueCount == requestDataArray.GetCount())
+			if (pendingTransaction->queueCount != requestDataArray.GetCount())
+				throw new InternalException();
+
+			if (!this->MakeRequestAsync(DataType::ParseCommand("EXEC"), [=](const DataType* responseData) {
+				pendingTransaction->responseData = const_cast<DataType*>(responseData);
+				return false;
+			}))
 			{
-				if (this->MakeRequestAsync(DataType::ParseCommand("EXEC"), [=](const DataType* responseData) {
-						pendingTransaction->responseData = const_cast<DataType*>(responseData);
-						return false;
-					}))
-				{
-					this->pendingTransactionList->AddTail(pendingTransaction);
-					return true;
-				}
+				throw new InternalException();
 			}
+
+			this->pendingTransactionList->AddTail(pendingTransaction);
+		}
+		catch (InternalException* exc)
+		{
+			delete exc;
+			delete pendingTransaction;
+			return false;
 		}
 
-		delete pendingTransaction;
-		return false;
+		return true;
 	}
 
 	//------------------------------ PendingTransaction ------------------------------
