@@ -1,6 +1,7 @@
 #include "yarc_data_types.h"
 #include "yarc_linked_list.h"
 #include "yarc_crc16.h"
+#include "yarc_misc.h"
 #include <stdio.h>
 #include <string>
 #include <stdlib.h>
@@ -212,12 +213,29 @@ namespace Yarc
 
 	/*static*/ DataType* DataType::Clone(const DataType* dataType)
 	{
-		uint8_t protocolData[1024 * 1024];
-		uint32_t protocolDataSize = sizeof(protocolData);
-		if (!dataType->Print(protocolData, protocolDataSize))
-			return nullptr;
+		DataType* cloneData = nullptr;
+		uint8_t* protocolData = nullptr;
+		uint32_t protocolDataSize = 1024 * 1024;
 
-		return DataType::ParseTree(protocolData, protocolDataSize);
+		try
+		{
+			protocolData = new uint8_t[protocolDataSize];
+			if (!protocolData)
+				throw new InternalException();
+
+			if (!dataType->Print(protocolData, protocolDataSize))
+				throw new InternalException();
+
+			cloneData = DataType::ParseTree(protocolData, protocolDataSize);
+		}
+		catch (InternalException* exc)
+		{
+			delete exc;
+		}
+
+		delete[] protocolData;
+
+		return cloneData;
 	}
 
 	//----------------------------------------- Error -----------------------------------------

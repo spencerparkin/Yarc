@@ -7,7 +7,7 @@ wxIMPLEMENT_APP(App);
 App::App()
 {
 	this->frame = nullptr;
-	this->redisBinDir = wxT("D:\\sandbox\\redis");
+	this->redisBinDir = wxT("E:\\redis");
 }
 
 /*virtual*/ App::~App()

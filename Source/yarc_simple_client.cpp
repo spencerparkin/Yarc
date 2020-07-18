@@ -242,6 +242,8 @@ namespace Yarc
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback)
 	{
 		bool success = true;
+		uint32_t protocolDataSize = 1024 * 1024;
+		uint8_t* protocolData = nullptr;
 
 		try
 		{
@@ -255,8 +257,9 @@ namespace Yarc
 				if (!this->Flush())
 					throw new InternalException();
 
-			uint8_t protocolData[1024 * 1024];
-			uint32_t protocolDataSize = sizeof(protocolData);
+			protocolData = new uint8_t[protocolDataSize];
+			if (!protocolData)
+				throw new InternalException();
 
 			if (!requestData->Print(protocolData, protocolDataSize))
 				throw new InternalException();
@@ -284,6 +287,7 @@ namespace Yarc
 		}
 
 		delete requestData;
+		delete[] protocolData;
 
 		return success;
 	}

@@ -33,12 +33,11 @@ int main()
 					std::cout << "Failed to issue command!" << std::endl;
 				else
 				{
-					uint8_t protocolData[1024 * 1024];
-					uint32_t protocolDataSize = sizeof(protocolData);
-
+					uint32_t protocolDataSize = 1024 * 1024;
+					uint8_t* protocolData = new uint8_t[protocolDataSize];
 					resultData->Print(protocolData, protocolDataSize);
-
 					std::cout << protocolData << std::endl;
+					delete[] protocolData;
 				}
 
 				delete resultData;
