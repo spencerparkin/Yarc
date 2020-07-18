@@ -63,6 +63,8 @@ namespace Yarc
 			virtual uint16_t CalcHashSlot() = 0;
 			virtual bool MakeRequestAsync(ClusterNode* clusterNode, Callback callback) = 0;
 
+			bool ParseRedirectAddressAndPort(const char* errorMessage);
+
 			enum State
 			{
 				STATE_NONE,

@@ -316,7 +316,7 @@ namespace Yarc
 					const char* errorMessage = (const char*)error->GetString();
 					if (strstr(errorMessage, "ASK") == errorMessage)
 					{
-						// TODO: Read redirect address into this->redirectAddress/port.
+						this->ParseRedirectAddressAndPort(errorMessage);
 
 						delete this->responseData;
 						this->responseData = nullptr;
@@ -363,7 +363,7 @@ namespace Yarc
 					}
 					else if (strstr(errorMessage, "MOVED") == errorMessage)
 					{
-						// TODO: Read redirect address into this->redirectAddress/port.
+						this->ParseRedirectAddressAndPort(errorMessage);
 
 						delete this->responseData;
 						this->responseData = nullptr;
@@ -409,6 +409,27 @@ namespace Yarc
 		}
 
 		return result;
+	}
+
+	bool ClusterClient::Request::ParseRedirectAddressAndPort(const char* errorMessage)
+	{
+		char buffer[512];
+		strcpy_s(buffer, sizeof(buffer), errorMessage);
+
+		uint32_t i = 0;
+		char* context = nullptr;
+		char* token = ::strtok_s(buffer, " :", &context);
+		while (token)
+		{
+			if (i == 2)
+				strcpy_s(this->redirectAddress, sizeof(this->redirectAddress), token);
+			else if (i == 3)
+				this->redirectPort = ::atoi(token);
+			token = ::strtok_s(buffer, " :", &context);
+			i++;
+		}
+
+		return true;
 	}
 
 	//----------------------------------------- SingleRequest -----------------------------------------
