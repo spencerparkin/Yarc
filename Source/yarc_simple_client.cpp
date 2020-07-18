@@ -295,12 +295,7 @@ namespace Yarc
 		try
 		{
 			if (!this->MakeRequestAsync(DataType::ParseCommand("MULTI"), [=](const DataType* responseData) { return true; }))
-			{
-				for (int i = 0; i < (signed)requestDataArray.GetCount(); i++)
-					delete requestDataArray[i];
-
 				throw new InternalException();
-			}
 
 			// It's important to point out that while in typical asynchronous systems, requests are
 			// not guarenteed to be fulfilled in the same order that they were made, that is not
