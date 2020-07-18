@@ -176,7 +176,7 @@ namespace Yarc
 			}
 		}
 
-		return nullptr;
+		return "";
 	}
 
 	/*static*/ uint16_t DataType::CalcCommandHashSlot(const DataType* commandData)

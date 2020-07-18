@@ -190,7 +190,7 @@ namespace Yarc
 				}
 			}
 
-			if (slotBase < totalSlots - 1)
+			if (slotBase < totalSlots)
 			{
 				Node& masterNode = (*this->nodeArray)[0];
 				this->AddSlots(masterNode.client, slotBase, totalSlots - 1);
