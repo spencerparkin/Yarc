@@ -121,7 +121,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback)
+	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback)
 	{
 		if (requestDataArray.GetCount() == 0)
 			return false;

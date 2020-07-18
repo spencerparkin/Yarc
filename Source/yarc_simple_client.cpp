@@ -292,7 +292,7 @@ namespace Yarc
 		return success;
 	}
 
-	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback)
+	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback)
 	{
 		PendingTransaction* pendingTransaction = new PendingTransaction();
 		pendingTransaction->callback = callback;
@@ -300,13 +300,13 @@ namespace Yarc
 
 		try
 		{
+			// TODO: Oops, if MULTI fails here, then are we going to execute the commands outside of a transaction block?
 			if (!this->MakeRequestAsync(DataType::ParseCommand("MULTI"), [=](const DataType* responseData) {
-				if (!Cast<Error>(responseData))
-					pendingTransaction->multiCommandOkay = true;
+				pendingTransaction->multiCommandOkay = true;
 				return true;
 			}))
 			{
-				for (int i = 0; i < requestDataArray.GetCount(); i++)
+				for (int i = 0; i < (signed)requestDataArray.GetCount(); i++)
 					delete requestDataArray[i];
 
 				throw new InternalException();
@@ -319,8 +319,9 @@ namespace Yarc
 			for (unsigned int i = 0; i < requestDataArray.GetCount(); i++)
 			{
 				if (this->MakeRequestAsync(requestDataArray[i], [=](const DataType* responseData) {
-					if (!Cast<Error>(responseData))
-						pendingTransaction->queueCount--;
+					// Note that we don't need to worry if there was an error queueing the command.
+					// The server will remember the error, and discard the transaction when EXEC is called.
+					pendingTransaction->queueCount--;
 					return true;
 				}))
 				{
@@ -349,6 +350,53 @@ namespace Yarc
 		}
 
 		return true;
+	}
+
+	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData)
+	{
+		bool success = true;
+		uint32_t i = 0;
+
+		try
+		{
+			if (!this->MakeRequestSync(DataType::ParseCommand("EXEC"), responseData))
+				throw new InternalException();
+
+			if (!Cast<Error>(responseData))
+			{
+				delete responseData;
+
+				while (i < requestDataArray.GetCount())
+				{
+					if (!this->MakeRequestSync(requestDataArray[i], responseData))
+						throw new InternalException();
+
+					if (!Cast<Error>(responseData))
+						delete responseData;
+					else
+					{
+						this->MakeRequestAsync(DataType::ParseCommand("DISCARD"), [](const DataType*) { return true; });
+						break;
+					}
+				}
+
+				if (i == requestDataArray.GetCount())
+				{
+					if (!this->MakeRequestSync(DataType::ParseCommand("EXEC"), responseData))
+						throw new InternalException();
+				}
+			}
+		}
+		catch (InternalException* exc)
+		{
+			delete exc;
+			success = false;
+		}
+
+		while (i < requestDataArray.GetCount())
+			delete requestDataArray[i++];
+
+		return success;
 	}
 
 	//------------------------------ PendingTransaction ------------------------------

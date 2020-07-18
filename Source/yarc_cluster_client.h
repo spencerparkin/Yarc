@@ -24,7 +24,7 @@ namespace Yarc
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
-		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback) override;
 
 	private:
 
@@ -101,7 +101,7 @@ namespace Yarc
 			uint16_t CalcHashSlot() override;
 			virtual bool MakeRequestAsync(ClusterNode* clusterNode, Callback callback) override;
 
-			DynamicArray<DataType*> requestDataArray;
+			DynamicArray<const DataType*> requestDataArray;
 		};
 
 		class ClusterNode : public ReductionObject

@@ -17,8 +17,8 @@ namespace Yarc
 	{
 		bool requestServiced = false;
 
-		Callback callback = [&](const DataType* dataType) {
-			responseData = const_cast<DataType*>(dataType);
+		Callback callback = [&](const DataType* givenResponseData) {
+			responseData = const_cast<DataType*>(givenResponseData);
 			requestServiced = true;
 			return false;
 		};
@@ -28,6 +28,25 @@ namespace Yarc
 
 		// Note that by blocking here, we ensure that we don't starve socket
 		// threads that need to run for us to get the data from the server.
+		while (!requestServiced && this->IsConnected())
+			this->Update(true);
+
+		return requestServiced;
+	}
+
+	/*virtual*/ bool ClientInterface::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData)
+	{
+		bool requestServiced = false;
+
+		Callback callback = [&](const DataType* givenResponseData) {
+			responseData = const_cast<DataType*>(givenResponseData);
+			requestServiced = true;
+			return false;
+		};
+
+		if (!this->MakeTransactionRequestAsync(requestDataArray, callback))
+			return false;
+
 		while (!requestServiced && this->IsConnected())
 			this->Update(true);
 

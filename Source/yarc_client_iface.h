@@ -44,7 +44,10 @@ namespace Yarc
 		// manually in the case that the client interface does not guarentee requests be fulfilled
 		// in the same order that they are issued asynchronously.  Alternatively, all commands
 		// comprising the transaction could be issued synchronously, but that's not as efficient.
-		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) = 0;
+		// Transactions also guarentee that no command from any other client is serviced in the middle
+		// of the transaction.  This is an important property needed for matters of concurrancy.
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback) = 0;
+		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData);
 
 		// These routines are used in conjunction with the pub-sub mechanism.  The client can be
 		// thought of as always in pipelining mode.  However, when it receives a message from the

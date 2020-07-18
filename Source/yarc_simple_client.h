@@ -27,7 +27,8 @@ namespace Yarc
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
-		virtual bool MakeTransactionRequestAsync(const DynamicArray<DataType*>& requestDataArray, Callback callback) override;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback) override;
+		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData) override;
 
 		const char* GetAddress() const { return this->address->c_str(); }
 		uint16_t GetPort() const { return this->port; }
