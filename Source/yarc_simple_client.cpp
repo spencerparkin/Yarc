@@ -19,7 +19,6 @@ namespace Yarc
 		this->callbackList = new CallbackList();
 		this->address = new std::string();
 		this->port = 0;
-		this->pendingTransactionList = new ReductionObjectList();
 		this->pendingRequestFlushPoint = 10000;
 		this->updateCallCount = 0;
 	}
@@ -30,8 +29,6 @@ namespace Yarc
 		delete[] this->buffer;
 		delete this->callbackList;
 		delete this->address;
-		DeleteList<ReductionObject>(*this->pendingTransactionList);
-		delete this->pendingTransactionList;
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -98,8 +95,6 @@ namespace Yarc
 		RecursionGuard recursionGuard(&this->updateCallCount);
 		if (recursionGuard.IsRecursing())
 			return false;
-
-		ReductionObject::ReduceList(this->pendingTransactionList);
 
 		bool processedServerData = false;
 		bool tryRead = false;
@@ -294,17 +289,12 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback)
 	{
-		PendingTransaction* pendingTransaction = new PendingTransaction();
-		pendingTransaction->callback = callback;
-		pendingTransaction->queueCount = 0;
+		bool success = true;
+		uint32_t i = 0;
 
 		try
 		{
-			// TODO: Oops, if MULTI fails here, then are we going to execute the commands outside of a transaction block?
-			if (!this->MakeRequestAsync(DataType::ParseCommand("MULTI"), [=](const DataType* responseData) {
-				pendingTransaction->multiCommandOkay = true;
-				return true;
-			}))
+			if (!this->MakeRequestAsync(DataType::ParseCommand("MULTI"), [=](const DataType* responseData) { return true; }))
 			{
 				for (int i = 0; i < (signed)requestDataArray.GetCount(); i++)
 					delete requestDataArray[i];
@@ -316,40 +306,31 @@ namespace Yarc
 			// not guarenteed to be fulfilled in the same order that they were made, that is not
 			// the case here.  In other words, these commands will be executed on the database
 			// server in the same order that they're given here.
-			for (unsigned int i = 0; i < requestDataArray.GetCount(); i++)
+			while(i < requestDataArray.GetCount())
 			{
-				if (this->MakeRequestAsync(requestDataArray[i], [=](const DataType* responseData) {
+				if (!this->MakeRequestAsync(requestDataArray[i++], [=](const DataType* responseData) {
 					// Note that we don't need to worry if there was an error queueing the command.
 					// The server will remember the error, and discard the transaction when EXEC is called.
-					pendingTransaction->queueCount--;
 					return true;
 				}))
 				{
-					pendingTransaction->queueCount++;
+					throw new InternalException();
 				}
 			}
 
-			if (pendingTransaction->queueCount != requestDataArray.GetCount())
+			if (!this->MakeRequestAsync(DataType::ParseCommand("EXEC"), callback))
 				throw new InternalException();
-
-			if (!this->MakeRequestAsync(DataType::ParseCommand("EXEC"), [=](const DataType* responseData) {
-				pendingTransaction->responseData = const_cast<DataType*>(responseData);
-				return false;
-			}))
-			{
-				throw new InternalException();
-			}
-
-			this->pendingTransactionList->AddTail(pendingTransaction);
 		}
 		catch (InternalException* exc)
 		{
 			delete exc;
-			delete pendingTransaction;
-			return false;
+			success = false;
 		}
 
-		return true;
+		while (i < requestDataArray.GetCount())
+			delete requestDataArray[i++];
+
+		return success;
 	}
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData)
@@ -397,32 +378,5 @@ namespace Yarc
 			delete requestDataArray[i++];
 
 		return success;
-	}
-
-	//------------------------------ PendingTransaction ------------------------------
-
-	SimpleClient::PendingTransaction::PendingTransaction()
-	{
-		this->multiCommandOkay = false;
-		this->queueCount = -1;
-		this->responseData = nullptr;
-	}
-
-	/*virtual*/ SimpleClient::PendingTransaction::~PendingTransaction()
-	{
-		delete this->responseData;
-	}
-
-	/*virtual*/ ReductionObject::ReductionResult SimpleClient::PendingTransaction::Reduce()
-	{
-		if (this->multiCommandOkay && this->queueCount == 0 && this->responseData)
-		{
-			if (!this->callback(this->responseData))
-				this->responseData = nullptr;
-
-			return RESULT_DELETE;
-		}
-
-		return RESULT_NONE;
 	}
 }

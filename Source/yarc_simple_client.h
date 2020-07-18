@@ -46,8 +46,6 @@ namespace Yarc
 
 		ServerDataKind ClassifyServerData(const DataType* serverData);
 
-		uint32_t updateCallCount;
-
 		SOCKET socket;
 
 		uint8_t* buffer;
@@ -55,25 +53,9 @@ namespace Yarc
 		uint32_t bufferReadOffset;
 		uint32_t bufferParseOffset;
 		uint32_t pendingRequestFlushPoint;
+		uint32_t updateCallCount;
 
 		std::string* address;
 		uint16_t port;
-
-		class PendingTransaction : public ReductionObject
-		{
-		public:
-
-			PendingTransaction();
-			virtual ~PendingTransaction();
-
-			virtual ReductionResult Reduce() override;
-
-			bool multiCommandOkay;
-			int queueCount;
-			DataType* responseData;
-			Callback callback;
-		};
-
-		ReductionObjectList* pendingTransactionList;
 	};
 }
