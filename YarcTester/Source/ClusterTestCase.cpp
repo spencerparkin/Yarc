@@ -106,7 +106,14 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 	this->cluster->Update();
 
-	// TODO: Exercise the client here using the test keys we have.
+	for (uint32_t i = 0; i < this->testKeyArray.size(); i++)
+	{
+		std::string testKey = this->testKeyArray[i];
+		
+		// TODO: Perform sets and gets and compare results with our local map.
+
+		//this->client->MakeRequestAsync(
+	}
 
 	return true;
 }

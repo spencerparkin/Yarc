@@ -3,6 +3,7 @@
 #include "TestCase.h"
 #include <yarc_cluster.h>
 #include <vector>
+#include <map>
 
 class ClusterTestCase : public TestCase
 {
@@ -18,4 +19,5 @@ public:
 	Yarc::Cluster* cluster;
 
 	std::vector<std::string> testKeyArray;
+	std::map<std::string, int> testKeyMap;
 };

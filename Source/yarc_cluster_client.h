@@ -8,9 +8,9 @@
 
 namespace Yarc
 {
-	// TODO: I've only done enough to get this client connecting and disconnecting.
-	//       I need to spend some time debugging this client, but don't yet have the time.
-	//       Come back and revisit this when I have the chance.
+	// Note that in contrast to the simple client, requests made here asynchronously are
+	// not guarenteed to be responded to in the same order they were made.  They should,
+	// however, be fulfilled in the same order they were made.
 	class YARC_API ClusterClient : public ClientInterface
 	{
 	public:
