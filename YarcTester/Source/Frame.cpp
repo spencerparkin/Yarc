@@ -21,6 +21,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_ClusterTestCase, "Cluster Test Case", "Test Yarc's cluster client.", wxITEM_CHECK));
 	mainMenu->AppendSeparator();
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_AutomatedTesting, "Automated Testing", "Toggle automated testing of the client, which may or may not be supported.", wxITEM_CHECK));
+	mainMenu->AppendSeparator();
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_Exit, "Exit", "Exit this program."));
 
 	wxMenu* helpMenu = new wxMenu();

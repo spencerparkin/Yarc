@@ -78,5 +78,6 @@ namespace Yarc
 		ReductionObjectList* migrationList;
 
 		Migration* CreateRandomMigration(void);
+		Migration* CreateRandomMigrationForHashSlot(uint16_t hashSlot);
 	};
 }

@@ -372,6 +372,17 @@ namespace Yarc
 		return new Migration(sourceNode, destinationNode, hashSlot);
 	}
 
+	Cluster::Migration* Cluster::CreateRandomMigrationForHashSlot(uint16_t hashSlot)
+	{
+		// TODO: The idea is that I'll use this routine to move the same hash-slot all
+		//       over the cluster.  I'll choose the hash-slot based on a key that I'll
+		//       use in conjunction with hash-tagging so that I can exercise the client
+		//       with many keys that all hash to that slot.  The client will constantly
+		//       be updating, querying, and creating new keys, all of which will go to
+		//       the same hash-slot that we'll keep migrating from time to time.
+		return nullptr;
+	}
+
 	Cluster::Node* Cluster::FindNodeWithID(const char* id)
 	{
 		for (int i = 0; i < this->nodeArray->GetCount(); i++)
@@ -388,7 +399,7 @@ namespace Yarc
 		this->sourceNode = givenSourceNode;
 		this->destinationNode = givenDestinationNode;
 		this->hashSlot = givenHashSlot;
-		this->lazyCount = 1000000;
+		this->lazyCount = 512;
 		this->state = State::MARK_IMPORTING;
 	}
 
