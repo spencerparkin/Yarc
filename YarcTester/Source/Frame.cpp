@@ -12,6 +12,7 @@
 Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame(parent, wxID_ANY, "Yarc Tester", pos, size), timer(this, ID_Timer)
 {
 	this->testCase = nullptr;
+	this->performAutomatedTesting = false;
 
 	wxMenu* mainMenu = new wxMenu();
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_LocateRedisBinDir, "Locate Redis", "Browser to the folder location of the Redis binaries directory so that its processes can be invoked."));
@@ -19,6 +20,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_SimpleTestCase, "Simple Test Case", "Test Yarc's simple client.", wxITEM_CHECK));
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_ClusterTestCase, "Cluster Test Case", "Test Yarc's cluster client.", wxITEM_CHECK));
 	mainMenu->AppendSeparator();
+	mainMenu->Append(new wxMenuItem(mainMenu, ID_AutomatedTesting, "Automated Testing", "Toggle automated testing of the client, which may or may not be supported.", wxITEM_CHECK));
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_Exit, "Exit", "Exit this program."));
 
 	wxMenu* helpMenu = new wxMenu();
@@ -34,8 +36,10 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	this->Bind(wxEVT_MENU, &Frame::OnSimpleTestCase, this, ID_SimpleTestCase);
 	this->Bind(wxEVT_MENU, &Frame::OnClusterTestCase, this, ID_ClusterTestCase);
 	this->Bind(wxEVT_MENU, &Frame::OnLocateRedisBinDir, this, ID_LocateRedisBinDir);
+	this->Bind(wxEVT_MENU, &Frame::OnAutomatedTest, this, ID_AutomatedTesting);
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_SimpleTestCase);
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_ClusterTestCase);
+	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_AutomatedTesting);
 	this->Bind(wxEVT_TIMER, &Frame::OnTimer, this, ID_Timer);
 
 	this->SetStatusBar(new wxStatusBar(this));
@@ -85,6 +89,9 @@ void Frame::OnTimer(wxTimerEvent& event)
 				this->SetTestCase(nullptr);
 			}
 		}
+
+		if (this->performAutomatedTesting)
+			this->testCase->PerformAutomatedTesting();
 	}
 }
 
@@ -132,6 +139,11 @@ void Frame::SetTestCase(TestCase* givenTestCase)
 	}
 }
 
+void Frame::OnAutomatedTest(wxCommandEvent& event)
+{
+	this->performAutomatedTesting = !this->performAutomatedTesting;
+}
+
 void Frame::OnUpdateMenuItemUI(wxUpdateUIEvent& event)
 {
 	switch (event.GetId())
@@ -144,6 +156,11 @@ void Frame::OnUpdateMenuItemUI(wxUpdateUIEvent& event)
 		case ID_ClusterTestCase:
 		{
 			event.Check(this->testCase && dynamic_cast<ClusterTestCase*>(this->testCase));
+			break;
+		}
+		case ID_AutomatedTesting:
+		{
+			event.Check(this->performAutomatedTesting);
 			break;
 		}
 	}

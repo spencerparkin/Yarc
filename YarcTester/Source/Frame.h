@@ -25,7 +25,8 @@ private:
 		ID_SimpleTestCase,
 		ID_ClusterTestCase,
 		ID_Timer,
-		ID_LocateRedisBinDir
+		ID_LocateRedisBinDir,
+		ID_AutomatedTesting
 	};
 
 	void OnExit(wxCommandEvent& event);
@@ -33,6 +34,7 @@ private:
 	void OnSimpleTestCase(wxCommandEvent& event);
 	void OnClusterTestCase(wxCommandEvent& event);
 	void OnLocateRedisBinDir(wxCommandEvent& event);
+	void OnAutomatedTest(wxCommandEvent& event);
 	void OnCharHook(wxKeyEvent& event);
 	void OnUpdateMenuItemUI(wxUpdateUIEvent& event);
 	void OnTimer(wxTimerEvent& event);
@@ -43,4 +45,6 @@ private:
 	TestCase* testCase;
 	
 	wxTimer timer;
+
+	bool performAutomatedTesting;
 };

@@ -12,6 +12,7 @@ public:
 
 	virtual bool Setup() override;
 	virtual bool Shutdown() override;
+	virtual bool PerformAutomatedTesting() override;
 
 	Yarc::Cluster* cluster;
 };

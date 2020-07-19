@@ -64,4 +64,6 @@ namespace Yarc
 	private:
 		uint32_t* callCount;
 	};
+
+	extern uint32_t RandomNumber(uint32_t min, uint32_t max);
 }

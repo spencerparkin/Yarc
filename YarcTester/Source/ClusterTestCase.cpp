@@ -78,3 +78,21 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 	return true;
 }
+
+/*virtual*/ bool ClusterTestCase::PerformAutomatedTesting()
+{
+	if (this->cluster->migrationList->GetCount() < 1)
+	{
+		Yarc::Cluster::Migration* migration = this->cluster->CreateRandomMigration();
+		if (migration)
+			this->cluster->migrationList->AddTail(migration);
+	}
+
+	this->cluster->Update();
+
+	// TODO: Exercise the client here.  But how do we make sure we're using keys that hit the migrating slots?
+	//       Probably need exercise keys that all hash to the same slot (using hash-tagging) and then migrate
+	//       the slot for that key rather than a random slot.
+
+	return true;
+}

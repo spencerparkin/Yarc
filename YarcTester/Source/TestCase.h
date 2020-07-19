@@ -13,6 +13,7 @@ public:
 
 	virtual bool Setup() = 0;
 	virtual bool Shutdown() = 0;
+	virtual bool PerformAutomatedTesting() { return false; }
 	
 	Yarc::ClientInterface* GetClientInterface() { return this->client; }
 

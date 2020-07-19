@@ -1,12 +1,15 @@
 #include "yarc_cluster.h"
 #include "yarc_simple_client.h"
 #include "yarc_data_types.h"
+#include "yarc_misc.h"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
 
 namespace Yarc
 {
+	//------------------------------ Cluster ------------------------------
+
 	Cluster::Cluster()
 	{
 		this->numMasters = 3;
@@ -14,6 +17,7 @@ namespace Yarc
 		this->redisBinDir = new std::string;
 		this->clusterRootDir = new std::string;
 		this->nodeArray = new DynamicArray<Node>();
+		this->migrationList = new ReductionObjectList;
 	}
 
 	/*virtual*/ Cluster::~Cluster()
@@ -21,6 +25,8 @@ namespace Yarc
 		delete this->redisBinDir;
 		delete this->clusterRootDir;
 		delete this->nodeArray;
+		DeleteList<ReductionObject>(*this->migrationList);
+		delete this->migrationList;
 	}
 
 	bool Cluster::Setup(void)
@@ -310,5 +316,223 @@ namespace Yarc
 	{
 		for (uint32_t i = 0; i < nodeArray->GetCount(); i++)
 			(*this->nodeArray)[i].client->Flush();
+	}
+
+	bool Cluster::Update(void)
+	{
+		for (uint32_t i = 0; i < nodeArray->GetCount(); i++)
+			(*this->nodeArray)[i].client->Update(false);
+
+		ReductionObject::ReduceList(this->migrationList);
+
+		return true;
+	}
+
+	Cluster::Migration* Cluster::CreateRandomMigration(void)
+	{
+		if (this->nodeArray->GetCount() == 0)
+			return nullptr;
+
+		DataType* responseData = nullptr;
+		if (!(*this->nodeArray)[0].client->MakeRequestSync(DataType::ParseCommand("CLUSTER SLOTS"), responseData))
+			return nullptr;
+
+		Array* arrayData = Cast<Array>(responseData);
+		if (!arrayData || arrayData->GetSize() == 0)
+			return nullptr;
+
+		uint32_t i = RandomNumber(0, arrayData->GetSize() - 1);
+
+		Array* entryData = Cast<Array>(arrayData->GetElement(i));
+
+		uint16_t minHashSlot = Cast<Integer>(entryData->GetElement(0))->GetNumber();
+		uint16_t maxHashSlot = Cast<Integer>(entryData->GetElement(1))->GetNumber();
+		uint16_t hashSlot = RandomNumber(minHashSlot, maxHashSlot);
+
+		char sourceID[256];
+		Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)sourceID, sizeof(sourceID));
+
+		uint32_t j = RandomNumber(0, arrayData->GetSize() - 1);
+		while (j == i)
+			j = RandomNumber(0, arrayData->GetSize() - 1);
+
+		entryData = Cast<Array>(arrayData->GetElement(j));
+
+		char destinationID[256];
+		Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)destinationID, sizeof(destinationID));
+
+		delete responseData;
+
+		Node* sourceNode = this->FindNodeWithID(sourceID);
+		Node* destinationNode = this->FindNodeWithID(destinationID);
+
+		if (!(sourceNode && destinationNode))
+			return nullptr;
+
+		return new Migration(sourceNode, destinationNode, hashSlot);
+	}
+
+	Cluster::Node* Cluster::FindNodeWithID(const char* id)
+	{
+		for (int i = 0; i < this->nodeArray->GetCount(); i++)
+			if (strcmp((*this->nodeArray)[i].id, id) == 0)
+				return &(*this->nodeArray)[i];
+
+		return nullptr;
+	}
+
+	//------------------------------ Cluster::Migration ------------------------------
+
+	Cluster::Migration::Migration(Node* givenSourceNode, Node* givenDestinationNode, uint16_t givenHashSlot)
+	{
+		this->sourceNode = givenSourceNode;
+		this->destinationNode = givenDestinationNode;
+		this->hashSlot = givenHashSlot;
+		this->lazyCount = 1000000;
+		this->state = State::MARK_IMPORTING;
+	}
+
+	/*virtual*/ Cluster::Migration::~Migration()
+	{
+	}
+
+	/*virtual*/ ReductionObject::ReductionResult Cluster::Migration::Reduce()
+	{
+		ReductionResult result = RESULT_NONE;
+
+		switch (state)
+		{
+			case State::MARK_IMPORTING:
+			{
+				char command[512];
+				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
+
+				if (!this->destinationNode->client->MakeRequestAsync(DataType::ParseCommand(command), [=](const DataType* responseData) {
+					const Error* error = Cast<Error>(responseData);
+					if (error)
+						this->state = State::BAIL;
+					else
+						this->state = State::MARK_MIGRATING;
+					return true;
+				}))
+				{
+					this->state = State::BAIL;
+				}
+				else
+				{
+					this->state = State::WAITING;
+				}
+
+				break;
+			}
+			case State::MARK_MIGRATING:
+			{
+				char command[512];
+				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d MIGRATING %s", this->hashSlot, this->destinationNode->id);
+
+				DataType* responseData = nullptr;
+				if (!this->sourceNode->client->MakeRequestAsync(DataType::ParseCommand(command), [=](const DataType* responseData) {
+					const Error* error = Cast<Error>(responseData);
+					if (error)
+						this->state = State::BAIL;
+					else
+						this->state = State::BE_LAZY;
+					return true;
+				}))
+				{
+					this->state = State::BAIL;
+				}
+				else
+				{
+					this->state = State::WAITING;
+				}
+
+				break;
+			}
+			case State::BE_LAZY:
+			{
+				if (this->lazyCount == 0)
+					this->state = State::MIGRATING_KEYS;
+				else
+					this->lazyCount--;
+				break;
+			}
+			case State::MIGRATING_KEYS:
+			{
+				// Migrate just one key at a time to give the client more opportunities to redirect.
+				// Of course, this is innefficient, but the whole point here is to test the client.
+
+				char command[512];
+				sprintf_s(command, sizeof(command), "CLUSTER GETKEYSINSLOT %d 1", this->hashSlot);
+
+				DataType* getKeysResponseData = nullptr;
+				if (!this->sourceNode->client->MakeRequestSync(DataType::ParseCommand(command), getKeysResponseData))
+					this->state = State::BAIL;
+				else
+				{
+					Array* arrayData = Cast<Array>(getKeysResponseData);
+					if (arrayData)
+					{
+						if (arrayData->GetSize() == 0)
+							this->state = State::UNMARK;	// All keys migrated.
+						else
+						{
+							BulkString* stringData = Cast<BulkString>(arrayData->GetElement(0));
+							if (stringData)
+							{
+								char keyBuffer[512];
+								stringData->GetString((uint8_t*)keyBuffer, sizeof(keyBuffer));
+								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", this->destinationNode->client->GetAddress(), this->destinationNode->client->GetPort(), keyBuffer);
+
+								DataType* migrateKeysResponseData = nullptr;
+								if (!this->sourceNode->client->MakeRequestSync(DataType::ParseCommand(command), migrateKeysResponseData))
+									this->state = State::BAIL;
+								else
+								{
+									Error* error = Cast<Error>(migrateKeysResponseData);
+									if (error)
+										this->state = State::BAIL;
+
+									delete migrateKeysResponseData;
+								}
+							}
+						}
+					}
+
+					delete getKeysResponseData;
+				}
+
+				break;
+			}
+			case State::UNMARK:
+			{
+				char command[512];
+				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d NODE %s", this->hashSlot, this->destinationNode->id);
+
+				DataType* responseData = nullptr;
+
+				this->destinationNode->client->MakeRequestSync(DataType::ParseCommand(command), responseData);
+				delete responseData;
+
+				this->sourceNode->client->MakeRequestSync(DataType::ParseCommand(command), responseData);
+				delete responseData;
+
+				this->state = State::BAIL;
+
+				break;
+			}
+			case State::WAITING:
+			{
+				// Wait for async request to finish.
+				break;
+			}
+			case State::BAIL:
+			{
+				result = RESULT_DELETE;
+				break;
+			}
+		}
+
+		return result;
 	}
 }
