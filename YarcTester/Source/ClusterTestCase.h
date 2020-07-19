@@ -2,6 +2,7 @@
 
 #include "TestCase.h"
 #include <yarc_cluster.h>
+#include <vector>
 
 class ClusterTestCase : public TestCase
 {
@@ -15,4 +16,6 @@ public:
 	virtual bool PerformAutomatedTesting() override;
 
 	Yarc::Cluster* cluster;
+
+	std::vector<std::string> testKeyArray;
 };

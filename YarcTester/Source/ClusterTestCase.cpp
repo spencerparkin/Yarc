@@ -1,14 +1,27 @@
 #include <yarc_cluster_client.h>
+#include <yarc_data_types.h>
+#include <yarc_misc.h>
 #include "ClusterTestCase.h"
 #include "App.h"
 #include <wx/stdpaths.h>
 #include <wx/filename.h>
 #include <wx/utils.h>
 #include <wx/dir.h>
+#include <stdlib.h>
 
 ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(givenLogStream)
 {
 	this->cluster = nullptr;
+
+	this->testKeyArray.push_back("apples");
+	this->testKeyArray.push_back("bannanas");
+	this->testKeyArray.push_back("cherries");
+	this->testKeyArray.push_back("oranges");
+	this->testKeyArray.push_back("strawberries");
+	this->testKeyArray.push_back("mangos");
+	this->testKeyArray.push_back("kiwies");
+
+	::srand(0);
 }
 
 /*virtual*/ ClusterTestCase::~ClusterTestCase()
@@ -81,18 +94,19 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 /*virtual*/ bool ClusterTestCase::PerformAutomatedTesting()
 {
-	if (this->cluster->migrationList->GetCount() < 1)
+	if (this->cluster->migrationList->GetCount() < 2)
 	{
-		Yarc::Cluster::Migration* migration = this->cluster->CreateRandomMigration();
+		uint32_t i = Yarc::RandomNumber(0, this->testKeyArray.size() - 1);
+		std::string testKey = this->testKeyArray[i];
+		uint16_t hashSlot = Yarc::DataType::CalcKeyHashSlot(testKey);
+		Yarc::Cluster::Migration* migration = this->cluster->CreateRandomMigrationForHashSlot(hashSlot);
 		if (migration)
 			this->cluster->migrationList->AddTail(migration);
 	}
 
 	this->cluster->Update();
 
-	// TODO: Exercise the client here.  But how do we make sure we're using keys that hit the migrating slots?
-	//       Probably need exercise keys that all hash to the same slot (using hash-tagging) and then migrate
-	//       the slot for that key rather than a random slot.
+	// TODO: Exercise the client here using the test keys we have.
 
 	return true;
 }

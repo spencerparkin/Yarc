@@ -182,16 +182,21 @@ namespace Yarc
 	/*static*/ uint16_t DataType::CalcCommandHashSlot(const DataType* commandData)
 	{
 		std::string keyStr = FindCommandKey(commandData);
+		return CalcKeyHashSlot(keyStr);
+	}
+
+	/*static*/ uint16_t DataType::CalcKeyHashSlot(const std::string& keyStr)
+	{
 		const char* key = keyStr.c_str();
 		int keylen = strlen(key);
 
-		// Note that we can't just hash the command key here, because
-		// we want to provide support for hash tags.  The hash tag feature
-		// provides a way for users to make keys that are different, yet
-		// guarenteed to hash to the same hash slot.  This is necessary
-		// for the use of the MULTI command where multiple commands, each
-		// with their own key, are going to be executed by a single node
-		// as a single (atomic?) transaction.
+		// Note that we can't just hash the key here, because we want to
+		// provide support for hash tags.  The hash tag feature provides
+		// a way for users to make keys that are different, yet guarenteed
+		// to hash to the same hash slot.  This is necessary for the use of
+		// the MULTI command where multiple commands, each with their own
+		// key, are going to be executed by a single node as a single atomic
+		// transaction.
 		//
 		// The following code was taken directly from https://redis.io/topics/cluster-spec.
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "yarc_api.h"
 #include <stdint.h>
 
 namespace Yarc
@@ -65,5 +66,5 @@ namespace Yarc
 		uint32_t* callCount;
 	};
 
-	extern uint32_t RandomNumber(uint32_t min, uint32_t max);
+	extern YARC_API uint32_t RandomNumber(uint32_t min, uint32_t max);
 }

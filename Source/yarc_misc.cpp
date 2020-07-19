@@ -6,7 +6,7 @@ namespace Yarc
 	uint32_t RandomNumber(uint32_t min, uint32_t max)
 	{
 		float alpha = float(rand()) / float(RAND_MAX);
-		uint32_t number = float(min) + alpha * float(max - min);
+		uint32_t number = uint32_t(float(min) + alpha * float(max - min));
 		if (number < min)
 			number = min;
 		if (number > max)

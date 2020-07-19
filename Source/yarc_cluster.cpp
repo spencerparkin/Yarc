@@ -374,18 +374,59 @@ namespace Yarc
 
 	Cluster::Migration* Cluster::CreateRandomMigrationForHashSlot(uint16_t hashSlot)
 	{
-		// TODO: The idea is that I'll use this routine to move the same hash-slot all
-		//       over the cluster.  I'll choose the hash-slot based on a key that I'll
-		//       use in conjunction with hash-tagging so that I can exercise the client
-		//       with many keys that all hash to that slot.  The client will constantly
-		//       be updating, querying, and creating new keys, all of which will go to
-		//       the same hash-slot that we'll keep migrating from time to time.
-		return nullptr;
+		if (this->nodeArray->GetCount() == 0)
+			return nullptr;
+
+		DataType* responseData = nullptr;
+		if (!(*this->nodeArray)[0].client->MakeRequestSync(DataType::ParseCommand("CLUSTER SLOTS"), responseData))
+			return nullptr;
+
+		Array* arrayData = Cast<Array>(responseData);
+		if (!arrayData || arrayData->GetSize() == 0)
+			return nullptr;
+
+		Node* sourceNode = nullptr;
+		Node* destinationNode = nullptr;
+
+		uint32_t i;
+		for (i = 0; i < arrayData->GetSize(); i++)
+		{
+			Array* entryData = Cast<Array>(arrayData->GetElement(i));
+
+			uint16_t minHashSlot = Cast<Integer>(entryData->GetElement(0))->GetNumber();
+			uint16_t maxHashSlot = Cast<Integer>(entryData->GetElement(1))->GetNumber();
+
+			if (minHashSlot <= hashSlot && hashSlot <= maxHashSlot)
+			{
+				char sourceID[256];
+				Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)sourceID, sizeof(sourceID));
+				sourceNode = this->FindNodeWithID(sourceID);
+				break;
+			}
+		}
+
+		if (!sourceNode)
+			return nullptr;
+
+		uint32_t j = RandomNumber(0, this->nodeArray->GetCount() - 1);
+		while (j == i)
+			j = RandomNumber(0, this->nodeArray->GetCount() - 1);
+
+		Array* entryData = Cast<Array>(arrayData->GetElement(i));
+
+		char destinationID[256];
+		Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)destinationID, sizeof(destinationID));
+		destinationNode = this->FindNodeWithID(destinationID);
+
+		if (!destinationNode)
+			return nullptr;
+
+		return new Migration(sourceNode, destinationNode, hashSlot);
 	}
 
 	Cluster::Node* Cluster::FindNodeWithID(const char* id)
 	{
-		for (int i = 0; i < this->nodeArray->GetCount(); i++)
+		for (uint32_t i = 0; i < this->nodeArray->GetCount(); i++)
 			if (strcmp((*this->nodeArray)[i].id, id) == 0)
 				return &(*this->nodeArray)[i];
 

@@ -43,8 +43,9 @@ namespace Yarc
 		// Assuming the given data-tree is a Redis command, return they key used in the command.
 		static std::string FindCommandKey(const DataType* commandData);
 		
-		// For Redis Cluster, calculate the hash-slot associated with the key of the given command.
+		// For Redis Cluster, calculate the hash-slot associated with the key of the given command or key.
 		static uint16_t CalcCommandHashSlot(const DataType* commandData);
+		static uint16_t CalcKeyHashSlot(const std::string& keyStr);
 
 		// Return a new allocation that is a copy of the given data-tree.
 		static DataType* Clone(const DataType* dataType);
