@@ -352,8 +352,6 @@ namespace Yarc
 							return true;
 						});
 
-						delete askingCommandData;
-
 						if (askingRequestMade)
 							this->state = STATE_ASKING;
 						else

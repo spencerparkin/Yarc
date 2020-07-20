@@ -94,7 +94,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 /*virtual*/ bool ClusterTestCase::PerformAutomatedTesting()
 {
-	if (this->cluster->migrationList->GetCount() < 2)
+	/*if (this->cluster->migrationList->GetCount() < 2)
 	{
 		uint32_t i = Yarc::RandomNumber(0, this->testKeyArray.size() - 1);
 		std::string testKey = this->testKeyArray[i];
@@ -104,15 +104,71 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 			this->cluster->migrationList->AddTail(migration);
 	}
 
-	this->cluster->Update();
+	this->cluster->Update();*/
 
 	for (uint32_t i = 0; i < this->testKeyArray.size(); i++)
 	{
 		std::string testKey = this->testKeyArray[i];
-		
-		// TODO: Perform sets and gets and compare results with our local map.
+		std::map<std::string, uint32_t>::iterator iter = this->testKeyMap.find(testKey);
+		if (iter != this->testKeyMap.end())
+		{
+			if (iter->second > 0)
+				continue;
 
-		//this->client->MakeRequestAsync(
+			this->testKeyMap.erase(iter);
+		}
+
+		uint32_t number = Yarc::RandomNumber(1, 1000);
+		this->testKeyMap.insert(std::pair<std::string, uint32_t>(testKey, number));
+
+		char setCommand[128];
+		sprintf_s(setCommand, sizeof(setCommand), "SET %s %d", testKey.c_str(), number);
+
+		this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(setCommand), [=](const Yarc::DataType* setCommandResponse) {
+			const Yarc::Error* error = Yarc::Cast<Yarc::Error>(setCommandResponse);
+			if (error)
+				this->logStream << "SET command got error response: " << error->GetString() << std::endl;
+			else
+			{
+				char getCommand[128];
+				sprintf_s(getCommand, sizeof(getCommand), "GET %s", testKey.c_str());
+
+				this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(getCommand), [=](const Yarc::DataType* getCommandResponse) {
+					const Yarc::Error* error = Yarc::Cast<Yarc::Error>(getCommandResponse);
+					if (error)
+						this->logStream << "GET command got error response: " << error->GetString() << std::endl;
+					else
+					{
+						std::map<std::string, uint32_t>::iterator iter = this->testKeyMap.find(testKey);
+						if (iter != this->testKeyMap.end())
+						{
+							const Yarc::Integer* integerData = Yarc::Cast<Yarc::Integer>(getCommandResponse);
+							if (integerData)
+							{
+								if (iter->second != integerData->GetNumber())
+									this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
+								else
+									iter->second = 0;
+							}
+
+							const Yarc::BulkString* stringData = Yarc::Cast<Yarc::BulkString>(getCommandResponse);
+							if (stringData)
+							{
+								char buffer[32];
+								stringData->GetString((uint8_t*)buffer, sizeof(buffer));
+								if (iter->second != ::atoi(buffer))
+									this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
+								else
+									iter->second = 0;
+							}
+						}
+					}
+
+					return true;
+				});
+			}
+			return true;
+		});
 	}
 
 	return true;

@@ -19,5 +19,5 @@ public:
 	Yarc::Cluster* cluster;
 
 	std::vector<std::string> testKeyArray;
-	std::map<std::string, int> testKeyMap;
+	std::map<std::string, uint32_t> testKeyMap;
 };

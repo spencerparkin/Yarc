@@ -15,12 +15,18 @@ namespace Yarc
 		ReductionObjectList::Node* node = reductionObjectList->GetHead();
 		while (node)
 		{
-			ReductionObjectList::Node* nextNode = node->GetNext();
-			ReductionObject* object = node->value;
+			unsigned int countBefore = reductionObjectList->GetCount();
 
-			ReductionResult result = object->Reduce();
+			ReductionObject* object = node->value;
+			ReductionResult result = object->Reduce();	// This call might mutate the list we're processing here!
 			if (result == RESULT_BAIL)
 				break;
+
+			unsigned int countAfter = reductionObjectList->GetCount();
+			if (countAfter < countBefore)
+				break;		// We can't trust our node pointer; it might be stale.
+
+			ReductionObjectList::Node* nextNode = node->GetNext();
 
 			if (result == RESULT_DELETE)
 			{

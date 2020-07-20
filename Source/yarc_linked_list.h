@@ -110,7 +110,7 @@ namespace Yarc
 
 		void Remove(Node* node)
 		{
-			if (this->head = node)
+			if (this->head == node)
 				this->head = this->head->next;
 
 			if (this->tail == node)
