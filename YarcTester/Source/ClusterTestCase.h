@@ -20,4 +20,7 @@ public:
 
 	std::vector<std::string> testKeyArray;
 	std::map<std::string, uint32_t> testKeyMap;
+
+	bool keySettingGettingEnabled;
+	bool keySlotMigratingEnabled;
 };

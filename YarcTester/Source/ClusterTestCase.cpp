@@ -22,6 +22,9 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 	this->testKeyArray.push_back("kiwies");
 
 	::srand(0);
+
+	this->keySettingGettingEnabled = true;
+	this->keySlotMigratingEnabled = false;
 }
 
 /*virtual*/ ClusterTestCase::~ClusterTestCase()
@@ -94,81 +97,106 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 /*virtual*/ bool ClusterTestCase::PerformAutomatedTesting()
 {
-	/*if (this->cluster->migrationList->GetCount() < 2)
-	{
-		uint32_t i = Yarc::RandomNumber(0, this->testKeyArray.size() - 1);
-		std::string testKey = this->testKeyArray[i];
-		uint16_t hashSlot = Yarc::DataType::CalcKeyHashSlot(testKey);
-		Yarc::Cluster::Migration* migration = this->cluster->CreateRandomMigrationForHashSlot(hashSlot);
-		if (migration)
-			this->cluster->migrationList->AddTail(migration);
-	}
+	/*
 
-	this->cluster->Update();*/
+	TODO: I do not understand the following behavior...
 
-	for (uint32_t i = 0; i < this->testKeyArray.size(); i++)
+	E:\redis>redis-cli -p 7000 migrate 127.0.0.1 7004 strawberries 0 0
+	OK
+
+	E:\redis>redis-cli -p 7000 get strawberries
+	(error) ASK 2250 127.0.0.1:7004
+
+	E:\redis>redis-cli -p 7004 get strawberries
+	(error) MOVED 2250 127.0.0.1:7000
+
+	Whether we redirect via an ask or a move, we're just going back and forth and
+	we never actually get at the key until the cluster setslot command is called
+	to finalize the migration.
+
+	*/
+
+	if (this->keySlotMigratingEnabled)
 	{
-		std::string testKey = this->testKeyArray[i];
-		std::map<std::string, uint32_t>::iterator iter = this->testKeyMap.find(testKey);
-		if (iter != this->testKeyMap.end())
+		if (this->cluster->migrationList->GetCount() < 1)
 		{
-			if (iter->second > 0)
-				continue;
-
-			this->testKeyMap.erase(iter);
+			uint32_t i = Yarc::RandomNumber(0, this->testKeyArray.size() - 1);
+			std::string testKey = this->testKeyArray[i];
+			uint16_t hashSlot = Yarc::DataType::CalcKeyHashSlot(testKey);
+			Yarc::Cluster::Migration* migration = this->cluster->CreateRandomMigrationForHashSlot(hashSlot);
+			if (migration)
+				this->cluster->migrationList->AddTail(migration);
 		}
 
-		uint32_t number = Yarc::RandomNumber(1, 1000);
-		this->testKeyMap.insert(std::pair<std::string, uint32_t>(testKey, number));
+		this->cluster->Update();
+	}
 
-		char setCommand[128];
-		sprintf_s(setCommand, sizeof(setCommand), "SET %s %d", testKey.c_str(), number);
-
-		this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(setCommand), [=](const Yarc::DataType* setCommandResponse) {
-			const Yarc::Error* error = Yarc::Cast<Yarc::Error>(setCommandResponse);
-			if (error)
-				this->logStream << "SET command got error response: " << error->GetString() << std::endl;
-			else
+	if (this->keySettingGettingEnabled)
+	{
+		for (uint32_t i = 0; i < this->testKeyArray.size(); i++)
+		{
+			std::string testKey = this->testKeyArray[i];
+			std::map<std::string, uint32_t>::iterator iter = this->testKeyMap.find(testKey);
+			if (iter != this->testKeyMap.end())
 			{
-				char getCommand[128];
-				sprintf_s(getCommand, sizeof(getCommand), "GET %s", testKey.c_str());
+				if (iter->second > 0)
+					continue;
 
-				this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(getCommand), [=](const Yarc::DataType* getCommandResponse) {
-					const Yarc::Error* error = Yarc::Cast<Yarc::Error>(getCommandResponse);
-					if (error)
-						this->logStream << "GET command got error response: " << error->GetString() << std::endl;
-					else
-					{
-						std::map<std::string, uint32_t>::iterator iter = this->testKeyMap.find(testKey);
-						if (iter != this->testKeyMap.end())
+				this->testKeyMap.erase(iter);
+			}
+
+			uint32_t number = Yarc::RandomNumber(1, 1000);
+			this->testKeyMap.insert(std::pair<std::string, uint32_t>(testKey, number));
+
+			char setCommand[128];
+			sprintf_s(setCommand, sizeof(setCommand), "SET %s %d", testKey.c_str(), number);
+
+			this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(setCommand), [=](const Yarc::DataType* setCommandResponse) {
+				const Yarc::Error* error = Yarc::Cast<Yarc::Error>(setCommandResponse);
+				if (error)
+					this->logStream << "SET command got error response: " << error->GetString() << std::endl;
+				else
+				{
+					char getCommand[128];
+					sprintf_s(getCommand, sizeof(getCommand), "GET %s", testKey.c_str());
+
+					this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(getCommand), [=](const Yarc::DataType* getCommandResponse) {
+						const Yarc::Error* error = Yarc::Cast<Yarc::Error>(getCommandResponse);
+						if (error)
+							this->logStream << "GET command got error response: " << error->GetString() << std::endl;
+						else
 						{
-							const Yarc::Integer* integerData = Yarc::Cast<Yarc::Integer>(getCommandResponse);
-							if (integerData)
+							std::map<std::string, uint32_t>::iterator iter = this->testKeyMap.find(testKey);
+							if (iter != this->testKeyMap.end())
 							{
-								if (iter->second != integerData->GetNumber())
-									this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
-								else
-									iter->second = 0;
-							}
+								const Yarc::Integer* integerData = Yarc::Cast<Yarc::Integer>(getCommandResponse);
+								if (integerData)
+								{
+									if (iter->second != integerData->GetNumber())
+										this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
+									else
+										iter->second = 0;
+								}
 
-							const Yarc::BulkString* stringData = Yarc::Cast<Yarc::BulkString>(getCommandResponse);
-							if (stringData)
-							{
-								char buffer[32];
-								stringData->GetString((uint8_t*)buffer, sizeof(buffer));
-								if (iter->second != ::atoi(buffer))
-									this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
-								else
-									iter->second = 0;
+								const Yarc::BulkString* stringData = Yarc::Cast<Yarc::BulkString>(getCommandResponse);
+								if (stringData)
+								{
+									char buffer[32];
+									stringData->GetString((uint8_t*)buffer, sizeof(buffer));
+									if (iter->second != ::atoi(buffer))
+										this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
+									else
+										iter->second = 0;
+								}
 							}
 						}
-					}
 
-					return true;
-				});
-			}
-			return true;
-		});
+						return true;
+					});
+				}
+				return true;
+			});
+		}
 	}
 
 	return true;

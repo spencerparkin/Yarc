@@ -373,7 +373,7 @@ namespace Yarc
 							break;
 						}
 
-						bool requestMade = clusterNode->client->MakeRequestAsync(responseData, [=](const DataType* responseData) {
+						bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
 							this->responseData = responseData;
 							this->state = STATE_READY;
 							return false;
@@ -449,9 +449,7 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::SingleRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		bool requestSent = clusterNode->client->MakeRequestAsync(this->requestData, callback);
-		this->requestData = nullptr;
-		return requestSent;
+		return clusterNode->client->MakeRequestAsync(DataType::Clone(this->requestData), callback);
 	}
 
 	//----------------------------------------- MultiRequest -----------------------------------------
@@ -474,9 +472,13 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::MultiRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		bool transactionSent = clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback);
-		this->requestDataArray.SetCount(0);
-		return transactionSent;
+		// TODO: We could forgo the clone if we just add a flag to the async function that says whether or not it frees the memory.
+		DynamicArray<const DataType*> requestDataArrayClone;
+		requestDataArrayClone.SetCount(this->requestDataArray.GetCount());
+		for (unsigned int i = 0; i < this->requestDataArray.GetCount(); i++)
+			requestDataArrayClone[i] = DataType::Clone(this->requestDataArray[i]);
+
+		return clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback);
 	}
 
 	//----------------------------------------- ClusterNode -----------------------------------------

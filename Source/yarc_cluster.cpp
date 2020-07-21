@@ -408,11 +408,11 @@ namespace Yarc
 		if (!sourceNode)
 			return nullptr;
 
-		uint32_t j = RandomNumber(0, this->nodeArray->GetCount() - 1);
+		uint32_t j = RandomNumber(0, arrayData->GetSize() - 1);
 		while (j == i)
-			j = RandomNumber(0, this->nodeArray->GetCount() - 1);
+			j = RandomNumber(0, arrayData->GetSize() - 1);
 
-		Array* entryData = Cast<Array>(arrayData->GetElement(i));
+		Array* entryData = Cast<Array>(arrayData->GetElement(j));
 
 		char destinationID[256];
 		Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)destinationID, sizeof(destinationID));
@@ -420,6 +420,8 @@ namespace Yarc
 
 		if (!destinationNode)
 			return nullptr;
+
+		assert(sourceNode != destinationNode);
 
 		return new Migration(sourceNode, destinationNode, hashSlot);
 	}
