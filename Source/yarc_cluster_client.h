@@ -23,8 +23,8 @@ namespace Yarc
 		virtual bool IsConnected() override;
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool Flush(void) override;
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
-		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback) override;
+		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData = true) override;
 
 	private:
 
@@ -80,6 +80,7 @@ namespace Yarc
 			Callback callback;
 			char redirectAddress[64];
 			uint16_t redirectPort;
+			bool deleteData;
 		};
 
 		class SingleRequest : public Request

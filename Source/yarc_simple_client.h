@@ -25,9 +25,9 @@ namespace Yarc
 		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool Flush(void) override;
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) override;
-		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback) override;
-		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData) override;
+		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData = true) override;
 
 		const char* GetAddress() const { return this->address->c_str(); }
 		uint16_t GetPort() const { return this->port; }

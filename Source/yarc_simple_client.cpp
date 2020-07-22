@@ -234,7 +234,7 @@ namespace Yarc
 		return this->IsConnected();
 	}
 
-	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback)
+	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData /*= true*/)
 	{
 		bool success = true;
 		uint32_t protocolDataSize = 1024 * 1024;
@@ -281,13 +281,15 @@ namespace Yarc
 			delete exc;
 		}
 
-		delete requestData;
+		if(deleteData)
+			delete requestData;
+
 		delete[] protocolData;
 
 		return success;
 	}
 
-	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback)
+	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData /*= true*/)
 	{
 		bool success = true;
 		uint32_t i = 0;
@@ -322,13 +324,14 @@ namespace Yarc
 			success = false;
 		}
 
-		while (i < requestDataArray.GetCount())
-			delete requestDataArray[i++];
+		if (deleteData)
+			while (i < requestDataArray.GetCount())
+				delete requestDataArray[i++];
 
 		return success;
 	}
 
-	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData)
+	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData /*= true*/)
 	{
 		bool success = true;
 		uint32_t i = 0;
@@ -344,7 +347,7 @@ namespace Yarc
 
 				while (i < requestDataArray.GetCount())
 				{
-					if (!this->MakeRequestSync(requestDataArray[i], responseData))
+					if (!this->MakeRequestSync(requestDataArray[i], responseData, deleteData))
 						throw new InternalException();
 
 					if (!Cast<Error>(responseData))
@@ -369,8 +372,9 @@ namespace Yarc
 			success = false;
 		}
 
-		while (i < requestDataArray.GetCount())
-			delete requestDataArray[i++];
+		if (deleteData)
+			while (i < requestDataArray.GetCount())
+				delete requestDataArray[i++];
 
 		return success;
 	}

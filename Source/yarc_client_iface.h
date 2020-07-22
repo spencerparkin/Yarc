@@ -20,7 +20,7 @@ namespace Yarc
 		typedef std::function<bool(const DataType* responseData)> Callback;
 
 		// These should be pretty self-explanatory.
-		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) = 0;
+		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) = 0;	// TODO: Obey timeout.
 		virtual bool Disconnect() = 0;
 		virtual bool IsConnected() = 0;
 
@@ -35,8 +35,8 @@ namespace Yarc
 		// These always take ownership of the request data, so the caller should not delete or maintain their pointer.
 		// In the synchronous case, the caller takes ownership of the response data.
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback) = 0;
-		virtual bool MakeRequestSync(const DataType* requestData, DataType*& responseData);
+		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData = true) = 0;
+		virtual bool MakeRequestSync(const DataType* requestData, DataType*& responseData, bool deleteData = true);
 
 		// This is a convenience routine for issuing a sequence of commands that are executed
 		// by the database server as a single atomic operation that fails or succeeds as a whole.
@@ -46,8 +46,8 @@ namespace Yarc
 		// comprising the transaction could be issued synchronously, but that's not as efficient.
 		// Transactions also guarentee that no command from any other client is serviced in the middle
 		// of the transaction.  This is an important property needed for matters of concurrancy.
-		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback) = 0;
-		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData);
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData = true) = 0;
+		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData = true);
 
 		// These routines are used in conjunction with the pub-sub mechanism.  The client can be
 		// thought of as always in pipelining mode.  However, when it receives a message from the

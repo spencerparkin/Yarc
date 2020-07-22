@@ -13,7 +13,7 @@ namespace Yarc
 		delete this->callbackMap;
 	}
 
-	/*virtual*/ bool ClientInterface::MakeRequestSync(const DataType* requestData, DataType*& responseData)
+	/*virtual*/ bool ClientInterface::MakeRequestSync(const DataType* requestData, DataType*& responseData, bool deleteData /*= true*/)
 	{
 		bool requestServiced = false;
 
@@ -23,7 +23,7 @@ namespace Yarc
 			return false;
 		};
 
-		if (!this->MakeRequestAsync(requestData, callback))
+		if (!this->MakeRequestAsync(requestData, callback, deleteData))
 			return false;
 
 		// Note that by blocking here, we ensure that we don't starve socket
@@ -34,7 +34,7 @@ namespace Yarc
 		return requestServiced;
 	}
 
-	/*virtual*/ bool ClientInterface::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData)
+	/*virtual*/ bool ClientInterface::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData /*= true*/)
 	{
 		bool requestServiced = false;
 
@@ -44,7 +44,7 @@ namespace Yarc
 			return false;
 		};
 
-		if (!this->MakeTransactionRequestAsync(requestDataArray, callback))
+		if (!this->MakeTransactionRequestAsync(requestDataArray, callback, deleteData))
 			return false;
 
 		while (!requestServiced && this->IsConnected())

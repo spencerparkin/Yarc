@@ -113,15 +113,16 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback)
+	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData /*= true*/)
 	{
 		SingleRequest* request = new SingleRequest(callback, this);
 		request->requestData = requestData;
+		request->deleteData = deleteData;
 		this->requestList->AddTail(request);
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback)
+	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData /*= true*/)
 	{
 		if (requestDataArray.GetCount() == 0)
 			return false;
@@ -131,6 +132,7 @@ namespace Yarc
 
 		MultiRequest* request = new MultiRequest(callback, this);
 		request->requestDataArray = requestDataArray;
+		request->deleteData = deleteData;
 
 		uint16_t hashSlot = DataType::CalcCommandHashSlot(requestDataArray[0]);
 
@@ -256,6 +258,7 @@ namespace Yarc
 		this->state = STATE_UNSENT;
 		this->redirectAddress[0] = '\0';
 		this->redirectPort = 0;
+		this->deleteData = false;
 	}
 
 	/*virtual*/ ClusterClient::Request::~Request()
@@ -439,7 +442,8 @@ namespace Yarc
 
 	/*virtual*/ ClusterClient::SingleRequest::~SingleRequest()
 	{
-		delete this->requestData;
+		if (this->deleteData)
+			delete this->requestData;
 	}
 
 	uint16_t ClusterClient::SingleRequest::CalcHashSlot()
@@ -449,7 +453,7 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::SingleRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		return clusterNode->client->MakeRequestAsync(DataType::Clone(this->requestData), callback);
+		return clusterNode->client->MakeRequestAsync(this->requestData, callback, false);
 	}
 
 	//----------------------------------------- MultiRequest -----------------------------------------
@@ -460,8 +464,9 @@ namespace Yarc
 
 	/*virtual*/ ClusterClient::MultiRequest::~MultiRequest()
 	{
-		for (unsigned int i = 0; i < this->requestDataArray.GetCount(); i++)
-			delete this->requestDataArray[i];
+		if (this->deleteData)
+			for (unsigned int i = 0; i < this->requestDataArray.GetCount(); i++)
+				delete this->requestDataArray[i];
 	}
 
 	uint16_t ClusterClient::MultiRequest::CalcHashSlot()
@@ -472,13 +477,7 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::MultiRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		// TODO: We could forgo the clone if we just add a flag to the async function that says whether or not it frees the memory.
-		DynamicArray<const DataType*> requestDataArrayClone;
-		requestDataArrayClone.SetCount(this->requestDataArray.GetCount());
-		for (unsigned int i = 0; i < this->requestDataArray.GetCount(); i++)
-			requestDataArrayClone[i] = DataType::Clone(this->requestDataArray[i]);
-
-		return clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback);
+		return clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback, false);
 	}
 
 	//----------------------------------------- ClusterNode -----------------------------------------
