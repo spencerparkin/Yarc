@@ -13,6 +13,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 {
 	this->testCase = nullptr;
 	this->performAutomatedTesting = false;
+	this->inTimer = false;
 
 	wxMenu* mainMenu = new wxMenu();
 	mainMenu->Append(new wxMenuItem(mainMenu, ID_LocateRedisBinDir, "Locate Redis", "Browser to the folder location of the Redis binaries directory so that its processes can be invoked."));
@@ -76,6 +77,11 @@ void Frame::OnExit(wxCommandEvent& event)
 
 void Frame::OnTimer(wxTimerEvent& event)
 {
+	if (this->inTimer)
+		return;
+
+	this->inTimer = true;
+
 	if (this->testCase)
 	{
 		Yarc::ClientInterface* client = this->testCase->GetClientInterface();
@@ -94,6 +100,8 @@ void Frame::OnTimer(wxTimerEvent& event)
 		if (this->performAutomatedTesting)
 			this->testCase->PerformAutomatedTesting();
 	}
+
+	this->inTimer = false;
 }
 
 void Frame::OnLocateRedisBinDir(wxCommandEvent& event)

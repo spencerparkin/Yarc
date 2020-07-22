@@ -45,6 +45,7 @@ private:
 	TestCase* testCase;
 	
 	wxTimer timer;
+	bool inTimer;
 
 	bool performAutomatedTesting;
 };
