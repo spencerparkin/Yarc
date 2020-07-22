@@ -60,7 +60,7 @@ namespace Yarc
 		{
 			ReductionObject::ReduceList(this->pendingRequestList);
 
-			return this->Update(canBlock);
+			return SimpleClient::Update(canBlock);
 		}
 		
 		if (this->persistConnection)
