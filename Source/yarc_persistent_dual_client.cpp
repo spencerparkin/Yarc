@@ -102,7 +102,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool PersistentDualClient::MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData /*= true*/)
+	/*virtual*/ bool PersistentDualClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		if (!this->outputClient || !this->outputClient->IsConnected())
 			return false;
@@ -118,7 +118,7 @@ namespace Yarc
 		return this->outputClient->MakeRequestSync(requestData, responseData, deleteData);
 	}
 
-	/*virtual*/ bool PersistentDualClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData /*= true*/)
+	/*virtual*/ bool PersistentDualClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		if (!this->outputClient || !this->outputClient->IsConnected())
 			return false;
