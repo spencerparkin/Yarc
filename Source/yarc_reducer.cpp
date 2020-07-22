@@ -16,9 +16,16 @@ namespace Yarc
 		while (node)
 		{
 			bool deleteFlag = false;
+			bool* otherDeleteFlag = node->deleteFlag;
 			node->deleteFlag = &deleteFlag;
+
 			ReductionObject* object = node->value;
 			ReductionResult result = object->Reduce();	// This call might mutate the list we're processing here!
+			
+			node->deleteFlag = otherDeleteFlag;
+			if (otherDeleteFlag)
+				*otherDeleteFlag = deleteFlag;
+
 			if (result == RESULT_BAIL || deleteFlag)
 				break;
 
