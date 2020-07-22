@@ -188,7 +188,7 @@ namespace Yarc
 	/*static*/ uint16_t DataType::CalcKeyHashSlot(const std::string& keyStr)
 	{
 		const char* key = keyStr.c_str();
-		int keylen = strlen(key);
+		int keylen = (int)strlen(key);
 
 		// Note that we can't just hash the key here, because we want to
 		// provide support for hash tags.  The hash tag feature provides
@@ -361,7 +361,13 @@ namespace Yarc
 
 	void BulkString::GetString(uint8_t* stringBuffer, uint32_t stringBufferSize) const
 	{
-		::strncpy_s((char*)stringBuffer, stringBufferSize, (const char*)this->buffer, this->bufferSize);
+		if (stringBufferSize > 0)
+		{
+			if (this->bufferSize + 1 > stringBufferSize)
+				stringBuffer[0] = '\0';
+			else
+				::strncpy_s((char*)stringBuffer, stringBufferSize, (const char*)this->buffer, this->bufferSize);
+		}
 	}
 
 	/*virtual*/ bool BulkString::Print(uint8_t* protocolData, uint32_t& protocolDataSize) const
