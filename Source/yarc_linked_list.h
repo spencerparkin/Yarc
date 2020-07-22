@@ -28,10 +28,13 @@ namespace Yarc
 			Node(T givenValue)
 			{
 				this->value = givenValue;
+				this->deleteFlag = nullptr;
 			}
 
 			virtual ~Node()
 			{
+				if (this->deleteFlag)
+					*this->deleteFlag = true;
 			}
 
 			void Couple()
@@ -56,6 +59,8 @@ namespace Yarc
 
 			Node* GetNext() { return this->next; }
 			Node* GetPrev() { return this->prev; }
+
+			bool* deleteFlag;
 
 		private:
 			Node* next;
