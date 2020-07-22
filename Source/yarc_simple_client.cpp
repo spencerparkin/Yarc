@@ -22,6 +22,7 @@ namespace Yarc
 		this->port = 0;
 		this->pendingRequestFlushPoint = 10000;
 		this->updateCallCount = 0;
+		this->serverResultList = new ReductionObjectList;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -30,6 +31,8 @@ namespace Yarc
 		delete[] this->buffer;
 		delete this->callbackList;
 		delete this->address;
+		DeleteList<ReductionObject>(*this->serverResultList);
+		delete this->serverResultList;
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -150,11 +153,6 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(bool canBlock /*= false*/)
 	{
-		RecursionGuard recursionGuard(&this->updateCallCount);
-		if (recursionGuard.IsRecursing())
-			return false;
-
-		bool processedServerData = false;
 		bool tryRead = false;
 
 		if (canBlock)
@@ -229,43 +227,25 @@ namespace Yarc
 					break;	// A parse error is not a bug here.  It just means we haven't yet read enough data from the socket.
 				else
 				{
-					processedServerData = true;
-					bool freeServerData = true;
-
 					this->bufferParseOffset += protocolDataSize;
 					assert(this->bufferParseOffset <= this->bufferReadOffset);
 
-					ServerDataKind serverDataKind = this->ClassifyServerData(serverData);
-					switch (serverDataKind)
-					{
-						case ServerDataKind::MESSAGE:
-						{
-							freeServerData = this->MessageHandler(serverData);
-							break;
-						}
-						case ServerDataKind::RESPONSE:
-						{
-							if (this->callbackList->GetCount() > 0)
-							{
-								Callback callback = this->callbackList->GetHead()->value;
-								this->callbackList->Remove(this->callbackList->GetHead());
-								freeServerData = callback(serverData);
-							}
-
-							break;
-						}
-					}
-
-					if (freeServerData)
-						delete serverData;
+					ServerResult* serverResult = this->ClassifyServerData(serverData);
+					this->serverResultList->AddTail(serverResult);
 				}
 			}
 		}
 
-		return processedServerData;
+		// If we are going to incidentally be recursive, we can at least control
+		// where that happens by processing server results here.  Specifically, our
+		// API may get called within a callback.  We want that to be okay in
+		// ideally all cases, but it does make me nervous.
+		ReductionObject::ReduceList(this->serverResultList);
+
+		return true;
 	}
 
-	SimpleClient::ServerDataKind SimpleClient::ClassifyServerData(const DataType* serverData)
+	SimpleClient::ServerResult* SimpleClient::ClassifyServerData(const DataType* serverData)
 	{
 		const Array* serverDataArray = Cast<Array>(serverData);
 		if (serverDataArray && serverDataArray->GetSize() > 0)
@@ -276,11 +256,11 @@ namespace Yarc
 				char buffer[512];
 				stringData->GetString((uint8_t*)buffer, sizeof(buffer));
 				if (strcmp(buffer, "message") == 0)
-					return ServerDataKind::MESSAGE;
+					return new ServerMessageResult(this, serverData);
 			}
 		}
 
-		return ServerDataKind::RESPONSE;
+		return new ServerResponseResult(this, serverData, this->DequeueCallback());
 	}
 
 	/*virtual*/ bool SimpleClient::Flush(void)
@@ -290,6 +270,18 @@ namespace Yarc
 				break;
 
 		return this->IsConnected();
+	}
+
+	void SimpleClient::EnqueueCallback(Callback callback)
+	{
+		this->callbackList->AddTail(callback);
+	}
+
+	SimpleClient::Callback SimpleClient::DequeueCallback()
+	{
+		Callback callback = this->callbackList->GetHead()->value;
+		this->callbackList->Remove(this->callbackList->GetHead());
+		return callback;
 	}
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData /*= true*/)
@@ -331,7 +323,7 @@ namespace Yarc
 				i += j;
 			}
 
-			this->callbackList->AddTail(callback);
+			this->EnqueueCallback(callback);
 		}
 		catch (InternalException* exc)
 		{
@@ -436,4 +428,54 @@ namespace Yarc
 
 		return success;
 	}
+
+	//------------------------------ SimpleClient::ServerResult ------------------------------
+
+	SimpleClient::ServerResult::ServerResult(SimpleClient* givenClient, const DataType* givenServerData)
+	{
+		this->client = givenClient;
+		this->serverData = givenServerData;
+	}
+
+	/*virtual*/ SimpleClient::ServerResult::~ServerResult()
+	{
+		delete this->serverData;
+	}
+
+	//------------------------------ SimpleClient::ServerResponseResult ------------------------------
+
+	SimpleClient::ServerResponseResult::ServerResponseResult(SimpleClient* givenClient, const DataType* givenServerData, Callback givenCallback) : ServerResult(givenClient, givenServerData)
+	{
+		this->callback = givenCallback;
+	}
+
+	/*virtual*/ SimpleClient::ServerResponseResult::~ServerResponseResult()
+	{
+	}
+
+	ReductionObject::ReductionResult SimpleClient::ServerResponseResult::Reduce()
+	{
+		bool freeServerData = this->callback(serverData);
+		if (!freeServerData)
+			this->serverData = nullptr;		// The callback took ownership of the memory.
+
+		return RESULT_DELETE;
+	}
+
+	//------------------------------ SimpleClient::ServerMessageResponse ------------------------------
+
+	SimpleClient::ServerMessageResult::ServerMessageResult(SimpleClient* givenClient, const DataType* givenServerData) : ServerResult(givenClient, givenServerData)
+	{
+	}
+
+	/*virtual*/ SimpleClient::ServerMessageResult::~ServerMessageResult()
+	{
+	}
+
+	ReductionObject::ReductionResult SimpleClient::ServerMessageResult::Reduce()
+	{
+		this->client->MessageHandler(this->serverData);
+		return RESULT_DELETE;
+	}
 }
+

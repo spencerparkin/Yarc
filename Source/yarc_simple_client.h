@@ -3,6 +3,7 @@
 #include "yarc_api.h"
 #include "yarc_client_iface.h"
 #include "yarc_linked_list.h"
+#include "yarc_reducer.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
 #include <string>
@@ -37,13 +38,8 @@ namespace Yarc
 		typedef LinkedList<Callback> CallbackList;
 		CallbackList* callbackList;
 
-		enum class ServerDataKind
-		{
-			RESPONSE,
-			MESSAGE
-		};
-
-		ServerDataKind ClassifyServerData(const DataType* serverData);
+		void EnqueueCallback(Callback callback);
+		Callback DequeueCallback();
 
 		SOCKET socket;
 
@@ -56,5 +52,39 @@ namespace Yarc
 
 		std::string* address;
 		uint16_t port;
+
+		class ServerResult : public ReductionObject
+		{
+		public:
+			ServerResult(SimpleClient* givenClient, const DataType* givenServerData);
+			virtual ~ServerResult();
+			
+			SimpleClient* client;
+			const DataType* serverData;
+		};
+
+		class ServerResponseResult : public ServerResult
+		{
+		public:
+			ServerResponseResult(SimpleClient* givenClient, const DataType* givenServerData, Callback givenCallback);
+			virtual ~ServerResponseResult();
+
+			ReductionResult Reduce() override;
+
+			Callback callback;
+		};
+
+		class ServerMessageResult : public ServerResult
+		{
+		public:
+			ServerMessageResult(SimpleClient* givenClient, const DataType* givenServerData);
+			virtual ~ServerMessageResult();
+
+			ReductionResult Reduce() override;
+		};
+
+		ReductionObjectList* serverResultList;
+
+		ServerResult* ClassifyServerData(const DataType* serverData);
 	};
 }
