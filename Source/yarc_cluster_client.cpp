@@ -295,7 +295,6 @@ namespace Yarc
 				
 				break;
 			}
-			case STATE_ASKING:
 			case STATE_PENDING:
 			{
 				// Nothing to do here but wait.
@@ -356,7 +355,7 @@ namespace Yarc
 						});
 
 						if (askingRequestMade)
-							this->state = STATE_ASKING;
+							this->state = STATE_PENDING;
 						else
 							this->state = STATE_UNSENT;
 
@@ -386,10 +385,9 @@ namespace Yarc
 							this->state = STATE_PENDING;
 						else
 							this->state = STATE_UNSENT;
-
+						
 						this->clusterClient->SignalClusterConfigDirty();
 						result = RESULT_BAIL;
-						
 						break;
 					}
 				}

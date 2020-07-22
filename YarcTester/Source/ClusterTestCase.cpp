@@ -97,25 +97,6 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 /*virtual*/ bool ClusterTestCase::PerformAutomatedTesting()
 {
-	/*
-
-	TODO: I do not understand the following behavior...
-
-	E:\redis>redis-cli -p 7000 migrate 127.0.0.1 7004 strawberries 0 0
-	OK
-
-	E:\redis>redis-cli -p 7000 get strawberries
-	(error) ASK 2250 127.0.0.1:7004
-
-	E:\redis>redis-cli -p 7004 get strawberries
-	(error) MOVED 2250 127.0.0.1:7000
-
-	Whether we redirect via an ask or a move, we're just going back and forth and
-	we never actually get at the key until the cluster setslot command is called
-	to finalize the migration.
-
-	*/
-
 	if (this->keySlotMigratingEnabled)
 	{
 		if (this->cluster->migrationList->GetCount() < 1)

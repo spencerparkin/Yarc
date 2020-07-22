@@ -560,6 +560,9 @@ namespace Yarc
 			}
 			case State::UNMARK:
 			{
+				// Note that it is good practice to set this on all nodes of the cluster, but not necessary.
+				// It will propagate across the cluster using the gossip protocol.
+
 				char command[512];
 				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d NODE %s", this->hashSlot, this->destinationNode->id);
 

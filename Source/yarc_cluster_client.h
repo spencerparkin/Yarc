@@ -70,7 +70,6 @@ namespace Yarc
 				STATE_NONE,
 				STATE_UNSENT,
 				STATE_PENDING,
-				STATE_ASKING,
 				STATE_READY
 			};
 
