@@ -71,6 +71,9 @@ namespace Yarc
 
 	/*virtual*/ bool PersistentClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
+		if (this->IsConnected())
+			return SimpleClient::MakeRequestAsync(requestData, callback, deleteData);
+
 		this->pendingRequestList->AddTail(new PendingRequest(requestData, callback, deleteData, this));
 		return true;
 	}
