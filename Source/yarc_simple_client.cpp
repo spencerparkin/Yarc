@@ -284,7 +284,7 @@ namespace Yarc
 		return callback;
 	}
 
-	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData /*= true*/)
+	/*virtual*/ bool SimpleClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		bool success = true;
 		uint32_t protocolDataSize = 1024 * 1024;
@@ -339,7 +339,7 @@ namespace Yarc
 		return success;
 	}
 
-	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData /*= true*/)
+	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		bool success = true;
 		uint32_t i = 0;

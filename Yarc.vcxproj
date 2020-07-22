@@ -24,6 +24,8 @@
     <ClCompile Include="Source\yarc_cluster_client.cpp" />
     <ClCompile Include="Source\yarc_crc16.cpp" />
     <ClCompile Include="Source\yarc_misc.cpp" />
+    <ClCompile Include="Source\yarc_persistent_client.cpp" />
+    <ClCompile Include="Source\yarc_persistent_dual_client.cpp" />
     <ClCompile Include="Source\yarc_reducer.cpp" />
     <ClCompile Include="Source\yarc_simple_client.cpp" />
     <ClCompile Include="Source\yarc_data_types.cpp" />
@@ -35,6 +37,8 @@
     <ClInclude Include="Source\yarc_dynamic_array.h" />
     <ClInclude Include="Source\yarc_cluster_client.h" />
     <ClInclude Include="Source\yarc_misc.h" />
+    <ClInclude Include="Source\yarc_persistent_client.h" />
+    <ClInclude Include="Source\yarc_persistent_dual_client.h" />
     <ClInclude Include="Source\yarc_reducer.h" />
     <ClInclude Include="Source\yarc_simple_client.h" />
     <ClInclude Include="Source\yarc_client_iface.h" />

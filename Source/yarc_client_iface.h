@@ -35,7 +35,7 @@ namespace Yarc
 		// These always take ownership of the request data, so the caller should not delete or maintain their pointer.
 		// In the synchronous case, the caller takes ownership of the response data.
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData = true) = 0;
+		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) = 0;
 		virtual bool MakeRequestSync(const DataType* requestData, DataType*& responseData, bool deleteData = true);
 
 		// This is a convenience routine for issuing a sequence of commands that are executed
@@ -46,7 +46,7 @@ namespace Yarc
 		// comprising the transaction could be issued synchronously, but that's not as efficient.
 		// Transactions also guarentee that no command from any other client is serviced in the middle
 		// of the transaction.  This is an important property needed for matters of concurrancy.
-		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData = true) = 0;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) = 0;
 		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData = true);
 
 		// These routines are used in conjunction with the pub-sub mechanism.  The client can be

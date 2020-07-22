@@ -18,13 +18,17 @@ namespace Yarc
 		ClusterClient();
 		virtual ~ClusterClient();
 
+		// When used as a DLL, these ensure that the client is allocated and freed in the proper heap.
+		static ClusterClient* Create();
+		static void Destroy(ClusterClient* client);
+
 		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override;
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool Flush(void) override;
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData = true) override;
-		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData = true) override;
+		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) override;
 
 	private:
 

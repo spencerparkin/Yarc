@@ -19,6 +19,16 @@ namespace Yarc
 		delete this->requestList;
 	}
 
+	/*static*/ ClusterClient* ClusterClient::Create()
+	{
+		return new ClusterClient();
+	}
+
+	/*static*/ void ClusterClient::Destroy(ClusterClient* client)
+	{
+		delete client;
+	}
+
 	/*virtual*/ bool ClusterClient::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
 	{
 		if (this->IsConnected())
@@ -113,7 +123,7 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback, bool deleteData /*= true*/)
+	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		SingleRequest* request = new SingleRequest(callback, this);
 		request->requestData = requestData;
@@ -122,7 +132,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback, bool deleteData /*= true*/)
+	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		if (requestDataArray.GetCount() == 0)
 			return false;
