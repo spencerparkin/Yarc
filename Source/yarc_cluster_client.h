@@ -18,7 +18,7 @@ namespace Yarc
 		ClusterClient();
 		virtual ~ClusterClient();
 
-		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) override;
+		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override;
 		virtual bool Update(bool canBlock = false) override;

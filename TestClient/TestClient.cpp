@@ -10,7 +10,7 @@ int main()
 {
 	ClientInterface* client = new SimpleClient();
 
-	if (client->Connect("127.0.0.1", 6379))
+	if (client->Connect("127.0.0.1", 6379, 20.0))
 	{
 		while (client->IsConnected())
 		{

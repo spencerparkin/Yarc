@@ -2,6 +2,7 @@
 #include "yarc_data_types.h"
 #include "yarc_misc.h"
 #include <assert.h>
+#include <time.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -41,7 +42,7 @@ namespace Yarc
 		delete client;
 	}
 
-	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port /*= 6379*/, uint32_t timeout /*= 30*/)
+	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
 	{
 		bool success = true;
 
@@ -56,15 +57,72 @@ namespace Yarc
 				throw new InternalException();
 
 			this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
+			if (this->socket == INVALID_SOCKET)
+				throw new InternalException();
 
 			sockaddr_in sockaddr;
 			sockaddr.sin_family = AF_INET;
 			::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
 			sockaddr.sin_port = ::htons(port);
 
-			result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
-			if (result == SOCKET_ERROR)
-				throw new InternalException();
+			if (timeoutSeconds < 0.0)
+			{
+				result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
+				if (result == SOCKET_ERROR)
+					throw new InternalException();
+			}
+			else
+			{
+				u_long arg = 1;
+				result = ::ioctlsocket(this->socket, FIONBIO, &arg);
+				if (result != NO_ERROR)
+					throw new InternalException();
+
+				result = ::connect(this->socket, (SOCKADDR*)& sockaddr, sizeof(sockaddr));
+				if (result != SOCKET_ERROR)
+					throw new InternalException();
+
+				int error = ::WSAGetLastError();
+				if (error != WSAEWOULDBLOCK)
+					throw new InternalException();
+
+				double startTime = double(::clock()) / double(CLOCKS_PER_SEC);
+				double elapsedTime = 0.0f;
+				while (elapsedTime < timeoutSeconds)
+				{
+					fd_set write_set, exc_set;
+					FD_ZERO(&write_set);
+					FD_ZERO(&exc_set);
+					FD_SET(this->socket, &write_set);
+					FD_SET(this->socket, &exc_set);
+
+					timeval tval;
+					tval.tv_sec = 0;
+					tval.tv_usec = 1000;
+
+					int32_t count = ::select(0, NULL, &write_set, &exc_set, &tval);
+					if (count == SOCKET_ERROR)
+						throw new InternalException();
+
+					if (FD_ISSET(this->socket, &exc_set))
+						throw new InternalException();
+
+					// Is the socket writable?
+					if (FD_ISSET(this->socket, &write_set))
+						break;
+
+					double currentTime = double(::clock()) / double(CLOCKS_PER_SEC);
+					elapsedTime = currentTime - startTime;
+				}
+
+				if (elapsedTime >= timeoutSeconds)
+					throw new InternalException();
+
+				arg = 0;
+				result = ::ioctlsocket(this->socket, FIONBIO, &arg);
+				if (result != NO_ERROR)
+					throw new InternalException();
+			}
 
 			*this->address = address;
 			this->port = port;
@@ -109,11 +167,11 @@ namespace Yarc
 			FD_SET(this->socket, &read_set);
 			FD_SET(this->socket, &exc_set);
 
-			timeval timeout;
-			timeout.tv_sec = 0;
-			timeout.tv_usec = 0;
+			timeval tval;
+			tval.tv_sec = 0;
+			tval.tv_usec = 0;
 
-			int32_t count = ::select(0, &read_set, NULL, &exc_set, &timeout);
+			int32_t count = ::select(0, &read_set, NULL, &exc_set, &tval);
 			assert(count != SOCKET_ERROR);
 			assert(!FD_ISSET(this->socket, &exc_set));
 

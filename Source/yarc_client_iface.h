@@ -20,7 +20,7 @@ namespace Yarc
 		typedef std::function<bool(const DataType* responseData)> Callback;
 
 		// These should be pretty self-explanatory.
-		virtual bool Connect(const char* address, uint16_t port = 6379, uint32_t timeout = 30) = 0;	// TODO: Obey timeout.
+		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) = 0;
 		virtual bool Disconnect() = 0;
 		virtual bool IsConnected() = 0;
 
