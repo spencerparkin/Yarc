@@ -424,7 +424,7 @@ namespace Yarc
 				strcpy_s(this->redirectAddress, sizeof(this->redirectAddress), token);
 			else if (i == 3)
 				this->redirectPort = ::atoi(token);
-			token = ::strtok_s(buffer, " :", &context);
+			token = ::strtok_s(nullptr, " :", &context);
 			i++;
 		}
 
