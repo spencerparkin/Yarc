@@ -10,6 +10,7 @@ namespace Yarc
 		this->clusterNodeList = new ReductionObjectList();
 		this->requestList = new ReductionObjectList();
 		this->state = STATE_NONE;
+		this->retryClusterConfigCountdown = 0;
 	}
 
 	/*virtual*/ ClusterClient::~ClusterClient()
@@ -83,13 +84,26 @@ namespace Yarc
 		{
 			case STATE_CLUSTER_CONFIG_DIRTY:
 			{
+				// TODO: Instead of picking a random node, we might choose the node that gave the MOVED error.
 				ClusterNode* clusterNode = this->GetRandomClusterNode();
 				if (clusterNode)
 				{
 					DataType* commandData = DataType::ParseCommand("CLUSTER SLOTS");
 					clusterNode->client->MakeRequestAsync(commandData, [&](const DataType* responseData) {
 						this->ProcessClusterConfig(responseData);
-						this->state = STATE_CLUSTER_CONFIG_STABLE;
+						if (this->ClusterConfigHasFullSlotCoverage())
+							this->state = STATE_CLUSTER_CONFIG_STABLE;
+						else
+						{
+							// Redis cluster returns an error for commands when the full
+							// slot range is not covered by the cluster, so we might as
+							// well just queue up requests until we get a complete picture
+							// of the cluster configurations.  Also, after initial stand-up
+							// of the cluster or resharding of the cluster, it can take the
+							// gossip protocol a little bit of time to communicate all slots.
+							this->state = STATE_CLUSTER_CONFIG_INCOMPLETE;
+							this->retryClusterConfigCountdown = 32;
+						}
 						return true;
 					});
 
@@ -108,6 +122,14 @@ namespace Yarc
 				ReductionObject::ReduceList(this->requestList);
 				break;
 			}
+			case STATE_CLUSTER_CONFIG_INCOMPLETE:
+			{
+				if (this->retryClusterConfigCountdown == 0)
+					this->state = STATE_CLUSTER_CONFIG_DIRTY;
+				else
+					this->retryClusterConfigCountdown--;
+				break;
+			}
 			default:
 			{
 				break;
@@ -117,10 +139,59 @@ namespace Yarc
 		return true;
 	}
 
+	bool ClusterClient::ClusterConfigHasFullSlotCoverage(void)
+	{
+		LinkedList<ClusterNode::SlotRange> slotRangeList;
+		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
+		{
+			ClusterNode* clusterNode = (ClusterNode*)node->value;
+			for (int i = 0; i < (signed)clusterNode->slotRangeArray.GetCount(); i++)
+				slotRangeList.AddTail(clusterNode->slotRangeArray[i]);
+		}
+
+		while (slotRangeList.GetCount() > 1)
+		{
+			bool combined = false;
+
+			for (LinkedList<ClusterNode::SlotRange>::Node* nodeA = slotRangeList.GetHead(); nodeA && !combined; nodeA = nodeA->GetNext())
+			{
+				ClusterNode::SlotRange& slotRangeA = nodeA->value;
+
+				for (LinkedList<ClusterNode::SlotRange>::Node* nodeB = nodeA->GetNext(); nodeB && !combined; nodeB = nodeB->GetNext())
+				{
+					ClusterNode::SlotRange& slotRangeB = nodeB->value;
+
+					ClusterNode::SlotRange combinedSlotRange;
+					if (combinedSlotRange.Combine(slotRangeA, slotRangeB))
+					{
+						slotRangeList.Remove(nodeA);
+						slotRangeList.Remove(nodeB);
+						slotRangeList.AddTail(combinedSlotRange);
+						combined = true;
+					}
+				}
+			}
+
+			if (!combined)
+				break;
+		}
+
+		if (slotRangeList.GetCount() > 1)
+			return false;
+
+		ClusterNode::SlotRange& slotRange = slotRangeList.GetHead()->value;
+		if (slotRange.minSlot != 0 || slotRange.maxSlot != 16383)
+			return false;
+
+		return true;
+	}
+
 	/*virtual*/ bool ClusterClient::Flush(void)
 	{
-		// TODO: Write this.
-		return false;
+		while (this->requestList->GetCount() > 0)
+			this->Update(true);
+		
+		return true;
 	}
 
 	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
@@ -373,6 +444,9 @@ namespace Yarc
 					}
 					else if (strstr(errorMessage, "MOVED") == errorMessage)
 					{
+						this->clusterClient->SignalClusterConfigDirty();
+						result = RESULT_BAIL;
+
 						this->ParseRedirectAddressAndPort(errorMessage);
 
 						delete this->responseData;
@@ -380,24 +454,21 @@ namespace Yarc
 
 						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
 						if (!clusterNode)
-						{
 							this->state = STATE_UNSENT;
-							break;
-						}
-
-						bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
-							this->responseData = responseData;
-							this->state = STATE_READY;
-							return false;
-						});
-
-						if (requestMade)
-							this->state = STATE_PENDING;
 						else
-							this->state = STATE_UNSENT;
+						{
+							bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
+								this->responseData = responseData;
+								this->state = STATE_READY;
+								return false;
+								});
+
+							if (requestMade)
+								this->state = STATE_PENDING;
+							else
+								this->state = STATE_UNSENT;
+						}
 						
-						this->clusterClient->SignalClusterConfigDirty();
-						result = RESULT_BAIL;
 						break;
 					}
 				}
@@ -498,6 +569,25 @@ namespace Yarc
 	/*virtual*/ ClusterClient::ClusterNode::~ClusterNode()
 	{
 		delete this->client;
+	}
+
+	bool ClusterClient::ClusterNode::SlotRange::Combine(const SlotRange& slotRangeA, const SlotRange& slotRangeB)
+	{
+		if (slotRangeA.maxSlot + 1 == slotRangeB.minSlot)
+		{
+			this->minSlot = slotRangeA.minSlot;
+			this->maxSlot = slotRangeB.maxSlot;
+			return true;
+		}
+
+		if (slotRangeB.maxSlot + 1 == slotRangeA.minSlot)
+		{
+			this->minSlot = slotRangeB.minSlot;
+			this->maxSlot = slotRangeA.maxSlot;
+			return true;
+		}
+
+		return false;
 	}
 
 	bool ClusterClient::ClusterNode::HandlesSlot(uint16_t slot) const

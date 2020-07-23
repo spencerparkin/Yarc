@@ -38,6 +38,7 @@ namespace Yarc
 			STATE_CLUSTER_CONFIG_DIRTY,
 			STATE_CLUSTER_CONFIG_QUERY_PENDING,
 			STATE_CLUSTER_CONFIG_STABLE,
+			STATE_CLUSTER_CONFIG_INCOMPLETE,
 		};
 
 		State state;
@@ -126,6 +127,8 @@ namespace Yarc
 			struct SlotRange
 			{
 				uint16_t minSlot, maxSlot;
+
+				bool Combine(const SlotRange& slotRangeA, const SlotRange& slotRangeB);
 			};
 
 			DynamicArray<SlotRange> slotRangeArray;
@@ -136,8 +139,10 @@ namespace Yarc
 		ClusterNode* GetRandomClusterNode();
 		void ProcessClusterConfig(const DataType* responseData);
 		void SignalClusterConfigDirty(void);
+		bool ClusterConfigHasFullSlotCoverage(void);
 
 		ReductionObjectList* requestList;
 		ReductionObjectList* clusterNodeList;
+		uint32_t retryClusterConfigCountdown;
 	};
 }
