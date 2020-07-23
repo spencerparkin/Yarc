@@ -30,6 +30,7 @@
     <ClCompile Include="Source\yarc_simple_client.cpp" />
     <ClCompile Include="Source\yarc_data_types.cpp" />
     <ClCompile Include="Source\yarc_dllmain.cpp" />
+    <ClCompile Include="Source\yarc_threaded_client.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\yarc_cluster.h" />
@@ -45,6 +46,7 @@
     <ClInclude Include="Source\yarc_data_types.h" />
     <ClInclude Include="Source\yarc_api.h" />
     <ClInclude Include="Source\yarc_linked_list.h" />
+    <ClInclude Include="Source\yarc_threaded_client.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
