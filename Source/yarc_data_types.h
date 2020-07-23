@@ -91,6 +91,7 @@ namespace Yarc
 	{
 	public:
 		SimpleString();
+		SimpleString(const uint8_t* givenString);
 		virtual ~SimpleString();
 
 		virtual Kind GetDynamicKind() const override { return KIND_SIMPLE_STRING; }
@@ -110,6 +111,7 @@ namespace Yarc
 	{
 	public:
 		Error();
+		Error(const uint8_t* givenError);
 		virtual ~Error();
 
 		virtual Kind GetDynamicKind() const override { return KIND_ERROR; }
@@ -122,6 +124,8 @@ namespace Yarc
 	{
 	public:
 		BulkString();
+		BulkString(const char* stringBuffer);
+		BulkString(const uint8_t* givenBuffer, uint32_t givenBufferSize);
 		virtual ~BulkString();
 
 		virtual Kind GetDynamicKind() const override { return KIND_BULK_STRING; }
@@ -145,6 +149,7 @@ namespace Yarc
 	{
 	public:
 		Integer();
+		Integer(int32_t givenNumber);
 		virtual ~Integer();
 
 		virtual Kind GetDynamicKind() const override { return KIND_INTEGER; }

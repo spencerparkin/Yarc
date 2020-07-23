@@ -19,15 +19,19 @@ int main()
 
 	if (client->Connect("127.0.0.1", 6379))
 	{
-		client->MakeRequestAsync(DataType::ParseCommand("set a 1"));
+		client->MakeRequestAsync(DataType::ParseCommand("SET greeting \"Hello, world!\""));
 
 		DataType* responseData = nullptr;
 
-		if (client->MakeRequestSync(DataType::ParseCommand("get a"), responeData))
+		if (client->MakeRequestSync(DataType::ParseCommand("GET greeting"), responeData))
 		{
-			Integer* integer = Cast<Integer>(responseData);
-			if (integer)
-				printf("a = %d\n", integer->GetNumber());
+			BulkString* bulkString = Cast<BulkString>(responseData);
+			if (bulkString)
+			{
+				char buffer[32];
+				bulkString->GetString((uint8_t*)buffer, sizeof(buffer));
+				printf("greeting = %s\n", buffer);
+			}
 		
 			delete responseData;
 		}
@@ -41,6 +45,44 @@ int main()
 
 Redis Cluster support is obtained by simply replacing `SimpleClient` with `ClusterClient`, and then replacing `#include <yarc_simple_client.h>` with `#include <yarc_cluster_client.h>`.
 
-As of this writing, the cluster client has been thrashed against a mini local cluster of 6 nodes of 3 masters and 3 slaves, 1 slave per master; all while performing live resharding of hash slots involving the keys in question being continually set and queried, then checked against an in-memory map to verify the round-trip.  If the cluster client can get some real-world use out of it, whatever remaining bugs or difficiencies in it can get eliminated, and then become a reliable work-horse.  Presently I have no real-world use-case for a cluster client, though, because I just wrote it for fun.
+Since Redis commands are just arrays of bulk strings, it is easy to send raw binary data to the database server as follows.
 
-Also note that this client library has only been tested on Windows, and only compiles on that platform.  It probably wouldn't be hard to port it to Linux or iOS, however, as it doesn't make use of any OS-specific calls, and the testing application was developed using the cross-platform GUI-toolkit wxWidgets.
+```
+// Send raw binary data to Redis...
+struct { int a, b, c; } data = { 0, 1, 2 };
+Yarc::Array* commandArray = new Yarc::Array();
+commandArray->SetSize(3);
+commandArray->SetElement(0, new Yarc::BulkString("SET"));
+commandArray->SetElement(1, new Yarc::BulkString("key"));
+commandArray->SetElement(2, new Yarc::BulkString(&data, sizeof(data));
+client->MakeRequestAsync(commandArray);
+```
+
+This, however, will require byte-swapping when retrieved on platforms with a differing endianness than the machine that sent the data.  To avoid this problem, you could send and retrieve JSON blobs.
+
+```
+// Send a JSON blob to Redis...
+Yarc::Array* commandArray = new Yarc::Array();
+commandArray->SetSize(3);
+commandArray->SetElement(0, new Yarc::BulkString("SET"));
+commandArray->SetElement(1, new Yarc::BulkString("key"));
+commandArray->SetElement(2, new Yarc::BulkString("{ "list": [ 0 1 ] }");
+client->MakeRequestAsync(commandArray);
+```
+
+Use a nice JSON library to parse and print JSON strings.
+
+Note that convenience routines are provided to make the above tasks much easier.  In the first case, we could more easily write it as...
+
+```
+struct { int a, b, c; } data = { 0, 1, 2 };
+Yarc::DataType* commandData = Yarc::Command::Set("key", &data, sizeof(data));
+```
+
+...and in the second case, write...
+
+```
+Yarc::DataType* commandData = Yarc::Command::Set("key", "{ "list": [ 0 1 ] }");
+```
+
+Convenience routines are provided for many Redis commands, but there is nothing to stop you from putting together your own protocol tree, and then sending that to the server.

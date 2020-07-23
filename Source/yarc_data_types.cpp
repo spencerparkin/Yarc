@@ -254,6 +254,10 @@ namespace Yarc
 	{
 	}
 
+	Error::Error(const uint8_t* givenError) : SimpleString(givenError)
+	{
+	}
+
 	/*virtual*/ Error::~Error()
 	{
 	}
@@ -304,6 +308,12 @@ namespace Yarc
 		this->string = nullptr;
 	}
 
+	SimpleString::SimpleString(const uint8_t* givenString)
+	{
+		this->string = nullptr;
+		this->SetString(givenString);
+	}
+
 	/*virtual*/ SimpleString::~SimpleString()
 	{
 		delete[] this->string;
@@ -340,6 +350,20 @@ namespace Yarc
 	{
 		this->buffer = nullptr;
 		this->bufferSize = 0;
+	}
+
+	BulkString::BulkString(const char* stringBuffer)
+	{
+		this->buffer = nullptr;
+		this->bufferSize = 0;
+		this->SetBuffer((const uint8_t*)stringBuffer, strlen(stringBuffer));
+	}
+
+	BulkString::BulkString(const uint8_t* givenBuffer, uint32_t givenBufferSize)
+	{
+		this->buffer = nullptr;
+		this->bufferSize = 0;
+		this->SetBuffer(givenBuffer, givenBufferSize);
 	}
 
 	/*virtual*/ BulkString::~BulkString()
@@ -426,6 +450,11 @@ namespace Yarc
 	Integer::Integer()
 	{
 		this->number = 0;
+	}
+
+	Integer::Integer(int32_t givenNumber)
+	{
+		this->number = givenNumber;
 	}
 
 	/*virtual*/ Integer::~Integer()
