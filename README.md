@@ -47,7 +47,7 @@ Redis Cluster support is obtained by simply replacing `SimpleClient` with `Clust
 
 Since Redis commands are just arrays of bulk strings, it is easy to send raw binary data to the database server as follows.
 
-```
+```C++
 // Send raw binary data to Redis...
 struct { int a, b, c; } data = { 0, 1, 2 };
 Yarc::Array* commandArray = new Yarc::Array();
@@ -60,7 +60,7 @@ client->MakeRequestAsync(commandArray);
 
 This, however, will require byte-swapping when retrieved on platforms with a differing endianness than the machine that sent the data.  To avoid this problem, you could send and retrieve JSON blobs.
 
-```
+```C++
 // Send a JSON blob to Redis...
 Yarc::Array* commandArray = new Yarc::Array();
 commandArray->SetSize(3);
@@ -74,14 +74,14 @@ Use a nice JSON library to parse and print JSON strings.
 
 Note that convenience routines are provided to make the above tasks much easier.  In the first case, we could more easily write it as...
 
-```
+```C++
 struct { int a, b, c; } data = { 0, 1, 2 };
 Yarc::DataType* commandData = Yarc::Command::Set("key", &data, sizeof(data));
 ```
 
 ...and in the second case, write...
 
-```
+```C++
 Yarc::DataType* commandData = Yarc::Command::Set("key", "{ "list": [ 0 1 ] }");
 ```
 
