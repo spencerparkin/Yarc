@@ -24,7 +24,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 	::srand(0);
 
 	this->keySettingGettingEnabled = true;
-	this->keySlotMigratingEnabled = false;
+	this->keySlotMigratingEnabled = true;
 }
 
 /*virtual*/ ClusterTestCase::~ClusterTestCase()
@@ -167,7 +167,10 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 									if (iter->second != ::atoi(buffer))
 										this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
 									else
+									{
 										iter->second = 0;
+										this->logStream << "Key " << testKey << " verified!" << std::endl;
+									}
 								}
 							}
 						}
