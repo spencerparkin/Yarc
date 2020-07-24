@@ -38,7 +38,8 @@ namespace Yarc
 		static bool ParseString(const uint8_t* protocolData, uint32_t& protocolDataSize, uint8_t*& result);
 		
 		// Parse a Redis command as you might enter it into any redis client.
-		static DataType* ParseCommand(const char* command);
+		// Note that this function works like printf for sprintf.
+		static DataType* ParseCommand(const char* commandFormat, ...);
 
 		// Assuming the given data-tree is a Redis command, return they key used in the command.
 		static std::string FindCommandKey(const DataType* commandData);

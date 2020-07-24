@@ -6,6 +6,7 @@
 #include <string>
 #include <stdlib.h>
 #include <assert.h>
+#include <cstdarg>
 
 namespace Yarc
 {
@@ -61,8 +62,14 @@ namespace Yarc
 		return dataType;
 	}
 
-	/*static*/ DataType* DataType::ParseCommand(const char* command)
+	/*static*/ DataType* DataType::ParseCommand(const char* commandFormat, ...)
 	{
+		va_list args;
+		va_start(args, commandFormat);
+		char command[1024];
+		sprintf_s(command, sizeof(command), commandFormat, args);
+		va_end(args);
+
 		struct Word
 		{
 			std::string str;
