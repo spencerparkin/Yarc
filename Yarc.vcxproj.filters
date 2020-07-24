@@ -37,9 +37,6 @@
     <ClCompile Include="Source\yarc_persistent_client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Source\yarc_threaded_client.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\yarc_protocol_data.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -82,9 +79,6 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\yarc_persistent_client.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\yarc_threaded_client.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\yarc_protocol_data.h">

@@ -24,9 +24,8 @@ namespace Yarc
 		virtual bool Disconnect() = 0;
 		virtual bool IsConnected() = 0;
 
-		// This should be called in the same thread where requests are made; it is where callbacks will be called.
-		// Note that whether this potentially blocks for other threads depends on the class derivative.
-		// See the threaded-client for an example of a client that will never block the caller here.
+		// This should be called in the same thread where requests are made; it is where
+		// callbacks will be called.
 		virtual bool Update(void) = 0;
 
 		// Wait for all pending requests to get responses.
@@ -65,9 +64,6 @@ namespace Yarc
 		// This is used internally to dispatch messages for the pub-sub mechanism, but could also
 		// be overridden by users of the client for their own custom handling.
 		virtual bool MessageHandler(const ProtocolData* messageData);
-
-		// This gets used internally when the client is being run in a thread.
-		virtual void SignalThreadExit(void) {}
 
 	protected:
 

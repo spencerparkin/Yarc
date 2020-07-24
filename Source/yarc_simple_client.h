@@ -30,7 +30,6 @@ namespace Yarc
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true) override;
-		virtual void SignalThreadExit(void) override;
 
 		const char* GetAddress() const { return this->address->c_str(); }
 		uint16_t GetPort() const { return this->port; }

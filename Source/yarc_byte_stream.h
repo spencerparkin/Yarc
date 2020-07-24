@@ -37,8 +37,6 @@ namespace Yarc
 		virtual bool ReadBuffer(uint8_t* buffer, uint32_t& bufferSize) override;
 		virtual bool WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize) override;
 
-		bool signalExit;
-
 	protected:
 
 		SOCKET* socket;

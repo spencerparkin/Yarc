@@ -311,15 +311,6 @@ namespace Yarc
 		}
 	}
 
-	/*virtual*/ void ClusterClient::SignalThreadExit(void)
-	{
-		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
-		{
-			ClusterNode* clusterNode = (ClusterNode*)node->value;
-			clusterNode->client->SignalThreadExit();
-		}
-	}
-
 	//----------------------------------------- NodeClient -----------------------------------------
 
 	ClusterClient::NodeClient::NodeClient(ClusterClient* givenClusterClient)

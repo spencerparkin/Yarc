@@ -188,12 +188,6 @@ namespace Yarc
 		return this->IsConnected();
 	}
 
-	/*virtual*/ void SimpleClient::SignalThreadExit(void)
-	{
-		if (this->socketStream)
-			this->socketStream->signalExit = true;
-	}
-
 	void SimpleClient::EnqueueCallback(Callback callback)
 	{
 		this->callbackList->AddTail(callback);
