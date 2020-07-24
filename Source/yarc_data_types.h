@@ -6,6 +6,8 @@
 
 namespace Yarc
 {
+	// TODO: Support RESP3.  See https://github.com/antirez/RESP3/blob/master/spec.md.
+	//       I could revise this parser, but this may be a good opportunity to rewrite it better.
 	class YARC_API DataType
 	{
 	public:
