@@ -95,6 +95,11 @@ namespace Yarc
 
 	/*virtual*/ bool ThreadedClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
+		// This won't work, because we're assuming a certain amount
+		// of thread-safety on the part of the client we own, and the
+		// whole point of this class is to provide thread-safety for
+		// classes that don't have thread-safety.
+
 		return false;
 	}
 
