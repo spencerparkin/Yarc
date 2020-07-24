@@ -1,10 +1,6 @@
 #include "yarc_simple_client.h"
 #include "yarc_protocol_data.h"
 #include "yarc_misc.h"
-#include <assert.h>
-#include <time.h>
-
-#pragma comment(lib, "Ws2_32.lib")
 
 namespace Yarc
 {
@@ -12,18 +8,13 @@ namespace Yarc
 
 	SimpleClient::SimpleClient()
 	{
-		this->socket = INVALID_SOCKET;
-		this->callbackList = new CallbackList();
-		this->address = new std::string();
-		this->port = 0;
 		this->socketStream = nullptr;
+		this->callbackList = new CallbackList();
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
-		(void)this->Disconnect();
 		delete this->callbackList;
-		delete this->address;
 		delete this->socketStream;
 	}
 
@@ -39,113 +30,26 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
 	{
-		bool success = true;
+		if (this->IsConnected())
+			return false;
 
-		try
-		{
-			if (this->socket != INVALID_SOCKET)
-				throw new InternalException();
+		this->Disconnect();
 
-			WSADATA data;
-			int result = ::WSAStartup(MAKEWORD(2, 2), &data);
-			if (result != 0)
-				throw new InternalException();
+		if (!this->socketStream->Connect(address, port, timeoutSeconds))
+			return false;
 
-			this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
-			if (this->socket == INVALID_SOCKET)
-				throw new InternalException();
+		//...
 
-			sockaddr_in sockaddr;
-			sockaddr.sin_family = AF_INET;
-			::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
-			sockaddr.sin_port = ::htons(port);
-
-			if (timeoutSeconds < 0.0)
-			{
-				result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
-				if (result == SOCKET_ERROR)
-					throw new InternalException();
-			}
-			else
-			{
-				u_long arg = 1;
-				result = ::ioctlsocket(this->socket, FIONBIO, &arg);
-				if (result != NO_ERROR)
-					throw new InternalException();
-
-				result = ::connect(this->socket, (SOCKADDR*)& sockaddr, sizeof(sockaddr));
-				if (result != SOCKET_ERROR)
-					throw new InternalException();
-
-				int error = ::WSAGetLastError();
-				if (error != WSAEWOULDBLOCK)
-					throw new InternalException();
-
-				double startTime = double(::clock()) / double(CLOCKS_PER_SEC);
-				double elapsedTime = 0.0f;
-				while (elapsedTime < timeoutSeconds)
-				{
-					fd_set writeSet, excSet;
-					FD_ZERO(&writeSet);
-					FD_ZERO(&excSet);
-					FD_SET(this->socket, &writeSet);
-					FD_SET(this->socket, &excSet);
-
-					timeval timeVal;
-					timeVal.tv_sec = 0;
-					timeVal.tv_usec = 1000;
-
-					int32_t count = ::select(0, NULL, &writeSet, &excSet, &timeVal);
-					if (count == SOCKET_ERROR)
-						throw new InternalException();
-
-					if (FD_ISSET(this->socket, &excSet))
-						throw new InternalException();
-
-					// Is the socket writable?
-					if (FD_ISSET(this->socket, &writeSet))
-						break;
-
-					double currentTime = double(::clock()) / double(CLOCKS_PER_SEC);
-					elapsedTime = currentTime - startTime;
-				}
-
-				if (elapsedTime >= timeoutSeconds)
-					throw new InternalException();
-
-				arg = 0;
-				result = ::ioctlsocket(this->socket, FIONBIO, &arg);
-				if (result != NO_ERROR)
-					throw new InternalException();
-			}
-
-			*this->address = address;
-			this->port = port;
-
-			this->socketStream = new SocketStream(&this->socket);
-		}
-		catch (InternalException* exc)
-		{
-			success = false;
-			this->Disconnect();
-			delete exc;
-		}
-		
-		return success;
+		return true;
 	}
 
 	/*virtual*/ bool SimpleClient::Disconnect()
 	{
 		if (this->socketStream)
 		{
+			this->socketStream->Disconnect();
 			delete this->socketStream;
 			this->socketStream = nullptr;
-		}
-
-		if (this->socket != INVALID_SOCKET)
-		{
-			::closesocket(this->socket);
-			this->socket = INVALID_SOCKET;
 		}
 
 		return true;
@@ -153,7 +57,7 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::IsConnected()
 	{
-		return this->socket != INVALID_SOCKET;
+		return this->socketStream ? this->socketStream->IsConnected() : false;
 	}
 
 	/*virtual*/ bool SimpleClient::Update(void)

@@ -31,8 +31,7 @@ namespace Yarc
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true) override;
 
-		const char* GetAddress() const { return this->address->c_str(); }
-		uint16_t GetPort() const { return this->port; }
+		SocketStream* GetSocketStream() { return this->socketStream; }
 
 	protected:
 
@@ -42,9 +41,6 @@ namespace Yarc
 		void EnqueueCallback(Callback callback);
 		Callback DequeueCallback();
 
-		SOCKET socket;
 		SocketStream* socketStream;
-		std::string* address;
-		uint16_t port;
 	};
 }
