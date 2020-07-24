@@ -36,22 +36,22 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ bool ThreadedClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ bool ThreadedClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		return false;
 	}
 
-	/*virtual*/ bool ThreadedClient::MakeRequestSync(const DataType* requestData, DataType*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool ThreadedClient::MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
 		return false;
 	}
 
-	/*virtual*/ bool ThreadedClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ bool ThreadedClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		return false;
 	}
 
-	/*virtual*/ bool ThreadedClient::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool ThreadedClient::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
 		return false;
 	}
@@ -66,7 +66,7 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ bool ThreadedClient::MessageHandler(const DataType* messageData)
+	/*virtual*/ bool ThreadedClient::MessageHandler(const ProtocolData* messageData)
 	{
 		return false;
 	}

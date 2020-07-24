@@ -10,12 +10,6 @@
 
 namespace Yarc
 {
-	// TODO: Move buffer logic here into a stream class.
-	// TODO: Use co-routines (https://lewissbaker.github.io/) to feed parser from the
-	//       client, because the parser is not incremental, and because re-parsing from
-	//       the same point over and over while a streamed type comes in is innefficient.
-	//       An alternative to co-routines is to just use a thread, but this might be a
-	//       good opportunity to learn about co-routines in C++20.
 	class YARC_API SimpleClient : public ClientInterface
 	{
 	public:
@@ -31,10 +25,10 @@ namespace Yarc
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
 		virtual bool Update(bool canBlock = false) override;
-		virtual bool Flush(void) override;
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) override;
-		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) override;
-		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData = true) override;
+		virtual bool Flush(void) override;		// When pipelining, flush should be called periodically to prevent server overload.
+		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true) override;
 
 		const char* GetAddress() const { return this->address->c_str(); }
 		uint16_t GetPort() const { return this->port; }
@@ -49,30 +43,23 @@ namespace Yarc
 
 		SOCKET socket;
 
-		uint8_t* buffer;
-		uint32_t bufferSize;
-		uint32_t bufferReadOffset;
-		uint32_t bufferParseOffset;
-		uint32_t pendingRequestFlushPoint;
-		uint32_t updateCallCount;
-
 		std::string* address;
 		uint16_t port;
 
 		class ServerResult : public ReductionObject
 		{
 		public:
-			ServerResult(SimpleClient* givenClient, const DataType* givenServerData);
+			ServerResult(SimpleClient* givenClient, const ProtocolData* givenServerData);
 			virtual ~ServerResult();
 			
 			SimpleClient* client;
-			const DataType* serverData;
+			const ProtocolData* serverData;
 		};
 
 		class ServerResponseResult : public ServerResult
 		{
 		public:
-			ServerResponseResult(SimpleClient* givenClient, const DataType* givenServerData, Callback givenCallback);
+			ServerResponseResult(SimpleClient* givenClient, const ProtocolData* givenServerData, Callback givenCallback);
 			virtual ~ServerResponseResult();
 
 			ReductionResult Reduce() override;
@@ -83,7 +70,7 @@ namespace Yarc
 		class ServerMessageResult : public ServerResult
 		{
 		public:
-			ServerMessageResult(SimpleClient* givenClient, const DataType* givenServerData);
+			ServerMessageResult(SimpleClient* givenClient, const ProtocolData* givenServerData);
 			virtual ~ServerMessageResult();
 
 			ReductionResult Reduce() override;
@@ -91,6 +78,6 @@ namespace Yarc
 
 		ReductionObjectList* serverResultList;
 
-		ServerResult* ClassifyServerData(const DataType* serverData);
+		ServerResult* ClassifyServerData(const ProtocolData* serverData);
 	};
 }

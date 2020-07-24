@@ -7,7 +7,7 @@
 #include <wx/dirdlg.h>
 #include <wx/sizer.h>
 #include <wx/utils.h>
-#include <yarc_data_types.h>
+#include <yarc_protocol_data.h>
 
 Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame(parent, wxID_ANY, "Yarc Tester", pos, size), timer(this, ID_Timer)
 {
@@ -190,7 +190,7 @@ void Frame::OnCharHook(wxKeyEvent& event)
 				this->outputText->AppendText("------------------------------------\n");
 				this->outputText->AppendText(redisCommand + "\n");
 
-				Yarc::DataType* commandData = Yarc::DataType::ParseCommand(redisCommand.c_str());
+				Yarc::ProtocolData* commandData = Yarc::ProtocolData::ParseCommand(redisCommand.c_str());
 				if (!commandData)
 				{
 					this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
@@ -199,7 +199,7 @@ void Frame::OnCharHook(wxKeyEvent& event)
 				else
 				{
 					Yarc::ClientInterface* client = this->testCase->GetClientInterface();
-					if (!client->MakeRequestAsync(commandData, [=](const Yarc::DataType* responseData) {
+					if (!client->MakeRequestAsync(commandData, [=](const Yarc::ProtocolData* responseData) {
 							
 						const Yarc::Error* error = Yarc::Cast<Yarc::Error>(responseData);
 						if (error)

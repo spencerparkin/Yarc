@@ -1,5 +1,5 @@
 #include <yarc_cluster_client.h>
-#include <yarc_data_types.h>
+#include <yarc_protocol_data.h>
 #include <yarc_misc.h>
 #include "ClusterTestCase.h"
 #include "App.h"
@@ -103,7 +103,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 		{
 			uint32_t i = Yarc::RandomNumber(0, this->testKeyArray.size() - 1);
 			std::string testKey = this->testKeyArray[i];
-			uint16_t hashSlot = Yarc::DataType::CalcKeyHashSlot(testKey);
+			uint16_t hashSlot = Yarc::ProtocolData::CalcKeyHashSlot(testKey);
 			Yarc::Cluster::Migration* migration = this->cluster->CreateRandomMigrationForHashSlot(hashSlot);
 			if (migration)
 				this->cluster->migrationList->AddTail(migration);
@@ -132,7 +132,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 			char setCommand[128];
 			sprintf_s(setCommand, sizeof(setCommand), "SET %s %d", testKey.c_str(), number);
 
-			this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(setCommand), [=](const Yarc::DataType* setCommandResponse) {
+			this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(setCommand), [=](const Yarc::ProtocolData* setCommandResponse) {
 				const Yarc::Error* error = Yarc::Cast<Yarc::Error>(setCommandResponse);
 				if (error)
 					this->logStream << "SET command got error response: " << error->GetString() << std::endl;
@@ -141,7 +141,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 					char getCommand[128];
 					sprintf_s(getCommand, sizeof(getCommand), "GET %s", testKey.c_str());
 
-					this->client->MakeRequestAsync(Yarc::DataType::ParseCommand(getCommand), [=](const Yarc::DataType* getCommandResponse) {
+					this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(getCommand), [=](const Yarc::ProtocolData* getCommandResponse) {
 						const Yarc::Error* error = Yarc::Cast<Yarc::Error>(getCommandResponse);
 						if (error)
 							this->logStream << "GET command got error response: " << error->GetString() << std::endl;

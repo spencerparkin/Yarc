@@ -1,5 +1,5 @@
 #include "yarc_client_iface.h"
-#include "yarc_data_types.h"
+#include "yarc_protocol_data.h"
 
 namespace Yarc
 {
@@ -13,12 +13,12 @@ namespace Yarc
 		delete this->callbackMap;
 	}
 
-	/*virtual*/ bool ClientInterface::MakeRequestSync(const DataType* requestData, DataType*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool ClientInterface::MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
 		bool requestServiced = false;
 
-		Callback callback = [&](const DataType* givenResponseData) {
-			responseData = const_cast<DataType*>(givenResponseData);
+		Callback callback = [&](const ProtocolData* givenResponseData) {
+			responseData = const_cast<ProtocolData*>(givenResponseData);
 			requestServiced = true;
 			return false;
 		};
@@ -34,12 +34,12 @@ namespace Yarc
 		return requestServiced;
 	}
 
-	/*virtual*/ bool ClientInterface::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool ClientInterface::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
 		bool requestServiced = false;
 
-		Callback callback = [&](const DataType* givenResponseData) {
-			responseData = const_cast<DataType*>(givenResponseData);
+		Callback callback = [&](const ProtocolData* givenResponseData) {
+			responseData = const_cast<ProtocolData*>(givenResponseData);
 			requestServiced = true;
 			return false;
 		};
@@ -71,26 +71,11 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClientInterface::MessageHandler(const DataType* messageData)
+	/*virtual*/ bool ClientInterface::MessageHandler(const ProtocolData* messageData)
 	{
-		const Array* messageDataArray = Cast<Array>(messageData);
-		if (messageDataArray && messageDataArray->GetSize() >= 2)
-		{
-			const BulkString* stringData = Cast<BulkString>(messageDataArray->GetElement(1));
-			if (stringData)
-			{
-				char buffer[512];
-				stringData->GetString((uint8_t*)buffer, sizeof(buffer));
-				std::string key = buffer;
-				CallbackMap::iterator iter = this->callbackMap->find(key);
-				if (iter != this->callbackMap->end())
-				{
-					Callback callback = iter->second;
-					return callback(messageData);
-				}
-			}
-		}
+		// TODO: Try to cast given message data to a PushData, then dispatch callback
+		//       we find in our callbackMap member.
 
-		return true;
+		return false;
 	}
 }

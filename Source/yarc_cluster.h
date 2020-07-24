@@ -9,7 +9,13 @@
 
 namespace Yarc
 {
+#if false		// TODO: Revisit this code once simple client is working with RESP3
+
 	class SimpleClient;
+
+	// TODO: For large clusters, it might not be practical to maintain a
+	//       connection to all master nodes all the time.  Could connection
+	//       pooling be a solution to this problem?
 
 	// This class is primarily for testing purposes.  It is designed to be a convenient way
 	// to bring up and tear down a mini redis cluster on the local machine.  As this is
@@ -80,4 +86,5 @@ namespace Yarc
 		Migration* CreateRandomMigration(void);
 		Migration* CreateRandomMigrationForHashSlot(uint16_t hashSlot);
 	};
+#endif
 }

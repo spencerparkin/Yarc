@@ -7,9 +7,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Source\yarc_data_types.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Source\yarc_dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -52,9 +49,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\yarc_api.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Source\yarc_data_types.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\yarc_linked_list.h">

@@ -2,6 +2,8 @@
 
 namespace Yarc
 {
+#if false		// TODO: Revisit this code once simple client is working with RESP3
+
 	//---------------------------------- PersistentClient ----------------------------------
 
 	PersistentClient::PersistentClient()
@@ -69,7 +71,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool PersistentClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ bool PersistentClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		if (this->IsConnected())
 			return SimpleClient::MakeRequestAsync(requestData, callback, deleteData);
@@ -85,7 +87,7 @@ namespace Yarc
 
 	//---------------------------------- PersistentClient::PendingRequest ----------------------------------
 
-	PersistentClient::PendingRequest::PendingRequest(const DataType* givenRequestData, Callback givenCallback, bool givenDeleteData, PersistentClient* givenClient)
+	PersistentClient::PendingRequest::PendingRequest(const ProtocolData* givenRequestData, Callback givenCallback, bool givenDeleteData, PersistentClient* givenClient)
 	{
 		this->requestData = givenRequestData;
 		this->callback = givenCallback;
@@ -102,4 +104,5 @@ namespace Yarc
 		this->client->ProcessPendingRequest(this);
 		return RESULT_DELETE;
 	}
+#endif
 }

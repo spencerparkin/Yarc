@@ -7,14 +7,40 @@
 #include <string>
 #include <map>
 
+#define YARC_USE_DYNAMIC_CAST
+
 namespace Yarc
 {
+	class ProtocolData;
+
+	template<typename T>
+	inline T* Cast(ProtocolData* protocolData)
+	{
+#if defined YARC_USE_DYNAMIC_CAST
+		return dynamic_cast<T*>(protocolData);
+#else
+		return (protocolData->GetDynamicKind() == T::GetStaticKind()) ? (T*)protocolData : nullptr;
+#endif
+	}
+
+	template<typename T>
+	inline const T* Cast(const ProtocolData* protocolData)
+	{
+#if defined YARC_USE_DYNAMIC_CAST
+		return dynamic_cast<const T*>(protocolData);
+#else
+		return (protocolData->GetDynamicKind() == T::GetStaticKind()) ? (const T*)protocolData : nullptr;
+#endif
+	}
+
 	class ProtocolData
 	{
 	public:
 
 		ProtocolData();
 		virtual ~ProtocolData();
+
+		static ProtocolData* ParseCommand(const char* commandFormat, ...);
 
 		static bool ParseTree(ByteStream* byteStream, ProtocolData*& protocolData);
 		static bool PrintTree(ByteStream* byteStream, const ProtocolData* protocolData);

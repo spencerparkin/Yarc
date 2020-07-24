@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 #include <yarc_simple_client.h>
-#include <yarc_data_types.h>
+#include <yarc_protocol_data.h>
 #include <stdio.h>
 
 using namespace Yarc;
@@ -23,12 +23,12 @@ int main()
 			if (command == "exit")
 				break;
 
-			DataType* commandData = DataType::ParseCommand(command.c_str());
+			ProtocolData* commandData = ProtocolData::ParseCommand(command.c_str());
 			if (!commandData)
 				std::cout << "Failed to parse!" << std::endl;
 			else
 			{
-				DataType* resultData = nullptr;
+				ProtocolData* resultData = nullptr;
 				if (!client->MakeRequestSync(commandData, resultData))
 					std::cout << "Failed to issue command!" << std::endl;
 				else

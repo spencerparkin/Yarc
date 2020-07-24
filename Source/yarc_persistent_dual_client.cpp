@@ -1,10 +1,12 @@
 #include "yarc_persistent_dual_client.h"
 #include "yarc_persistent_client.h"
-#include "yarc_data_types.h"
+#include "yarc_protocol_data.h"
 #include "yarc_misc.h"
 
 namespace Yarc
 {
+#if false		// TODO: Revisit this code once simple client is working with RESP3
+
 	PersistentDualClient::PersistentDualClient()
 	{
 		this->inputClient = nullptr;
@@ -102,7 +104,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool PersistentDualClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ bool PersistentDualClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		if (!this->outputClient || !this->outputClient->IsConnected())
 			return false;
@@ -110,7 +112,7 @@ namespace Yarc
 		return this->outputClient->MakeRequestAsync(requestData, callback, deleteData);
 	}
 
-	/*virtual*/ bool PersistentDualClient::MakeRequestSync(const DataType* requestData, DataType*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool PersistentDualClient::MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
 		if (!this->outputClient || !this->outputClient->IsConnected())
 			return false;
@@ -118,7 +120,7 @@ namespace Yarc
 		return this->outputClient->MakeRequestSync(requestData, responseData, deleteData);
 	}
 
-	/*virtual*/ bool PersistentDualClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ bool PersistentDualClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		if (!this->outputClient || !this->outputClient->IsConnected())
 			return false;
@@ -126,7 +128,7 @@ namespace Yarc
 		return this->outputClient->MakeTransactionRequestAsync(requestDataArray, callback, deleteData);
 	}
 
-	/*virtual*/ bool PersistentDualClient::MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool PersistentDualClient::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
 		if (!this->outputClient || !this->outputClient->IsConnected())
 			return false;
@@ -144,7 +146,7 @@ namespace Yarc
 
 		char command[256];
 		sprintf_s(command, sizeof(command), "SUBSCRIBE %s", channel);
-		return this->inputClient->MakeRequestAsync(DataType::ParseCommand(command));
+		return this->inputClient->MakeRequestAsync(ProtocolData::ParseCommand(command));
 	}
 
 	/*virtual*/ bool PersistentDualClient::UnregisterSubscriptionCallback(const char* channel)
@@ -157,11 +159,12 @@ namespace Yarc
 
 		char command[256];
 		sprintf_s(command, sizeof(command), "UNSUBSCRIBE %s", channel);
-		return this->inputClient->MakeRequestAsync(DataType::ParseCommand(command));
+		return this->inputClient->MakeRequestAsync(ProtocolData::ParseCommand(command));
 	}
 
-	/*virtual*/ bool PersistentDualClient::MessageHandler(const DataType* messageData)
+	/*virtual*/ bool PersistentDualClient::MessageHandler(const ProtocolData* messageData)
 	{
 		return false;
 	}
+#endif
 }

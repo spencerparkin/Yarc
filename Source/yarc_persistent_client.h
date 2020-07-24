@@ -6,6 +6,8 @@
 
 namespace Yarc
 {
+#if false		// TODO: Revisit this code once simple client is working with RESP3
+
 	// This client actively tries to re-connect in the event that it loses its
 	// connection while at the same time trying remain operational.  In other words,
 	// it will queue up requests until it is able to reconnect.
@@ -23,19 +25,19 @@ namespace Yarc
 		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
 		virtual bool Disconnect() override;
 		virtual bool Update(bool canBlock /*= false*/) override;
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 
 	private:
 
 		class PendingRequest : public ReductionObject
 		{
 		public:
-			PendingRequest(const DataType* givenRequestData, Callback givenCallback, bool givenDeleteData, PersistentClient* givenClient);
+			PendingRequest(const ProtocolData* givenRequestData, Callback givenCallback, bool givenDeleteData, PersistentClient* givenClient);
 			virtual ~PendingRequest();
 
 			virtual ReductionResult Reduce() override;
 
-			const DataType* requestData;
+			const ProtocolData* requestData;
 			Callback callback;
 			bool deleteData;
 			PersistentClient* client;
@@ -47,4 +49,5 @@ namespace Yarc
 
 		bool persistConnection;
 	};
+#endif
 }

@@ -1,8 +1,10 @@
 #include "yarc_cluster_client.h"
-#include "yarc_data_types.h"
+#include "yarc_protocol_data.h"
 
 namespace Yarc
 {
+#if false		// TODO: Revisit this code once simple client is working with RESP3
+
 	//----------------------------------------- ClusterClient -----------------------------------------
 
 	ClusterClient::ClusterClient()
@@ -88,8 +90,8 @@ namespace Yarc
 				ClusterNode* clusterNode = this->GetRandomClusterNode();
 				if (clusterNode)
 				{
-					DataType* commandData = DataType::ParseCommand("CLUSTER SLOTS");
-					clusterNode->client->MakeRequestAsync(commandData, [&](const DataType* responseData) {
+					ProtocolData* commandData = ProtocolData::ParseCommand("CLUSTER SLOTS");
+					clusterNode->client->MakeRequestAsync(commandData, [&](const ProtocolData* responseData) {
 						this->ProcessClusterConfig(responseData);
 						if (this->ClusterConfigHasFullSlotCoverage())
 							this->state = STATE_CLUSTER_CONFIG_STABLE;
@@ -194,7 +196,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeRequestAsync(const DataType* requestData, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ bool ClusterClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		SingleRequest* request = new SingleRequest(callback, this);
 		request->requestData = requestData;
@@ -203,7 +205,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback /*= [](const DataType*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		if (requestDataArray.GetCount() == 0)
 			return false;
@@ -215,13 +217,13 @@ namespace Yarc
 		request->requestDataArray = requestDataArray;
 		request->deleteData = deleteData;
 
-		uint16_t hashSlot = DataType::CalcCommandHashSlot(requestDataArray[0]);
+		uint16_t hashSlot = ProtocolData::CalcCommandHashSlot(requestDataArray[0]);
 
 		// All commands in the sequence must hash to the same slot.
 		// Hash-tagging is used to accommodate the use of multiple keys.
 		unsigned int i;
 		for (i = 1; i < requestDataArray.GetCount(); i++)
-			if (DataType::CalcCommandHashSlot(requestDataArray[i]) != hashSlot)
+			if (ProtocolData::CalcCommandHashSlot(requestDataArray[i]) != hashSlot)
 				break;
 
 		if (i != requestDataArray.GetCount())
@@ -234,7 +236,7 @@ namespace Yarc
 		return true;
 	}
 
-	void ClusterClient::ProcessClusterConfig(const DataType* responseData)
+	void ClusterClient::ProcessClusterConfig(const ProtocolData* responseData)
 	{
 		const Array* clusterNodeArray = Cast<Array>(responseData);
 		if (clusterNodeArray)
@@ -324,7 +326,7 @@ namespace Yarc
 	{
 	}
 
-	/*virtual*/ bool ClusterClient::NodeClient::MessageHandler(const DataType* messageData)
+	/*virtual*/ bool ClusterClient::NodeClient::MessageHandler(const ProtocolData* messageData)
 	{
 		return this->clusterClient->MessageHandler(messageData);
 	}
@@ -364,7 +366,7 @@ namespace Yarc
 				}
 				else
 				{
-					bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
+					bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;	// We've taken ownership of the memory.
@@ -411,8 +413,8 @@ namespace Yarc
 							break;
 						}
 
-						DataType* askingCommandData = DataType::ParseCommand("ASKING");
-						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const DataType* askingResponseData) {
+						ProtocolData* askingCommandData = ProtocolData::ParseCommand("ASKING");
+						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const ProtocolData* askingResponseData) {
 							
 							// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
 							ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
@@ -420,7 +422,7 @@ namespace Yarc
 								this->state = STATE_UNSENT;
 							else
 							{
-								bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
+								bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
 									this->responseData = responseData;
 									this->state = STATE_READY;
 									return false;
@@ -457,7 +459,7 @@ namespace Yarc
 							this->state = STATE_UNSENT;
 						else
 						{
-							bool requestMade = this->MakeRequestAsync(clusterNode, [=](const DataType* responseData) {
+							bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
 								this->responseData = responseData;
 								this->state = STATE_READY;
 								return false;
@@ -527,7 +529,7 @@ namespace Yarc
 
 	uint16_t ClusterClient::SingleRequest::CalcHashSlot()
 	{
-		return DataType::CalcCommandHashSlot(this->requestData);
+		return ProtocolData::CalcCommandHashSlot(this->requestData);
 	}
 
 	/*virtual*/ bool ClusterClient::SingleRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
@@ -551,7 +553,7 @@ namespace Yarc
 	uint16_t ClusterClient::MultiRequest::CalcHashSlot()
 	{
 		// It's already been verified that all commands in the array hash to the same slot.
-		return DataType::CalcCommandHashSlot(this->requestDataArray[0]);
+		return ProtocolData::CalcCommandHashSlot(this->requestDataArray[0]);
 	}
 
 	/*virtual*/ bool ClusterClient::MultiRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
@@ -653,4 +655,5 @@ namespace Yarc
 
 		return node ? (ClusterNode*)node->value : nullptr;
 	}
+#endif
 }

@@ -20,13 +20,13 @@ namespace Yarc
 		virtual bool IsConnected() override;
 		virtual bool Update(bool canBlock = false) override;
 		virtual bool Flush(void) override;
-		virtual bool MakeRequestAsync(const DataType* requestData, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) override;
-		virtual bool MakeRequestSync(const DataType* requestData, DataType*& responseData, bool deleteData = true) override;
-		virtual bool MakeTransactionRequestAsync(DynamicArray<const DataType*>& requestDataArray, Callback callback = [](const DataType*) -> bool { return true; }, bool deleteData = true) override;
-		virtual bool MakeTransactionRequestSync(DynamicArray<const DataType*>& requestDataArray, DataType*& responseData, bool deleteData = true) override;
+		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true) override;
 		virtual bool RegisterSubscriptionCallback(const char* channel, Callback callback) override;
 		virtual bool UnregisterSubscriptionCallback(const char* channel) override;
-		virtual bool MessageHandler(const DataType* messageData) override;
+		virtual bool MessageHandler(const ProtocolData* messageData) override;
 
 	private:
 

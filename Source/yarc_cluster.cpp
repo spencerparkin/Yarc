@@ -1,6 +1,6 @@
 #include "yarc_cluster.h"
 #include "yarc_simple_client.h"
-#include "yarc_data_types.h"
+#include "yarc_protocol_data.h"
 #include "yarc_misc.h"
 #include <filesystem>
 #include <fstream>
@@ -8,6 +8,8 @@
 
 namespace Yarc
 {
+#if false		// TODO: Revisit this code once simple client is working with RESP3
+
 	//------------------------------ Cluster ------------------------------
 
 	Cluster::Cluster()
@@ -116,15 +118,15 @@ namespace Yarc
 			// STEP 4: Join the cluster nodes together in the gossip protocol.
 			//
 
-			DataType* commandData = nullptr;
-			DataType* responseData = nullptr;
+			ProtocolData* commandData = nullptr;
+			ProtocolData* responseData = nullptr;
 
 			for (uint32_t i = 0; i < nodeArray->GetCount() - 1; i++)
 			{
 				uint16_t port = i + 7001;
 				sprintf_s(buffer, sizeof(buffer), "CLUSTER MEET 127.0.0.1 %04d", port);
-				commandData = DataType::ParseCommand(buffer);
-				(*this->nodeArray)[i].client->MakeRequestAsync(commandData, [](const DataType* responseData) {
+				commandData = ProtocolData::ParseCommand(buffer);
+				(*this->nodeArray)[i].client->MakeRequestAsync(commandData, [](const ProtocolData* responseData) {
 					return true;
 				});
 			}
@@ -138,7 +140,7 @@ namespace Yarc
 			// STEP 5: Identify the cluster view from an arbitrary node in the cluster.
 			//
 
-			commandData = DataType::ParseCommand("CLUSTER NODES");
+			commandData = ProtocolData::ParseCommand("CLUSTER NODES");
 			if (!(*this->nodeArray)[0].client->MakeRequestSync(commandData, responseData))
 				return false;
 
@@ -218,8 +220,8 @@ namespace Yarc
 					Node& masterNode = (*this->nodeArray)[j];
 
 					sprintf_s(buffer, sizeof(buffer), "CLUSTER REPLICATE %s", masterNode.id);
-					commandData = DataType::ParseCommand(buffer);
-					slaveNode.client->MakeRequestAsync(commandData, [](const DataType*) { return true; });
+					commandData = ProtocolData::ParseCommand(buffer);
+					slaveNode.client->MakeRequestAsync(commandData, [](const ProtocolData*) { return true; });
 				}
 			}
 
@@ -249,8 +251,8 @@ namespace Yarc
 				strcat_s(commandBuffer, sizeof(commandBuffer), slotBuffer);
 			}
 
-			DataType* commandData = DataType::ParseCommand(commandBuffer);
-			client->MakeRequestAsync(commandData, [](const DataType*) { return true; });
+			ProtocolData* commandData = ProtocolData::ParseCommand(commandBuffer);
+			client->MakeRequestAsync(commandData, [](const ProtocolData*) { return true; });
 
 			// Not sure why we have to do this, but as the saying goes...flush early, flush often.
 			client->Flush();
@@ -268,15 +270,15 @@ namespace Yarc
 			// STEP 1: Signal the cluster nodes to shutdown.
 			//
 
-			DataType* commandData = nullptr;
+			ProtocolData* commandData = nullptr;
 
 			for (uint32_t i = 0; i < this->nodeArray->GetCount(); i++)
 			{
 				Node& node = (*this->nodeArray)[i];
 				if (node.client->IsConnected())
 				{
-					commandData = DataType::ParseCommand("SHUTDOWN NOSAVE");
-					node.client->MakeRequestAsync(commandData, [](const DataType*) { return true; });
+					commandData = ProtocolData::ParseCommand("SHUTDOWN NOSAVE");
+					node.client->MakeRequestAsync(commandData, [](const ProtocolData*) { return true; });
 				}
 			}
 
@@ -333,8 +335,8 @@ namespace Yarc
 		if (this->nodeArray->GetCount() == 0)
 			return nullptr;
 
-		DataType* responseData = nullptr;
-		if (!(*this->nodeArray)[0].client->MakeRequestSync(DataType::ParseCommand("CLUSTER SLOTS"), responseData))
+		ProtocolData* responseData = nullptr;
+		if (!(*this->nodeArray)[0].client->MakeRequestSync(ProtocolData::ParseCommand("CLUSTER SLOTS"), responseData))
 			return nullptr;
 
 		Array* arrayData = Cast<Array>(responseData);
@@ -377,8 +379,8 @@ namespace Yarc
 		if (this->nodeArray->GetCount() == 0)
 			return nullptr;
 
-		DataType* responseData = nullptr;
-		if (!(*this->nodeArray)[0].client->MakeRequestSync(DataType::ParseCommand("CLUSTER SLOTS"), responseData))
+		ProtocolData* responseData = nullptr;
+		if (!(*this->nodeArray)[0].client->MakeRequestSync(ProtocolData::ParseCommand("CLUSTER SLOTS"), responseData))
 			return nullptr;
 
 		Array* arrayData = Cast<Array>(responseData);
@@ -456,7 +458,7 @@ namespace Yarc
 				char command[512];
 				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
 
-				if (!this->destinationNode->client->MakeRequestAsync(DataType::ParseCommand(command), [=](const DataType* responseData) {
+				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
 					const Error* error = Cast<Error>(responseData);
 					if (error)
 						this->state = State::BAIL;
@@ -479,8 +481,8 @@ namespace Yarc
 				char command[512];
 				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d MIGRATING %s", this->hashSlot, this->destinationNode->id);
 
-				DataType* responseData = nullptr;
-				if (!this->sourceNode->client->MakeRequestAsync(DataType::ParseCommand(command), [=](const DataType* responseData) {
+				ProtocolData* responseData = nullptr;
+				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
 					const Error* error = Cast<Error>(responseData);
 					if (error)
 						this->state = State::BAIL;
@@ -514,8 +516,8 @@ namespace Yarc
 				char command[512];
 				sprintf_s(command, sizeof(command), "CLUSTER GETKEYSINSLOT %d 1", this->hashSlot);
 
-				DataType* getKeysResponseData = nullptr;
-				if (!this->sourceNode->client->MakeRequestSync(DataType::ParseCommand(command), getKeysResponseData))
+				ProtocolData* getKeysResponseData = nullptr;
+				if (!this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), getKeysResponseData))
 					this->state = State::BAIL;
 				else
 				{
@@ -533,8 +535,8 @@ namespace Yarc
 								stringData->GetString((uint8_t*)keyBuffer, sizeof(keyBuffer));
 								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", this->destinationNode->client->GetAddress(), this->destinationNode->client->GetPort(), keyBuffer);
 
-								DataType* migrateKeysResponseData = nullptr;
-								if (!this->sourceNode->client->MakeRequestSync(DataType::ParseCommand(command), migrateKeysResponseData))
+								ProtocolData* migrateKeysResponseData = nullptr;
+								if (!this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), migrateKeysResponseData))
 									this->state = State::BAIL;
 								else
 								{
@@ -561,12 +563,12 @@ namespace Yarc
 				char command[512];
 				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d NODE %s", this->hashSlot, this->destinationNode->id);
 
-				DataType* responseData = nullptr;
+				ProtocolData* responseData = nullptr;
 
-				this->destinationNode->client->MakeRequestSync(DataType::ParseCommand(command), responseData);
+				this->destinationNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), responseData);
 				delete responseData;
 
-				this->sourceNode->client->MakeRequestSync(DataType::ParseCommand(command), responseData);
+				this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), responseData);
 				delete responseData;
 
 				this->state = State::BAIL;
@@ -587,4 +589,5 @@ namespace Yarc
 
 		return result;
 	}
+#endif
 }

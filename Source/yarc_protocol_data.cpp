@@ -2,6 +2,7 @@
 #include "yarc_misc.h"
 #include <ctype.h>
 #include <cfloat>
+#include <cstdarg>
 
 namespace Yarc
 {
@@ -15,6 +16,59 @@ namespace Yarc
 	/*virtual*/ ProtocolData::~ProtocolData()
 	{
 		delete this->attributeData;
+	}
+
+	/*static*/ ProtocolData* ProtocolData::ParseCommand(const char* commandFormat, ...)
+	{
+		va_list args;
+		va_start(args, commandFormat);
+		char command[1024];
+		sprintf_s(command, sizeof(command), commandFormat, args);
+		va_end(args);
+
+		struct Word
+		{
+			std::string str;
+		};
+
+		LinkedList<Word> wordList;
+		Word newWord;
+		uint32_t i = 0;
+		bool inQuotedText = false;
+
+		for (i = 0; command[i] != '\0'; i++)
+		{
+			char ch = command[i];
+			if (ch == '"')
+				inQuotedText = !inQuotedText;
+			else if (ch == ' ' && !inQuotedText)
+			{
+				wordList.AddTail(newWord);
+				newWord.str = "";
+			}
+			else
+				newWord.str += ch;
+		}
+
+		if (newWord.str.length() > 0)
+			wordList.AddTail(newWord);
+
+		ArrayData* wordArray = new ArrayData();
+		wordArray->SetCount(wordList.GetCount());
+		i = 0;
+
+		for (LinkedList<Word>::Node* node = wordList.GetHead(); node; node = node->GetNext())
+		{
+			const Word& word = node->value;
+
+			BlobStringData* bulkStringData = new BlobStringData();
+			bulkStringData->SetFromBuffer((uint8_t*)word.str.c_str(), (uint32_t)word.str.length());
+
+			wordArray->SetElement(i++, bulkStringData);
+		}
+
+		// Commands in the RESP are just arrays of bulk strings.
+		return wordArray;
 	}
 
 	/*static*/ bool ProtocolData::ParseTree(ByteStream* byteStream, ProtocolData*& protocolData)
