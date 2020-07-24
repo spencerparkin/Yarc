@@ -162,7 +162,9 @@ namespace Yarc
 			return false;
 
 		ProtocolData* serverData = nullptr;
-		if (ProtocolData::ParseTree(this->socketStream, serverData))
+		if (!ProtocolData::ParseTree(this->socketStream, serverData))
+			return false;
+		else
 		{
 			if (Cast<PushData>(serverData))
 				this->MessageHandler(serverData);

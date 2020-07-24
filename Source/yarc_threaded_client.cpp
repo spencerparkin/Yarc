@@ -73,9 +73,13 @@ namespace Yarc
 
 	DWORD ThreadedClient::ThreadFunc(void)
 	{
-		while (this->client->Update())
-			if (this->threadExitSignaled)
+		while (!this->threadExitSignaled)
+		{
+			if (!this->client->Update())
 				break;
+
+			//...
+		}
 
 		return 0;
 	}

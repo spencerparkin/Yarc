@@ -44,9 +44,7 @@ namespace Yarc
 		bool threadExitSignaled;
 		HANDLE threadHandle;
 
-		// TODO: Own mutex for client.
 		// TODO: Own mutices for send and receive lists.
-		// TODO: Own thread handle here.  Can we be platform agnostic?
 
 		ReductionObjectList requestList, responseList;
 	};
