@@ -66,7 +66,7 @@ Yarc::Array* commandArray = new Yarc::Array();
 commandArray->SetSize(3);
 commandArray->SetElement(0, new Yarc::BulkString("SET"));
 commandArray->SetElement(1, new Yarc::BulkString("key"));
-commandArray->SetElement(2, new Yarc::BulkString("{ \"list\": [ 0 1 ] }");
+commandArray->SetElement(2, new Yarc::BulkString("{ \"list\": [ 0, 1 ] }");
 client->MakeRequestAsync(commandArray);
 ```
 
@@ -75,8 +75,8 @@ Use a nice JSON library to parse and print JSON strings.
 Note that a convenience routine is provided that can make the above task much easier.  Simply write...
 
 ```C++
-const char* jsonData = "{ \"list\": [ 0 1 ] }";
-Yarc::DataType* commandData = Yarc::ParseCommand("SET key %s", jsonData);
+const char* jsonData = "{ \"list\": [ 0, 1 ] }";
+Yarc::DataType* commandData = Yarc::ParseCommand("SET key \"%s\"", jsonData);
 ```
 
 This convenience routine makes almost all Redis commands immediately available, but there is nothing to stop you from putting together your own protocol tree, and then sending that to the server.
