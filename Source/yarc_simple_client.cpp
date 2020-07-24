@@ -169,7 +169,7 @@ namespace Yarc
 			else
 			{
 				Callback callback = this->DequeueCallback();
-				if (callback(serverData))
+				if (!callback || callback(serverData))
 					delete serverData;
 			}
 		}
@@ -184,6 +184,12 @@ namespace Yarc
 				break;
 
 		return this->IsConnected();
+	}
+
+	/*virtual*/ void SimpleClient::SignalThreadExit(void)
+	{
+		if (this->socketStream)
+			this->socketStream->signalExit = true;
 	}
 
 	void SimpleClient::EnqueueCallback(Callback callback)

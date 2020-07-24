@@ -33,9 +33,10 @@ namespace Yarc
 		// When pipelining, flush should be called periodically to prevent server overload.
 		virtual bool Flush(void) = 0;
 
-		// These always take ownership of the request data, so the caller should not delete or maintain their pointer.
 		// In the synchronous case, the caller takes ownership of the response data.
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.
+		// The order responses are received is left undefined, but the fulfillment of requests
+		// is defined to always be in the same order that requests were made.
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) = 0;
 		virtual bool MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData = true);
 
@@ -65,7 +66,10 @@ namespace Yarc
 		// be overridden by users of the client for their own custom handling.
 		virtual bool MessageHandler(const ProtocolData* messageData);
 
-	private:
+		// This gets used internally when the client is being run in a thread.
+		virtual void SignalThreadExit(void) {}
+
+	protected:
 
 		typedef std::map<std::string, Callback> CallbackMap;
 		CallbackMap* callbackMap;

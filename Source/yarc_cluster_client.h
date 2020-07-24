@@ -33,6 +33,7 @@ namespace Yarc
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual void SignalThreadExit(void) override;
 
 	private:
 
@@ -126,6 +127,15 @@ namespace Yarc
 
 			bool HandlesSlot(uint16_t slot) const;
 
+			// TODO: Heaven help us, must we make this a threaded-client that owns a node client?
+			//       I need to take a hard look at the cluster client and re-evaluate how to design it.
+			//       Right now, the simple client will always block, and this prevents the other
+			//       internals of the cluster client from functioning.  Note that we probably don't
+			//       need this pointer allocated all the time.  We could just bring it up when needed
+			//       and then expire it when it's been idle for too long.  This way, if there are 1000
+			//       nodes in the cluster, we're not liketly to be trying to run 1000 threads on the
+			//       local machine all the time.  In other words, do a lazy-load or on-demand-load
+			//       of clients when we're using the cluster.
 			NodeClient* client;
 			
 			struct SlotRange

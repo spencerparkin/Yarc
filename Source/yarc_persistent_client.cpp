@@ -59,7 +59,6 @@ namespace Yarc
 		if (this->IsConnected())
 		{
 			ReductionObject::ReduceList(this->pendingRequestList);
-
 			return SimpleClient::Update();
 		}
 		
@@ -78,9 +77,9 @@ namespace Yarc
 		return true;
 	}
 
-	void PersistentClient::ProcessPendingRequest(PendingRequest* request)
+	bool PersistentClient::ProcessPendingRequest(PendingRequest* request)
 	{
-		SimpleClient::MakeRequestAsync(request->requestData, request->callback, request->deleteData);
+		return SimpleClient::MakeRequestAsync(request->requestData, request->callback, request->deleteData);
 	}
 
 	//---------------------------------- PersistentClient::PendingRequest ----------------------------------
@@ -99,7 +98,9 @@ namespace Yarc
 
 	/*virtual*/ ReductionObject::ReductionResult PersistentClient::PendingRequest::Reduce()
 	{
-		this->client->ProcessPendingRequest(this);
+		if (!this->client->ProcessPendingRequest(this))
+			return RESULT_BAIL;
+
 		return RESULT_DELETE;
 	}
 }

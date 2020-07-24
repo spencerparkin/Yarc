@@ -5,6 +5,8 @@ namespace Yarc
 	ThreadedClient::ThreadedClient(ClientInterface* givenClient)
 	{
 		this->client = givenClient;
+		this->threadHandle = nullptr;
+		this->threadExitSignaled = false;
 	}
 
 	/*virtual*/ ThreadedClient::~ThreadedClient()
@@ -13,22 +15,69 @@ namespace Yarc
 
 	/*virtual*/ bool ThreadedClient::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
 	{
-		return false;
+		if (this->client->IsConnected())
+			return false;
+
+		if (!this->client->Connect(address, port, timeoutSeconds))
+			return false;
+
+		if (this->threadHandle == nullptr)
+		{
+			this->threadExitSignaled = false;
+			this->threadHandle = ::CreateThread(nullptr, 0, &ThreadedClient::ThreadMain, this, 0, nullptr);
+			if (this->threadHandle == nullptr)
+			{
+				this->client->Disconnect();
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/*virtual*/ bool ThreadedClient::Disconnect()
 	{
+		if (this->threadHandle != nullptr)
+		{
+			this->SignalThreadExit();
+			::WaitForSingleObject(this->threadHandle, INFINITE);
+			this->threadHandle = nullptr;
+		}
+
+		this->client->Disconnect();
+
 		return false;
+	}
+
+	/*virtual*/ void ThreadedClient::SignalThreadExit(void)
+	{
+		this->client->SignalThreadExit();
+		this->threadExitSignaled = true;
 	}
 
 	/*virtual*/ bool ThreadedClient::IsConnected()
 	{
-		return false;
+		return this->client->IsConnected();
 	}
 
 	/*virtual*/ bool ThreadedClient::Update(void)
 	{
-		return false;
+		return true;
+	}
+
+	/*static*/ DWORD __stdcall ThreadedClient::ThreadMain(LPVOID param)
+	{
+		ThreadedClient* client = (ThreadedClient*)param;
+		return client->ThreadFunc();
+	}
+
+	DWORD ThreadedClient::ThreadFunc(void)
+	{
+		while (this->client->Update())
+			if (this->threadExitSignaled)
+				break;
+
+		return 0;
 	}
 
 	/*virtual*/ bool ThreadedClient::Flush(void)

@@ -43,7 +43,7 @@ namespace Yarc
 
 		ReductionObjectList* pendingRequestList;
 
-		void ProcessPendingRequest(PendingRequest* request);
+		bool ProcessPendingRequest(PendingRequest* request);
 
 		bool persistConnection;
 	};

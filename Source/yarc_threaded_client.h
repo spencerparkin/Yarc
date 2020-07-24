@@ -2,6 +2,8 @@
 
 #include "yarc_client_iface.h"
 #include "yarc_reducer.h"
+#include <WS2tcpip.h>
+#include <Windows.h>
 
 namespace Yarc
 {
@@ -25,13 +27,27 @@ namespace Yarc
 		virtual bool RegisterSubscriptionCallback(const char* channel, Callback callback) override;
 		virtual bool UnregisterSubscriptionCallback(const char* channel) override;
 		virtual bool MessageHandler(const ProtocolData* messageData) override;
+		virtual void SignalThreadExit(void) override;
+
+		ClientInterface* GetClient() { return this->client; }
 
 	private:
 
+		static DWORD __stdcall ThreadMain(LPVOID param);
+
+		DWORD ThreadFunc(void);
+
+		// We want to own a client here rather than inherit from one,
+		// because we want to be able to run any blocking client in a thread.
 		ClientInterface* client;
+
+		bool threadExitSignaled;
+		HANDLE threadHandle;
 
 		// TODO: Own mutex for client.
 		// TODO: Own mutices for send and receive lists.
 		// TODO: Own thread handle here.  Can we be platform agnostic?
+
+		ReductionObjectList requestList, responseList;
 	};
 }
