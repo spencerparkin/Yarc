@@ -83,22 +83,6 @@ namespace Yarc
 			return false;
 		}
 
-		// For backwards compatability with RESP1/2, replace empty arrays with nil.
-		ArrayData* arrayData = dynamic_cast<ArrayData*>(protocolData);
-		if (arrayData && arrayData->GetCount() == 0)
-		{
-			delete protocolData;
-			protocolData = new NullData();
-		}
-
-		// For backwards compatability with RESP1/2, replace empty bulk strings with nil.
-		BlobStringData* blobStringData = dynamic_cast<BlobStringData*>(protocolData);
-		if (blobStringData && blobStringData->GetByteArray().GetCount() == 0)
-		{
-			delete protocolData;
-			protocolData = new NullData();
-		}
-
 		return true;
 	}
 
@@ -210,6 +194,9 @@ namespace Yarc
 		if (!ParseCount(byteStream, count, streamed))
 			return false;
 
+		if (!streamed && count == -1)
+			return false;
+
 		if (!ParseCRLF(byteStream))
 			return false;
 
@@ -313,6 +300,9 @@ namespace Yarc
 		uint32_t count = 0;
 		bool streamed = false;
 		if (!ParseCount(byteStream, count, streamed))
+			return false;
+
+		if (!streamed && count == -1)
 			return false;
 
 		if (!ParseCRLF(byteStream))
