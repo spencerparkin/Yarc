@@ -284,7 +284,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ArrayData::Print(ByteStream* byteStream)
+	/*virtual*/ bool ArrayData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -338,7 +338,7 @@ namespace Yarc
 		return ParseCRLF(byteStream);
 	}
 
-	/*virtual*/ bool EndData::Print(ByteStream* byteStream)
+	/*virtual*/ bool EndData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -424,7 +424,7 @@ namespace Yarc
 		return ParseCRLF(byteStream);
 	}
 
-	/*virtual*/ bool BlobStringData::Print(ByteStream* byteStream)
+	/*virtual*/ bool BlobStringData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -478,7 +478,7 @@ namespace Yarc
 		return this->ParseByteArrayData(byteStream, count);
 	}
 
-	/*virtual*/ bool ChunkData::Print(ByteStream* byteStream)
+	/*virtual*/ bool ChunkData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -518,7 +518,7 @@ namespace Yarc
 		return ParseCRLFTerminatedString(byteStream, this->value);
 	}
 
-	/*virtual*/ bool SimpleStringData::Print(ByteStream* byteStream)
+	/*virtual*/ bool SimpleStringData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -592,7 +592,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool MapData::Print(ByteStream* byteStream)
+	/*virtual*/ bool MapData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -674,7 +674,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool DoubleData::Print(ByteStream* byteStream)
+	/*virtual*/ bool DoubleData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -717,7 +717,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool NumberData::Print(ByteStream* byteStream)
+	/*virtual*/ bool NumberData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -760,7 +760,7 @@ namespace Yarc
 		return ParseCRLF(byteStream);
 	}
 
-	/*virtual*/ bool BooleanData::Print(ByteStream* byteStream)
+	/*virtual*/ bool BooleanData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -798,7 +798,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool BigNumberData::Print(ByteStream* byteStream)
+	/*virtual*/ bool BigNumberData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}
@@ -818,7 +818,7 @@ namespace Yarc
 		return ParseCRLF(byteStream);
 	}
 
-	/*virtual*/ bool NullData::Print(ByteStream* byteStream)
+	/*virtual*/ bool NullData::Print(ByteStream* byteStream) const
 	{
 		return false;
 	}

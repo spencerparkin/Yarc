@@ -4,6 +4,7 @@
 #include "yarc_client_iface.h"
 #include "yarc_linked_list.h"
 #include "yarc_reducer.h"
+#include "yarc_byte_stream.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
 #include <string>
@@ -23,9 +24,9 @@ namespace Yarc
 
 		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
 		virtual bool Disconnect() override;
-		virtual bool IsConnected() override { return this->socket != INVALID_SOCKET; }
-		virtual bool Update(bool canBlock = false) override;
-		virtual bool Flush(void) override;		// When pipelining, flush should be called periodically to prevent server overload.
+		virtual bool IsConnected() override;
+		virtual bool Update(void) override;
+		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true) override;
@@ -42,42 +43,8 @@ namespace Yarc
 		Callback DequeueCallback();
 
 		SOCKET socket;
-
+		SocketStream* socketStream;
 		std::string* address;
 		uint16_t port;
-
-		class ServerResult : public ReductionObject
-		{
-		public:
-			ServerResult(SimpleClient* givenClient, const ProtocolData* givenServerData);
-			virtual ~ServerResult();
-			
-			SimpleClient* client;
-			const ProtocolData* serverData;
-		};
-
-		class ServerResponseResult : public ServerResult
-		{
-		public:
-			ServerResponseResult(SimpleClient* givenClient, const ProtocolData* givenServerData, Callback givenCallback);
-			virtual ~ServerResponseResult();
-
-			ReductionResult Reduce() override;
-
-			Callback callback;
-		};
-
-		class ServerMessageResult : public ServerResult
-		{
-		public:
-			ServerMessageResult(SimpleClient* givenClient, const ProtocolData* givenServerData);
-			virtual ~ServerMessageResult();
-
-			ReductionResult Reduce() override;
-		};
-
-		ReductionObjectList* serverResultList;
-
-		ServerResult* ClassifyServerData(const ProtocolData* serverData);
 	};
 }

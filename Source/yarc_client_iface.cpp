@@ -29,7 +29,7 @@ namespace Yarc
 		// Note that by blocking here, we ensure that we don't starve socket
 		// threads that need to run for us to get the data from the server.
 		while (!requestServiced && this->IsConnected())
-			this->Update(true);
+			this->Update();
 
 		return requestServiced;
 	}
@@ -48,7 +48,7 @@ namespace Yarc
 			return false;
 
 		while (!requestServiced && this->IsConnected())
-			this->Update(true);
+			this->Update();
 
 		return requestServiced;
 	}

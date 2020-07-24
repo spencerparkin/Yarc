@@ -46,7 +46,7 @@ namespace Yarc
 		static bool PrintTree(ByteStream* byteStream, const ProtocolData* protocolData);
 
 		virtual bool Parse(ByteStream* byteStream) = 0;
-		virtual bool Print(ByteStream* byteStream) = 0;
+		virtual bool Print(ByteStream* byteStream) const = 0;
 
 		// This method is provided for backwards compatibility with RESP1,
 		// and should be preferred over run-time type checking.
@@ -80,7 +80,7 @@ namespace Yarc
 		virtual ~BlobStringData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 		bool GetToBuffer(uint8_t* buffer, uint32_t bufferSize) const;
 		bool SetFromBuffer(const uint8_t* buffer, uint32_t bufferSize);
@@ -107,7 +107,7 @@ namespace Yarc
 		virtual ~ChunkData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 	};
 
 	class BlobErrorData : public BlobStringData
@@ -134,7 +134,7 @@ namespace Yarc
 		virtual ~SimpleStringData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 	protected:
 
@@ -160,7 +160,7 @@ namespace Yarc
 		virtual ~NumberData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 		int64_t GetValue() const;
 		bool SetValue(int64_t givenValue);
@@ -179,7 +179,7 @@ namespace Yarc
 		virtual ~DoubleData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 		double GetValue() const;
 		bool SetValue(double givenValue);
@@ -198,7 +198,7 @@ namespace Yarc
 		virtual ~BooleanData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 		bool GetValue() const;
 		bool SetValue(bool givenValue);
@@ -216,7 +216,7 @@ namespace Yarc
 		virtual ~BigNumberData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 	protected:
 
@@ -231,7 +231,7 @@ namespace Yarc
 		virtual ~EndData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 	};
 
 	class NullData : public SimpleData
@@ -242,7 +242,7 @@ namespace Yarc
 		virtual ~NullData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 		virtual bool IsNull(void) { return true; }
 	};
@@ -264,7 +264,7 @@ namespace Yarc
 		virtual ~ArrayData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 		uint32_t GetCount(void) const;
 		bool SetCount(uint32_t count);
@@ -291,7 +291,7 @@ namespace Yarc
 		virtual ~MapData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) override;
+		virtual bool Print(ByteStream* byteStream) const override;
 
 		ProtocolData* GetField(const std::string& key);
 		const ProtocolData* Getfield(const std::string& key) const;

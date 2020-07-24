@@ -26,7 +26,7 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ bool ThreadedClient::Update(bool canBlock /*= false*/)
+	/*virtual*/ bool ThreadedClient::Update(void)
 	{
 		return false;
 	}

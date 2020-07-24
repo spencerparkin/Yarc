@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <WS2tcpip.h>
 
 namespace Yarc
 {
@@ -20,52 +21,26 @@ namespace Yarc
 		virtual bool WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize) { return false; }
 
 		// Read a byte from the stream into the given byte.
-		virtual bool ReadByte(uint8_t& byte) = 0;
+		virtual bool ReadByte(uint8_t& byte);
 
 		// Write a byte to the stream from the given byte.
-		virtual bool WriteByte(uint8_t byte) = 0;
+		virtual bool WriteByte(uint8_t byte);
 	};
 
-	class FiniteBufferStream : public ByteStream
+	class SocketStream : public ByteStream
 	{
 	public:
 
-		FiniteBufferStream(uint8_t* givenBuffer, uint32_t givenBufferSize);
-		virtual ~FiniteBufferStream();
+		SocketStream(SOCKET* givenSocket);
+		virtual ~SocketStream();
+
+		virtual bool ReadBuffer(uint8_t* buffer, uint32_t& bufferSize) override;
+		virtual bool WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize) override;
+
+		bool canBlock;
 
 	protected:
 
-		uint8_t* buffer;
-		uint32_t bufferSize;
-	};
-
-	class FiniteBufferInputStream : public FiniteBufferStream
-	{
-	public:
-
-		FiniteBufferInputStream(uint8_t* givenBuffer, uint32_t givenBufferSize);
-		virtual ~FiniteBufferInputStream();
-
-		virtual bool ReadByte(uint8_t& byte) override;
-		virtual bool WriteByte(uint8_t byte) override;
-
-	protected:
-
-		uint32_t readOffset;
-	};
-
-	class FiniteBufferOutputStream : public FiniteBufferStream
-	{
-	public:
-
-		FiniteBufferOutputStream(uint8_t* givenBuffer, uint32_t givenBufferSize);
-		virtual ~FiniteBufferOutputStream();
-
-		virtual bool ReadByte(uint8_t& byte) override;
-		virtual bool WriteByte(uint8_t byte) override;
-
-	protected:
-
-		uint32_t writeOffset;
+		SOCKET* socket;
 	};
 }

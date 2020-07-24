@@ -24,12 +24,13 @@ namespace Yarc
 		virtual bool Disconnect() = 0;
 		virtual bool IsConnected() = 0;
 
-		// This should be called in the same thread where requests are made.  The API as a whole is not
-		// designed to be thread-safe, nor is it so.  This doesn't prevent you, of course, from using it
-		// in a dedicated thread, and then using your own thread-safe interface to that thread.
-		virtual bool Update(bool canBlock = false) = 0;
+		// This should be called in the same thread where requests are made.
+		// Note that whether this potentially blocks for other threads depends on the class derivative.
+		// See the threaded-client for an example of a client that will never block the caller here.
+		virtual bool Update(void) = 0;
 
 		// Wait for all pending requests to get responses.
+		// When pipelining, flush should be called periodically to prevent server overload.
 		virtual bool Flush(void) = 0;
 
 		// These always take ownership of the request data, so the caller should not delete or maintain their pointer.

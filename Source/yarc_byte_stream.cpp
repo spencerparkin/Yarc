@@ -12,65 +12,77 @@ namespace Yarc
 	{
 	}
 
-	//----------------------------------- FiniteBufferStream -----------------------------------
-	
-	FiniteBufferStream::FiniteBufferStream(uint8_t* givenBuffer, uint32_t givenBufferSize)
+	/*virtual*/ bool ByteStream::ReadByte(uint8_t& byte)
 	{
-		this->buffer = givenBuffer;
-		this->bufferSize = givenBufferSize;
+		uint32_t size = 1;
+		return this->ReadBuffer(&byte, size);
 	}
 
-	/*virtual*/ FiniteBufferStream::~FiniteBufferStream()
+	/*virtual*/ bool ByteStream::WriteByte(uint8_t byte)
+	{
+		uint32_t size = 1;
+		return this->WriteBuffer(&byte, size);
+	}
+
+	//----------------------------------- SocketStream -----------------------------------
+
+	SocketStream::SocketStream(SOCKET* givenSocket)
+	{
+		this->socket = givenSocket;
+		this->canBlock = true;
+	}
+
+	/*virtual*/ SocketStream::~SocketStream()
 	{
 	}
 
-	//----------------------------------- FiniteBufferInputStream -----------------------------------
-
-	FiniteBufferInputStream::FiniteBufferInputStream(uint8_t* givenBuffer, uint32_t givenBufferSize) : FiniteBufferStream(givenBuffer, givenBufferSize)
+	/*virtual*/ bool SocketStream::ReadBuffer(uint8_t* buffer, uint32_t& bufferSize)
 	{
-		this->readOffset = 0;
-	}
+		if (!this->canBlock)
+		{
+			fd_set readSet, excSet;
+			FD_ZERO(&readSet);
+			FD_ZERO(&excSet);
+			FD_SET(*this->socket, &readSet);
+			FD_SET(*this->socket, &excSet);
 
-	/*virtual*/ FiniteBufferInputStream::~FiniteBufferInputStream()
-	{
-	}
+			timeval timeVal;
+			timeVal.tv_sec = 0;
+			timeVal.tv_usec = 0;
 
-	/*virtual*/ bool FiniteBufferInputStream::ReadByte(uint8_t& byte)
-	{
-		if (this->readOffset >= this->bufferSize)
+			int32_t count = ::select(0, &readSet, NULL, &excSet, &timeVal);
+			if(count == SOCKET_ERROR)
+				return false;
+
+			if (!FD_ISSET(this->socket, &excSet))
+				return false;
+
+			// Does the socket have data for us to read?
+			if (!FD_ISSET(this->socket, &readSet))
+				return false;
+		}
+
+		uint32_t readCount = ::recv(*this->socket, (char*)buffer, bufferSize, 0);
+		if (readCount == SOCKET_ERROR)
+		{
+			*this->socket = INVALID_SOCKET;
 			return false;
+		}
 
-		byte = this->buffer[this->readOffset++];
+		bufferSize = readCount;
 		return true;
 	}
 
-	/*virtual*/ bool FiniteBufferInputStream::WriteByte(uint8_t byte)
+	/*virtual*/ bool SocketStream::WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize)
 	{
-		return false;
-	}
-
-	//----------------------------------- FiniteBufferOutputStream -----------------------------------
-
-	FiniteBufferOutputStream::FiniteBufferOutputStream(uint8_t* givenBuffer, uint32_t givenBufferSize) : FiniteBufferStream(givenBuffer, givenBufferSize)
-	{
-		this->writeOffset = 0;
-	}
-
-	/*virtual*/ FiniteBufferOutputStream::~FiniteBufferOutputStream()
-	{
-	}
-
-	/*virtual*/ bool FiniteBufferOutputStream::ReadByte(uint8_t& byte)
-	{
-		return false;
-	}
-
-	/*virtual*/ bool FiniteBufferOutputStream::WriteByte(uint8_t byte)
-	{
-		if (this->writeOffset >= this->bufferSize)
+		uint32_t writeCount = ::send(*this->socket, (const char*)buffer, bufferSize, 0);
+		if (writeCount == SOCKET_ERROR)
+		{
+			*this->socket = INVALID_SOCKET;
 			return false;
+		}
 
-		this->buffer[this->writeOffset++] = byte;
+		bufferSize = writeCount;
 		return true;
 	}
 }

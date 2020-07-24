@@ -16,7 +16,7 @@ namespace Yarc
 		this->callbackList = new CallbackList();
 		this->address = new std::string();
 		this->port = 0;
-		this->serverResultList = new ReductionObjectList;
+		this->socketStream = nullptr;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -24,8 +24,7 @@ namespace Yarc
 		(void)this->Disconnect();
 		delete this->callbackList;
 		delete this->address;
-		DeleteList<ReductionObject>(*this->serverResultList);
-		delete this->serverResultList;
+		delete this->socketStream;
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -122,6 +121,8 @@ namespace Yarc
 
 			*this->address = address;
 			this->port = port;
+
+			this->socketStream = new SocketStream(&this->socket);
 		}
 		catch (InternalException* exc)
 		{
@@ -135,39 +136,51 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Disconnect()
 	{
-		if (this->socket == INVALID_SOCKET)
+		if (this->socketStream)
+		{
+			delete this->socketStream;
+			this->socketStream = nullptr;
+		}
+
+		if (this->socket != INVALID_SOCKET)
+		{
+			::closesocket(this->socket);
+			this->socket = INVALID_SOCKET;
+		}
+
+		return true;
+	}
+
+	/*virtual*/ bool SimpleClient::IsConnected()
+	{
+		return this->socket != INVALID_SOCKET;
+	}
+
+	/*virtual*/ bool SimpleClient::Update(void)
+	{
+		if (!this->IsConnected())
 			return false;
 
-		::closesocket(this->socket);
-		this->socket = INVALID_SOCKET;
+		ProtocolData* serverData = nullptr;
+		if (ProtocolData::ParseTree(this->socketStream, serverData))
+		{
+			if (Cast<PushData>(serverData))
+				this->MessageHandler(serverData);
+			else
+			{
+				Callback callback = this->DequeueCallback();
+				if (callback(serverData))
+					delete serverData;
+			}
+		}
 
 		return true;
-	}
-
-	/*virtual*/ bool SimpleClient::Update(bool canBlock /*= false*/)
-	{
-		// TODO: Write this.
-
-		// If we are going to incidentally be recursive, we can at least control
-		// where that happens by processing server results here.  Specifically, our
-		// API may get called within a callback.  We want that to be okay in
-		// ideally all cases, but it does make me nervous.
-		ReductionObject::ReduceList(this->serverResultList);
-
-		return true;
-	}
-
-	SimpleClient::ServerResult* SimpleClient::ClassifyServerData(const ProtocolData* serverData)
-	{
-		// TODO: If given data casts as PushData, return a new ServerMessageResult() class.
-
-		return new ServerResponseResult(this, serverData, this->DequeueCallback());
 	}
 
 	/*virtual*/ bool SimpleClient::Flush(void)
 	{
 		while (this->callbackList->GetCount() > 0 && this->IsConnected())
-			if (!this->Update(true))
+			if (!this->Update())
 				break;
 
 		return this->IsConnected();
@@ -187,8 +200,14 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		// TODO: Write this.
-		return false;
+		if (!this->IsConnected())
+			return false;
+
+		if (!ProtocolData::PrintTree(this->socketStream, requestData))
+			return false;
+
+		this->EnqueueCallback(callback);
+		return true;
 	}
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
@@ -280,54 +299,4 @@ namespace Yarc
 
 		return success;
 	}
-
-	//------------------------------ SimpleClient::ServerResult ------------------------------
-
-	SimpleClient::ServerResult::ServerResult(SimpleClient* givenClient, const ProtocolData* givenServerData)
-	{
-		this->client = givenClient;
-		this->serverData = givenServerData;
-	}
-
-	/*virtual*/ SimpleClient::ServerResult::~ServerResult()
-	{
-		delete this->serverData;
-	}
-
-	//------------------------------ SimpleClient::ServerResponseResult ------------------------------
-
-	SimpleClient::ServerResponseResult::ServerResponseResult(SimpleClient* givenClient, const ProtocolData* givenServerData, Callback givenCallback) : ServerResult(givenClient, givenServerData)
-	{
-		this->callback = givenCallback;
-	}
-
-	/*virtual*/ SimpleClient::ServerResponseResult::~ServerResponseResult()
-	{
-	}
-
-	ReductionObject::ReductionResult SimpleClient::ServerResponseResult::Reduce()
-	{
-		bool freeServerData = this->callback(serverData);
-		if (!freeServerData)
-			this->serverData = nullptr;		// The callback took ownership of the memory.
-
-		return RESULT_DELETE;
-	}
-
-	//------------------------------ SimpleClient::ServerMessageResponse ------------------------------
-
-	SimpleClient::ServerMessageResult::ServerMessageResult(SimpleClient* givenClient, const ProtocolData* givenServerData) : ServerResult(givenClient, givenServerData)
-	{
-	}
-
-	/*virtual*/ SimpleClient::ServerMessageResult::~ServerMessageResult()
-	{
-	}
-
-	ReductionObject::ReductionResult SimpleClient::ServerMessageResult::Reduce()
-	{
-		this->client->MessageHandler(this->serverData);
-		return RESULT_DELETE;
-	}
 }
-

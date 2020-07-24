@@ -4,11 +4,6 @@
 
 namespace Yarc
 {
-	// Given a single-threaded client, this client will run it in
-	// a dedicated thread while providing a thread-safe interface to it.
-	// Given callbacks will always be executed in the main thread.
-	// The cluster client is a good candidate for this class as its
-	// processing is relatively heavier than other clients.
 	class ThreadedClient : public ClientInterface
 	{
 	public:
@@ -18,7 +13,7 @@ namespace Yarc
 		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override;
-		virtual bool Update(bool canBlock = false) override;
+		virtual bool Update(void) override;
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData = true) override;
