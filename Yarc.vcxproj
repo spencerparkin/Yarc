@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Source\yarc_byte_stream.cpp" />
     <ClCompile Include="Source\yarc_client_iface.cpp" />
     <ClCompile Include="Source\yarc_cluster.cpp" />
     <ClCompile Include="Source\yarc_cluster_client.cpp" />
@@ -26,6 +27,7 @@
     <ClCompile Include="Source\yarc_misc.cpp" />
     <ClCompile Include="Source\yarc_persistent_client.cpp" />
     <ClCompile Include="Source\yarc_persistent_dual_client.cpp" />
+    <ClCompile Include="Source\yarc_protocol_data.cpp" />
     <ClCompile Include="Source\yarc_reducer.cpp" />
     <ClCompile Include="Source\yarc_simple_client.cpp" />
     <ClCompile Include="Source\yarc_data_types.cpp" />
@@ -40,12 +42,14 @@
     <ClInclude Include="Source\yarc_misc.h" />
     <ClInclude Include="Source\yarc_persistent_client.h" />
     <ClInclude Include="Source\yarc_persistent_dual_client.h" />
+    <ClInclude Include="Source\yarc_protocol_data.h" />
     <ClInclude Include="Source\yarc_reducer.h" />
     <ClInclude Include="Source\yarc_simple_client.h" />
     <ClInclude Include="Source\yarc_client_iface.h" />
     <ClInclude Include="Source\yarc_data_types.h" />
     <ClInclude Include="Source\yarc_api.h" />
     <ClInclude Include="Source\yarc_linked_list.h" />
+    <ClInclude Include="Source\yarc_byte_stream.h" />
     <ClInclude Include="Source\yarc_threaded_client.h" />
   </ItemGroup>
   <ItemGroup>
