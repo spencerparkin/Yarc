@@ -1,5 +1,6 @@
 #include "yarc_protocol_data.h"
 #include "yarc_misc.h"
+#include "yarc_crc16.h"
 #include <ctype.h>
 #include <cfloat>
 #include <cstdarg>
@@ -16,6 +17,62 @@ namespace Yarc
 	/*virtual*/ ProtocolData::~ProtocolData()
 	{
 		delete this->attributeData;
+	}
+
+	/*static*/ std::string ProtocolData::FindCommandKey(const ProtocolData* commandData)
+	{
+		// TODO: Not all command's syntax requires a first argument key.
+		const ArrayData* commandArrayData = Cast<ArrayData>(commandData);
+		if (commandArrayData && commandArrayData->GetCount() >= 2)
+		{
+			const BlobStringData* keyStringData = Cast<BlobStringData>(commandArrayData->GetElement(1));
+			if (keyStringData)
+				return keyStringData->GetValue();
+		}
+
+		return "";
+	}
+
+	/*static*/ uint16_t ProtocolData::CalcCommandHashSlot(const ProtocolData* commandData)
+	{
+		std::string keyStr = FindCommandKey(commandData);
+		return CalcKeyHashSlot(keyStr);
+	}
+
+	/*static*/ uint16_t ProtocolData::CalcKeyHashSlot(const std::string& keyStr)
+	{
+		const char* key = keyStr.c_str();
+		int keylen = (int)strlen(key);
+
+		// Note that we can't just hash the key here, because we want to
+		// provide support for hash tags.  The hash tag feature provides
+		// a way for users to make keys that are different, yet guarenteed
+		// to hash to the same hash slot.  This is necessary for the use of
+		// the MULTI command where multiple commands, each with their own
+		// key, are going to be executed by a single node as a single atomic
+		// transaction.
+		//
+		// The following code was taken directly from https://redis.io/topics/cluster-spec.
+
+		int s, e; /* start-end indexes of { and } */
+
+		/* Search the first occurrence of '{'. */
+		for (s = 0; s < keylen; s++)
+			if (key[s] == '{') break;
+
+		/* No '{' ? Hash the whole key. This is the base case. */
+		if (s == keylen) return crc16(key, keylen) & 16383;
+
+		/* '{' found? Check if we have the corresponding '}'. */
+		for (e = s + 1; e < keylen; e++)
+			if (key[e] == '}') break;
+
+		/* No '}' or nothing between {} ? Hash the whole key. */
+		if (e == keylen || e == s + 1) return crc16(key, keylen) & 16383;
+
+		/* If we are here there is both a { and a } on its right. Hash
+		 * what is in the middle between { and }. */
+		return crc16(key + s + 1, e - s - 1) & 16383;
 	}
 
 	/*static*/ ProtocolData* ProtocolData::ParseCommand(const char* commandFormat, ...)
@@ -449,6 +506,24 @@ namespace Yarc
 		return false;
 	}
 
+	std::string BlobStringData::GetValue() const
+	{
+		std::string byteArrayStr;
+		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
+			byteArrayStr += this->byteArray[i];
+		
+		return byteArrayStr;
+	}
+
+	bool BlobStringData::SetValue(const std::string& givenValue)
+	{
+		this->byteArray.SetCount(givenValue.length());
+		for (int i = 0; i < (signed)givenValue.length(); i++)
+			this->byteArray[i] = givenValue[i];
+
+		return true;
+	}
+
 	//-------------------------- ChunkData --------------------------
 
 	ChunkData::ChunkData()
@@ -521,6 +596,17 @@ namespace Yarc
 	/*virtual*/ bool SimpleStringData::Print(ByteStream* byteStream) const
 	{
 		return false;
+	}
+
+	std::string SimpleStringData::GetValue() const
+	{
+		return this->value;
+	}
+
+	bool SimpleStringData::SetValue(const std::string& givenValue)
+	{
+		this->value = givenValue;
+		return true;
 	}
 
 	//-------------------------- SimpleErrorData --------------------------

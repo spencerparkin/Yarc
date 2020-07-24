@@ -40,6 +40,10 @@ namespace Yarc
 		ProtocolData();
 		virtual ~ProtocolData();
 
+		static std::string FindCommandKey(const ProtocolData* commandData);
+		static uint16_t CalcCommandHashSlot(const ProtocolData* commandData);
+		static uint16_t CalcKeyHashSlot(const std::string& keyStr);
+
 		static ProtocolData* ParseCommand(const char* commandFormat, ...);
 
 		static bool ParseTree(ByteStream* byteStream, ProtocolData*& protocolData);
@@ -51,6 +55,9 @@ namespace Yarc
 		// This method is provided for backwards compatibility with RESP1,
 		// and should be preferred over run-time type checking.
 		virtual bool IsNull(void) const { return false; }
+
+		// RESP3 removed redundant null types, but not redundant error types.
+		virtual bool IsError(void) const { return false; }
 
 	protected:
 
@@ -81,6 +88,9 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
+
+		std::string GetValue() const;
+		bool SetValue(const std::string& givenValue);
 
 		bool GetToBuffer(uint8_t* buffer, uint32_t bufferSize) const;
 		bool SetFromBuffer(const uint8_t* buffer, uint32_t bufferSize);
@@ -116,6 +126,8 @@ namespace Yarc
 
 		BlobErrorData();
 		virtual ~BlobErrorData();
+
+		virtual bool IsError(void) const override { return true; }
 	};
 
 	class VerbatimStreamData : public BlobStringData
@@ -136,6 +148,9 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
+		std::string GetValue() const;
+		bool SetValue(const std::string& givenValue);
+
 	protected:
 
 		std::string value;
@@ -147,6 +162,8 @@ namespace Yarc
 
 		SimpleErrorData();
 		virtual ~SimpleErrorData();
+
+		virtual bool IsError(void) const override { return true; }
 
 		std::string GetErrorCode(void) const;
 	};

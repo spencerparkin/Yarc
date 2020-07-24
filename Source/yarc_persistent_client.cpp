@@ -2,8 +2,6 @@
 
 namespace Yarc
 {
-#if false		// TODO: Revisit this code once simple client is working with RESP3
-
 	//---------------------------------- PersistentClient ----------------------------------
 
 	PersistentClient::PersistentClient()
@@ -56,17 +54,17 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ bool PersistentClient::Update(bool canBlock /*= false*/)
+	/*virtual*/ bool PersistentClient::Update()
 	{
 		if (this->IsConnected())
 		{
 			ReductionObject::ReduceList(this->pendingRequestList);
 
-			return SimpleClient::Update(canBlock);
+			return SimpleClient::Update();
 		}
 		
 		if (this->persistConnection)
-			return SimpleClient::Connect(this->address->c_str(), this->port, canBlock ? -1.0 : 0.0);
+			return SimpleClient::Connect(this->address->c_str(), this->port);
 
 		return true;
 	}
@@ -104,5 +102,4 @@ namespace Yarc
 		this->client->ProcessPendingRequest(this);
 		return RESULT_DELETE;
 	}
-#endif
 }

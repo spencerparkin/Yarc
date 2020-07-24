@@ -5,8 +5,6 @@
 
 namespace Yarc
 {
-#if false		// TODO: Revisit this code once simple client is working with RESP3
-
 	PersistentDualClient::PersistentDualClient()
 	{
 		this->inputClient = nullptr;
@@ -82,13 +80,13 @@ namespace Yarc
 		return this->inputClient->IsConnected() && this->outputClient->IsConnected();
 	}
 
-	/*virtual*/ bool PersistentDualClient::Update(bool canBlock /*= false*/)
+	/*virtual*/ bool PersistentDualClient::Update()
 	{
 		if (this->inputClient)
-			this->inputClient->Update(canBlock);
+			this->inputClient->Update();
 
 		if (this->outputClient)
-			this->outputClient->Update(canBlock);
+			this->outputClient->Update();
 
 		return true;
 	}
@@ -166,5 +164,4 @@ namespace Yarc
 	{
 		return false;
 	}
-#endif
 }

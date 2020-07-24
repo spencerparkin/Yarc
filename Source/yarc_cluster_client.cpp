@@ -3,8 +3,6 @@
 
 namespace Yarc
 {
-#if false		// TODO: Revisit this code once simple client is working with RESP3
-
 	//----------------------------------------- ClusterClient -----------------------------------------
 
 	ClusterClient::ClusterClient()
@@ -78,7 +76,7 @@ namespace Yarc
 			this->state = STATE_CLUSTER_CONFIG_DIRTY;
 	}
 
-	/*virtual*/ bool ClusterClient::Update(bool canBlock /*= false*/)
+	/*virtual*/ bool ClusterClient::Update(void)
 	{
 		ReductionObject::ReduceList(this->clusterNodeList);
 
@@ -191,7 +189,7 @@ namespace Yarc
 	/*virtual*/ bool ClusterClient::Flush(void)
 	{
 		while (this->requestList->GetCount() > 0)
-			this->Update(true);
+			this->Update();
 		
 		return true;
 	}
@@ -238,8 +236,8 @@ namespace Yarc
 
 	void ClusterClient::ProcessClusterConfig(const ProtocolData* responseData)
 	{
-		const Array* clusterNodeArray = Cast<Array>(responseData);
-		if (clusterNodeArray)
+		const ArrayData* clusterNodeArrayData = Cast<ArrayData>(responseData);
+		if (clusterNodeArrayData)
 		{
 			ReductionObjectList::Node* node = nullptr;
 			for (node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
@@ -248,37 +246,35 @@ namespace Yarc
 				clusterNode->slotRangeArray.SetCount(0);
 			}
 
-			for (uint32_t i = 0; i < clusterNodeArray->GetSize(); i++)
+			for (uint32_t i = 0; i < clusterNodeArrayData->GetCount(); i++)
 			{
-				const Array* clusterNodeInfoArray = Cast<Array>(clusterNodeArray->GetElement(i));
-				if (clusterNodeInfoArray && clusterNodeInfoArray->GetSize() >= 3)
+				const ArrayData* clusterNodeInfoArrayData = Cast<ArrayData>(clusterNodeArrayData->GetElement(i));
+				if (clusterNodeInfoArrayData && clusterNodeInfoArrayData->GetCount() >= 3)
 				{
-					const Integer* clusterNodeMinSlotInteger = Cast<Integer>(clusterNodeInfoArray->GetElement(0));
-					const Integer* clusterNodeMaxSlotInteger = Cast<Integer>(clusterNodeInfoArray->GetElement(1));
+					const NumberData* clusterNodeMinSlotIntegerData = Cast<NumberData>(clusterNodeInfoArrayData->GetElement(0));
+					const NumberData* clusterNodeMaxSlotIntegerData = Cast<NumberData>(clusterNodeInfoArrayData->GetElement(1));
 
 					ClusterNode::SlotRange slotRange;
-					slotRange.minSlot = clusterNodeMinSlotInteger ? clusterNodeMinSlotInteger->GetNumber() : 0;
-					slotRange.maxSlot = clusterNodeMaxSlotInteger ? clusterNodeMaxSlotInteger->GetNumber() : 0;
+					slotRange.minSlot = clusterNodeMinSlotIntegerData ? (uint16_t)clusterNodeMinSlotIntegerData->GetValue() : 0;
+					slotRange.maxSlot = clusterNodeMaxSlotIntegerData ? (uint16_t)clusterNodeMaxSlotIntegerData->GetValue() : 0;
 
-					const Array* clusterNodeIPPortArray = Cast<Array>(clusterNodeInfoArray->GetElement(2));
-					if (clusterNodeIPPortArray && clusterNodeIPPortArray->GetSize() >= 2)
+					const ArrayData* clusterNodeIPPortArrayData = Cast<ArrayData>(clusterNodeInfoArrayData->GetElement(2));
+					if (clusterNodeIPPortArrayData && clusterNodeIPPortArrayData->GetCount() >= 2)
 					{
-						const BulkString* clusterNodeIPString = Cast<BulkString>(clusterNodeIPPortArray->GetElement(0));
-						const Integer* clusterNodePortInteger = Cast<Integer>(clusterNodeIPPortArray->GetElement(1));
+						const BlobStringData* clusterNodeIPStringData = Cast<BlobStringData>(clusterNodeIPPortArrayData->GetElement(0));
+						const NumberData* clusterNodePortIntegerData = Cast<NumberData>(clusterNodeIPPortArrayData->GetElement(1));
 
-						char ipAddress[128];
-						if (clusterNodeIPString)
-							clusterNodeIPString->GetString((uint8_t*)ipAddress, sizeof(ipAddress));
-						else
-							ipAddress[0] = '\0';
+						std::string ipAddress;
+						if (clusterNodeIPStringData)
+							ipAddress = clusterNodeIPStringData->GetValue();
 
-						uint16_t port = clusterNodePortInteger ? clusterNodePortInteger->GetNumber() : 0;
+						uint16_t port = clusterNodePortIntegerData ? (uint16_t)clusterNodePortIntegerData->GetValue() : 0;
 
-						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress, port);
+						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress.c_str(), port);
 						if (!clusterNode)
 						{
 							clusterNode = new ClusterNode(this);
-							if (clusterNode->client->Connect(ipAddress, port))
+							if (clusterNode->client->Connect(ipAddress.c_str(), port))
 								this->clusterNodeList->AddTail(clusterNode);
 							else
 							{
@@ -395,13 +391,13 @@ namespace Yarc
 				// point we will not only perform a redirection, but also invalidate our current
 				// understanding of the entire cluster configuration.  This is recommended as it is
 				// likely that if one slot has migrated, then so too have many slots migrated.
-				const Error* error = Cast<Error>(this->responseData);
-				if (error)
+				const SimpleErrorData* errorData = Cast<SimpleErrorData>(this->responseData);
+				if (errorData)
 				{
-					const char* errorMessage = (const char*)error->GetString();
-					if (strstr(errorMessage, "ASK") == errorMessage)
+					std::string errorMessage = errorData->GetValue();
+					if (errorMessage == "ASK")
 					{
-						this->ParseRedirectAddressAndPort(errorMessage);
+						this->ParseRedirectAddressAndPort(errorMessage.c_str());
 
 						delete this->responseData;
 						this->responseData = nullptr;
@@ -444,12 +440,12 @@ namespace Yarc
 
 						break;
 					}
-					else if (strstr(errorMessage, "MOVED") == errorMessage)
+					else if (errorMessage == "MOVED")
 					{
 						this->clusterClient->SignalClusterConfigDirty();
 						result = RESULT_BAIL;
 
-						this->ParseRedirectAddressAndPort(errorMessage);
+						this->ParseRedirectAddressAndPort(errorMessage.c_str());
 
 						delete this->responseData;
 						this->responseData = nullptr;
@@ -606,7 +602,7 @@ namespace Yarc
 
 	/*virtual*/ ReductionObject::ReductionResult ClusterClient::ClusterNode::Reduce()
 	{
-		this->client->Update(false);
+		this->client->Update();
 
 		if (!this->client->IsConnected())
 			return RESULT_DELETE;
@@ -655,5 +651,4 @@ namespace Yarc
 
 		return node ? (ClusterNode*)node->value : nullptr;
 	}
-#endif
 }

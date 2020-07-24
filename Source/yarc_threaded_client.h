@@ -1,9 +1,12 @@
 #pragma once
 
 #include "yarc_client_iface.h"
+#include "yarc_reducer.h"
 
 namespace Yarc
 {
+	// All other client derivatives are designed to potentially block when being updated.
+	// This one will never do so, because it runs the given client on a thread where blocking I/O may be performed.
 	class ThreadedClient : public ClientInterface
 	{
 	public:
@@ -13,7 +16,7 @@ namespace Yarc
 		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override;
-		virtual bool Update(void) override;
+		virtual bool Update(void) override;	// This call will never block.
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData = true) override;

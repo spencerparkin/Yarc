@@ -8,7 +8,9 @@
 
 namespace Yarc
 {
-#if false		// TODO: Revisit this code once simple client is working with RESP3
+	// TODO: For large clusters, it might not be practical to maintain a
+	//       connection to all master nodes all the time.  Could connection
+	//       pooling be a solution to this problem?
 
 	// Note that in contrast to the simple client, requests made here asynchronously are
 	// not guarenteed to be responded to in the same order they were made.  They should,
@@ -27,7 +29,7 @@ namespace Yarc
 		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
 		virtual bool Disconnect() override;
 		virtual bool IsConnected() override;
-		virtual bool Update(bool canBlock = false) override;
+		virtual bool Update(void) override;
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
@@ -147,5 +149,4 @@ namespace Yarc
 		ReductionObjectList* clusterNodeList;
 		uint32_t retryClusterConfigCountdown;
 	};
-#endif
 }

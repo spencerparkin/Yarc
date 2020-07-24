@@ -24,7 +24,7 @@ namespace Yarc
 		virtual bool Disconnect() = 0;
 		virtual bool IsConnected() = 0;
 
-		// This should be called in the same thread where requests are made.
+		// This should be called in the same thread where requests are made; it is where callbacks will be called.
 		// Note that whether this potentially blocks for other threads depends on the class derivative.
 		// See the threaded-client for an example of a client that will never block the caller here.
 		virtual bool Update(void) = 0;

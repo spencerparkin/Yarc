@@ -8,8 +8,6 @@
 
 namespace Yarc
 {
-#if false		// TODO: Revisit this code once simple client is working with RESP3
-
 	//------------------------------ Cluster ------------------------------
 
 	Cluster::Cluster()
@@ -144,11 +142,10 @@ namespace Yarc
 			if (!(*this->nodeArray)[0].client->MakeRequestSync(commandData, responseData))
 				return false;
 
-			BulkString* nodeInfoString = Cast<BulkString>(responseData);
-			if (nodeInfoString)
+			BlobStringData* nodeInfoStringData = Cast<BlobStringData>(responseData);
+			if (nodeInfoStringData)
 			{
-				nodeInfoString->GetString((uint8_t*)buffer, sizeof(buffer));
-				std::string csvData = buffer;
+				std::string csvData = nodeInfoStringData->GetValue();
 				std::istringstream lineStream(csvData);
 				std::string line;
 				while (std::getline(lineStream, line, '\n'))
@@ -323,7 +320,7 @@ namespace Yarc
 	bool Cluster::Update(void)
 	{
 		for (uint32_t i = 0; i < nodeArray->GetCount(); i++)
-			(*this->nodeArray)[i].client->Update(false);
+			(*this->nodeArray)[i].client->Update();
 
 		ReductionObject::ReduceList(this->migrationList);
 
@@ -339,34 +336,32 @@ namespace Yarc
 		if (!(*this->nodeArray)[0].client->MakeRequestSync(ProtocolData::ParseCommand("CLUSTER SLOTS"), responseData))
 			return nullptr;
 
-		Array* arrayData = Cast<Array>(responseData);
-		if (!arrayData || arrayData->GetSize() == 0)
+		ArrayData* arrayData = Cast<ArrayData>(responseData);
+		if (!arrayData || arrayData->GetCount() == 0)
 			return nullptr;
 
-		uint32_t i = RandomNumber(0, arrayData->GetSize() - 1);
+		uint32_t i = RandomNumber(0, arrayData->GetCount() - 1);
 
-		Array* entryData = Cast<Array>(arrayData->GetElement(i));
+		ArrayData* entryData = Cast<ArrayData>(arrayData->GetElement(i));
 
-		uint16_t minHashSlot = Cast<Integer>(entryData->GetElement(0))->GetNumber();
-		uint16_t maxHashSlot = Cast<Integer>(entryData->GetElement(1))->GetNumber();
+		uint16_t minHashSlot = (uint16_t)Cast<NumberData>(entryData->GetElement(0))->GetValue();
+		uint16_t maxHashSlot = (uint16_t)Cast<NumberData>(entryData->GetElement(1))->GetValue();
 		uint16_t hashSlot = RandomNumber(minHashSlot, maxHashSlot);
 
-		char sourceID[256];
-		Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)sourceID, sizeof(sourceID));
+		std::string sourceID = Cast<BlobStringData>(Cast<ArrayData>(entryData->GetElement(2))->GetElement(2))->GetValue();
 
-		uint32_t j = RandomNumber(0, arrayData->GetSize() - 1);
+		uint32_t j = RandomNumber(0, arrayData->GetCount() - 1);
 		while (j == i)
-			j = RandomNumber(0, arrayData->GetSize() - 1);
+			j = RandomNumber(0, arrayData->GetCount() - 1);
 
-		entryData = Cast<Array>(arrayData->GetElement(j));
+		entryData = Cast<ArrayData>(arrayData->GetElement(j));
 
-		char destinationID[256];
-		Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)destinationID, sizeof(destinationID));
+		std::string destinationID = Cast<BlobStringData>(Cast<ArrayData>(entryData->GetElement(2))->GetElement(2))->GetValue();
 
 		delete responseData;
 
-		Node* sourceNode = this->FindNodeWithID(sourceID);
-		Node* destinationNode = this->FindNodeWithID(destinationID);
+		Node* sourceNode = this->FindNodeWithID(sourceID.c_str());
+		Node* destinationNode = this->FindNodeWithID(destinationID.c_str());
 
 		if (!(sourceNode && destinationNode))
 			return nullptr;
@@ -383,26 +378,25 @@ namespace Yarc
 		if (!(*this->nodeArray)[0].client->MakeRequestSync(ProtocolData::ParseCommand("CLUSTER SLOTS"), responseData))
 			return nullptr;
 
-		Array* arrayData = Cast<Array>(responseData);
-		if (!arrayData || arrayData->GetSize() == 0)
+		ArrayData* arrayData = Cast<ArrayData>(responseData);
+		if (!arrayData || arrayData->GetCount() == 0)
 			return nullptr;
 
 		Node* sourceNode = nullptr;
 		Node* destinationNode = nullptr;
 
 		uint32_t i;
-		for (i = 0; i < arrayData->GetSize(); i++)
+		for (i = 0; i < arrayData->GetCount(); i++)
 		{
-			Array* entryData = Cast<Array>(arrayData->GetElement(i));
+			ArrayData* entryData = Cast<ArrayData>(arrayData->GetElement(i));
 
-			uint16_t minHashSlot = Cast<Integer>(entryData->GetElement(0))->GetNumber();
-			uint16_t maxHashSlot = Cast<Integer>(entryData->GetElement(1))->GetNumber();
+			uint16_t minHashSlot = (uint16_t)Cast<NumberData>(entryData->GetElement(0))->GetValue();
+			uint16_t maxHashSlot = (uint16_t)Cast<NumberData>(entryData->GetElement(1))->GetValue();
 
 			if (minHashSlot <= hashSlot && hashSlot <= maxHashSlot)
 			{
-				char sourceID[256];
-				Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)sourceID, sizeof(sourceID));
-				sourceNode = this->FindNodeWithID(sourceID);
+				std::string sourceID = Cast<BlobStringData>(Cast<ArrayData>(entryData->GetElement(2))->GetElement(2))->GetValue();
+				sourceNode = this->FindNodeWithID(sourceID.c_str());
 				break;
 			}
 		}
@@ -412,12 +406,11 @@ namespace Yarc
 
 		while (!destinationNode || destinationNode == sourceNode)
 		{
-			i = RandomNumber(0, arrayData->GetSize() - 1);
-			Array* entryData = Cast<Array>(arrayData->GetElement(i));
+			i = RandomNumber(0, arrayData->GetCount() - 1);
+			ArrayData* entryData = Cast<ArrayData>(arrayData->GetElement(i));
 
-			char destinationID[256];
-			Cast<BulkString>(Cast<Array>(entryData->GetElement(2))->GetElement(2))->GetString((uint8_t*)destinationID, sizeof(destinationID));
-			destinationNode = this->FindNodeWithID(destinationID);
+			std::string destinationID = Cast<BlobStringData>(Cast<ArrayData>(entryData->GetElement(2))->GetElement(2))->GetValue();
+			destinationNode = this->FindNodeWithID(destinationID.c_str());
 		}
 
 		return new Migration(sourceNode, destinationNode, hashSlot);
@@ -459,8 +452,8 @@ namespace Yarc
 				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
 
 				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
-					const Error* error = Cast<Error>(responseData);
-					if (error)
+					const SimpleErrorData* errorData = Cast<SimpleErrorData>(responseData);
+					if (errorData)
 						this->state = State::BAIL;
 					else
 						this->state = State::MARK_MIGRATING;
@@ -483,8 +476,7 @@ namespace Yarc
 
 				ProtocolData* responseData = nullptr;
 				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
-					const Error* error = Cast<Error>(responseData);
-					if (error)
+					if (responseData->IsError())
 						this->state = State::BAIL;
 					else
 						this->state = State::BE_LAZY;
@@ -521,27 +513,25 @@ namespace Yarc
 					this->state = State::BAIL;
 				else
 				{
-					Array* arrayData = Cast<Array>(getKeysResponseData);
+					ArrayData* arrayData = Cast<ArrayData>(getKeysResponseData);
 					if (arrayData)
 					{
-						if (arrayData->GetSize() == 0)
+						if (arrayData->GetCount() == 0)
 							this->state = State::UNMARK;	// All keys migrated.
 						else
 						{
-							BulkString* stringData = Cast<BulkString>(arrayData->GetElement(0));
+							BlobStringData* stringData = Cast<BlobStringData>(arrayData->GetElement(0));
 							if (stringData)
 							{
-								char keyBuffer[512];
-								stringData->GetString((uint8_t*)keyBuffer, sizeof(keyBuffer));
-								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", this->destinationNode->client->GetAddress(), this->destinationNode->client->GetPort(), keyBuffer);
+								std::string keyBuffer = stringData->GetValue();
+								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", this->destinationNode->client->GetAddress(), this->destinationNode->client->GetPort(), keyBuffer.c_str());
 
 								ProtocolData* migrateKeysResponseData = nullptr;
 								if (!this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), migrateKeysResponseData))
 									this->state = State::BAIL;
 								else
 								{
-									Error* error = Cast<Error>(migrateKeysResponseData);
-									if (error)
+									if (migrateKeysResponseData->IsError())
 										this->state = State::BAIL;
 
 									delete migrateKeysResponseData;
@@ -589,5 +579,4 @@ namespace Yarc
 
 		return result;
 	}
-#endif
 }
