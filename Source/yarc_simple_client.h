@@ -10,6 +10,12 @@
 
 namespace Yarc
 {
+	// TODO: Move buffer logic here into a stream class.
+	// TODO: Use co-routines (https://lewissbaker.github.io/) to feed parser from the
+	//       client, because the parser is not incremental, and because re-parsing from
+	//       the same point over and over while a streamed type comes in is innefficient.
+	//       An alternative to co-routines is to just use a thread, but this might be a
+	//       good opportunity to learn about co-routines in C++20.
 	class YARC_API SimpleClient : public ClientInterface
 	{
 	public:

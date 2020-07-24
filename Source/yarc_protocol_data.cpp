@@ -181,6 +181,7 @@ namespace Yarc
 
 	ArrayData::ArrayData()
 	{
+		this->isNull = false;
 	}
 
 	/*virtual*/ ArrayData::~ArrayData()
@@ -195,7 +196,10 @@ namespace Yarc
 			return false;
 
 		if (!streamed && count == -1)
-			return false;
+		{
+			this->isNull = true;
+			return true;
+		}
 
 		if (!ParseCRLF(byteStream))
 			return false;
@@ -289,6 +293,7 @@ namespace Yarc
 
 	BlobStringData::BlobStringData()
 	{
+		this->isNull = false;
 	}
 
 	/*virtual*/ BlobStringData::~BlobStringData()
@@ -303,7 +308,10 @@ namespace Yarc
 			return false;
 
 		if (!streamed && count == -1)
-			return false;
+		{
+			this->isNull = true;
+			return true;
+		}
 
 		if (!ParseCRLF(byteStream))
 			return false;

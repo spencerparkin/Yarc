@@ -22,6 +22,10 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) = 0;
 		virtual bool Print(ByteStream* byteStream) = 0;
 
+		// This method is provided for backwards compatibility with RESP1,
+		// and should be preferred over run-time type checking.
+		virtual bool IsNull(void) const { return false; }
+
 	protected:
 
 		static bool ParseDataType(ByteStream* byteStream, ProtocolData*& protocolData);
@@ -58,11 +62,15 @@ namespace Yarc
 		DynamicArray<uint8_t>& GetByteArray(void);
 		const DynamicArray<uint8_t>& GetByteArray(void) const;
 
+		virtual bool IsNull(void) const override { return this->isNull; }
+
 	protected:
 
 		bool ParseByteArrayData(ByteStream* byteStream, uint32_t count);
 
 		DynamicArray<uint8_t> byteArray;
+
+		bool isNull;
 	};
 
 	class ChunkData : public BlobStringData
@@ -209,6 +217,8 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) override;
+
+		virtual bool IsNull(void) { return true; }
 	};
 
 	class AggregateData : public ProtocolData
@@ -237,10 +247,14 @@ namespace Yarc
 		const ProtocolData* GetElement(uint32_t i) const;
 		bool SetElement(uint32_t i, ProtocolData* protocolData);
 
+		virtual bool IsNull(void) const override { return this->isNull; }
+
 	protected:
 
 		typedef DynamicArray<ProtocolData*> NestedDataArray;
 		NestedDataArray nestedDataArray;
+
+		bool isNull;
 	};
 
 	class MapData : public AggregateData
