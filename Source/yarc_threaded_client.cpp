@@ -78,7 +78,11 @@ namespace Yarc
 			if (!this->client->Update())
 				break;
 
-			//...
+			// Okay, we can't pull from mutex-protected lists here,
+			// because we're blocked inside the update.  Maybe this
+			// entire approach just won't work.  If so, take a step
+			// back, and think about how threading might work inside
+			// the SimpleClient.
 		}
 
 		return 0;

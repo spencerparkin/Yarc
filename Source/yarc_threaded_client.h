@@ -1,7 +1,7 @@
 #pragma once
 
 #include "yarc_client_iface.h"
-#include "yarc_reducer.h"
+#include "yarc_linked_list.h"
 #include <WS2tcpip.h>
 #include <Windows.h>
 
@@ -44,8 +44,6 @@ namespace Yarc
 		bool threadExitSignaled;
 		HANDLE threadHandle;
 
-		// TODO: Own mutices for send and receive lists.
-
-		ReductionObjectList requestList, responseList;
+		// Urf...
 	};
 }
