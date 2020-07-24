@@ -161,6 +161,7 @@ namespace Yarc
 		if (!this->IsConnected())
 			return false;
 
+		// TODO: Move the production of server data to a thread.
 		ProtocolData* serverData = nullptr;
 		if (!ProtocolData::ParseTree(this->socketStream, serverData))
 			return false;
