@@ -50,24 +50,18 @@ namespace Yarc
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) = 0;
 		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true);
 
-		// These routines are used in conjunction with the pub-sub mechanism.  The client can be
+		// This callback is used in conjunction with the pub-sub mechanism.  The client can be
 		// thought of as always in pipelining mode.  However, when it receives a message from the
-		// server (which is not in response to any request), then it is dispatched to the appropriate
-		// subscription callback, if one has been registered.  Note that while you can still send
+		// server (which is not in response to any request), then it is dispatched to this
+		// callback, if one has been registered.  Note that while you can still send
 		// requests and get responses when susbcribed to one or more channels, you are limited to
 		// only being able to issue the (P)SUBSCRIBE, (P)UNSUBSCRIBE, and QUIT commands.  This seems
 		// to me to be somewhat of a limitation of Redis, but perhaps there is a good reason for it.
 		// In any case, you can use multiple clients to overcome the limitation.
-		virtual bool RegisterSubscriptionCallback(const char* channel, Callback callback);
-		virtual bool UnregisterSubscriptionCallback(const char* channel);
-
-		// This is used internally to dispatch messages for the pub-sub mechanism, but could also
-		// be overridden by users of the client for their own custom handling.
-		virtual bool MessageHandler(const ProtocolData* messageData);
+		virtual bool RegisterPushDataCallback(Callback givenPushDataCallback);
 
 	protected:
 
-		typedef std::map<std::string, Callback> CallbackMap;
-		CallbackMap* callbackMap;
+		Callback* pushDataCallback;
 	};
 }

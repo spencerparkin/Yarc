@@ -5,12 +5,12 @@ namespace Yarc
 {
 	ClientInterface::ClientInterface()
 	{
-		this->callbackMap = new CallbackMap();
+		this->pushDataCallback = new Callback;
 	}
 
 	/*virtual*/ ClientInterface::~ClientInterface()
 	{
-		delete this->callbackMap;
+		delete this->pushDataCallback;
 	}
 
 	/*virtual*/ bool ClientInterface::MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData /*= true*/)
@@ -53,29 +53,9 @@ namespace Yarc
 		return requestServiced;
 	}
 
-	/*virtual*/ bool ClientInterface::RegisterSubscriptionCallback(const char* channel, Callback callback)
+	/*virtual*/ bool ClientInterface::RegisterPushDataCallback(Callback givenPushDataCallback)
 	{
-		this->UnregisterSubscriptionCallback(channel);
-		std::string key = channel;
-		this->callbackMap->insert(std::pair<std::string, Callback>(key, callback));
+		*this->pushDataCallback = givenPushDataCallback;
 		return true;
-	}
-
-	/*virtual*/ bool ClientInterface::UnregisterSubscriptionCallback(const char* channel)
-	{
-		std::string key = channel;
-		CallbackMap::iterator iter = this->callbackMap->find(key);
-		if (iter != this->callbackMap->end())
-			this->callbackMap->erase(iter);
-
-		return true;
-	}
-
-	/*virtual*/ bool ClientInterface::MessageHandler(const ProtocolData* messageData)
-	{
-		// TODO: Try to cast given message data to a PushData, then dispatch callback
-		//       we find in our callbackMap member.
-
-		return false;
 	}
 }

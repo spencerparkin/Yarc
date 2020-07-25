@@ -44,6 +44,9 @@ namespace Yarc
 
 		bool exitSignaled;
 
+		std::string GetAddress() { return *this->address; }
+		uint16_t GetPort() { return this->port; }
+
 	protected:
 
 		SOCKET socket;

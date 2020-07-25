@@ -524,7 +524,7 @@ namespace Yarc
 							if (stringData)
 							{
 								std::string keyBuffer = stringData->GetValue();
-								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", this->destinationNode->client->GetAddress(), this->destinationNode->client->GetPort(), keyBuffer.c_str());
+								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", this->destinationNode->client->GetSocketStream()->GetAddress().c_str(), this->destinationNode->client->GetSocketStream()->GetPort(), keyBuffer.c_str());
 
 								ProtocolData* migrateKeysResponseData = nullptr;
 								if (!this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), migrateKeysResponseData))

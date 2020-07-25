@@ -1,5 +1,6 @@
 #include "yarc_cluster_client.h"
 #include "yarc_protocol_data.h"
+#include "yarc_byte_stream.h"
 
 namespace Yarc
 {
@@ -35,7 +36,7 @@ namespace Yarc
 		if (this->IsConnected())
 			return false;
 
-		ClusterNode* clusterNode = new ClusterNode(this);
+		ClusterNode* clusterNode = new ClusterNode();
 		if (!clusterNode->client->Connect(address, port, timeoutSeconds))
 		{
 			delete clusterNode;
@@ -273,7 +274,7 @@ namespace Yarc
 						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress.c_str(), port);
 						if (!clusterNode)
 						{
-							clusterNode = new ClusterNode(this);
+							clusterNode = new ClusterNode();
 							if (clusterNode->client->Connect(ipAddress.c_str(), port))
 								this->clusterNodeList->AddTail(clusterNode);
 							else
@@ -311,20 +312,17 @@ namespace Yarc
 		}
 	}
 
-	//----------------------------------------- NodeClient -----------------------------------------
-
-	ClusterClient::NodeClient::NodeClient(ClusterClient* givenClusterClient)
+	/*virtual*/ bool ClusterClient::RegisterPushDataCallback(Callback givenPushDataCallback)
 	{
-		this->clusterClient = givenClusterClient;
-	}
+		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
+		{
+			ClusterNode* clusterNode = (ClusterNode*)node->value;
+			clusterNode->client->RegisterPushDataCallback([=](const ProtocolData* messageData) -> bool {
+				return givenPushDataCallback(messageData);
+			});
+		}
 
-	/*virtual*/ ClusterClient::NodeClient::~NodeClient()
-	{
-	}
-
-	/*virtual*/ bool ClusterClient::NodeClient::MessageHandler(const ProtocolData* messageData)
-	{
-		return this->clusterClient->MessageHandler(messageData);
+		return true;
 	}
 
 	//----------------------------------------- Request -----------------------------------------
@@ -559,9 +557,9 @@ namespace Yarc
 
 	//----------------------------------------- ClusterNode -----------------------------------------
 
-	ClusterClient::ClusterNode::ClusterNode(ClusterClient* givenClusterClient)
+	ClusterClient::ClusterNode::ClusterNode()
 	{
-		this->client = new NodeClient(givenClusterClient);
+		this->client = new SimpleClient();
 	}
 
 	/*virtual*/ ClusterClient::ClusterNode::~ClusterNode()
@@ -629,8 +627,8 @@ namespace Yarc
 		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 		{
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
-			if (::strcmp(clusterNode->client->GetAddress(), ipAddress) == 0)
-				if (clusterNode->client->GetPort() == port)
+			if (::strcmp(clusterNode->client->GetSocketStream()->GetAddress().c_str(), ipAddress) == 0)
+				if (clusterNode->client->GetSocketStream()->GetPort() == port)
 					return clusterNode;
 		}
 

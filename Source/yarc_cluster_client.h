@@ -8,11 +8,6 @@
 
 namespace Yarc
 {
-	// TODO: For large clusters, it might not be practical to maintain a
-	//       connection to all master nodes all the time.  Consider lazy-connecting
-	//       them on-demand, then expiring those connections if they're idle for
-	//       too long.  For now, just re-test the client as is and get it working.
-
 	// Note that in contrast to the simple client, requests made here asynchronously are
 	// not guarenteed to be responded to in the same order they were made.  They should,
 	// however, be fulfilled in the same order they were made.
@@ -34,6 +29,7 @@ namespace Yarc
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool RegisterPushDataCallback(Callback givenPushDataCallback) override;
 
 	private:
 
@@ -47,17 +43,6 @@ namespace Yarc
 		};
 
 		State state;
-
-		class NodeClient : public SimpleClient
-		{
-		public:
-			NodeClient(ClusterClient* givenClusterClient);
-			virtual ~NodeClient();
-
-			virtual bool MessageHandler(const ProtocolData* messageData) override;
-
-			ClusterClient* clusterClient;
-		};
 
 		class ClusterNode;
 
@@ -120,14 +105,14 @@ namespace Yarc
 		{
 		public:
 
-			ClusterNode(ClusterClient* givenClusterClient);
+			ClusterNode();
 			virtual ~ClusterNode();
 
 			virtual ReductionResult Reduce() override;
 
 			bool HandlesSlot(uint16_t slot) const;
 
-			NodeClient* client;
+			SimpleClient* client;
 			
 			struct SlotRange
 			{
