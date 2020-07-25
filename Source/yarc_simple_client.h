@@ -6,7 +6,7 @@
 #include "yarc_api.h"
 #include "yarc_client_iface.h"
 #include "yarc_linked_list.h"
-#include "yarc_byte_stream.h"
+#include "yarc_socket_stream.h"
 #include "yarc_thread_safe_list.h"
 
 namespace Yarc
