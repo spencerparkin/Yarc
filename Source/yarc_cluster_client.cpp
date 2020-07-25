@@ -51,8 +51,8 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::Disconnect()
 	{
-		DeleteList<ReductionObject>(*this->clusterNodeList);
-		DeleteList<ReductionObject>(*this->requestList);
+		DeleteList<ReductionObject*>(*this->clusterNodeList);
+		DeleteList<ReductionObject*>(*this->requestList);
 
 		this->state = STATE_NONE;
 

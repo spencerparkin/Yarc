@@ -43,6 +43,7 @@
     <ClInclude Include="Source\yarc_api.h" />
     <ClInclude Include="Source\yarc_linked_list.h" />
     <ClInclude Include="Source\yarc_byte_stream.h" />
+    <ClInclude Include="Source\yarc_thread_safe_list.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

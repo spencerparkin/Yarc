@@ -1,13 +1,13 @@
 #pragma once
 
-#include "yarc_api.h"
-#include "yarc_client_iface.h"
-#include "yarc_linked_list.h"
-#include "yarc_reducer.h"
-#include "yarc_byte_stream.h"
 #include <stdint.h>
 #include <WS2tcpip.h>
 #include <string>
+#include "yarc_api.h"
+#include "yarc_client_iface.h"
+#include "yarc_linked_list.h"
+#include "yarc_byte_stream.h"
+#include "yarc_thread_safe_list.h"
 
 namespace Yarc
 {
@@ -44,6 +44,17 @@ namespace Yarc
 		void EnqueueCallback(Callback callback);
 		Callback DequeueCallback();
 
+		static DWORD __stdcall ThreadMain(LPVOID param);
+
+		DWORD ThreadFunc(void);
+
 		SocketStream* socketStream;
+
+		typedef ThreadSafeList<ProtocolData*> ProtocolDataList;
+
+		ProtocolDataList* responseDataList;
+		ProtocolDataList* messageDataList;
+
+		HANDLE threadHandle;
 	};
 }

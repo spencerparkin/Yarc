@@ -161,7 +161,10 @@ namespace Yarc
 		while (true)
 		{
 			if (this->exitSignaled)
+			{
+				this->Disconnect();
 				return false;
+			}
 
 			fd_set readSet, excSet;
 			FD_ZERO(&readSet);

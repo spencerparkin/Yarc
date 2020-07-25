@@ -10,12 +10,19 @@ namespace Yarc
 	{
 		this->socketStream = nullptr;
 		this->callbackList = new CallbackList();
+		this->responseDataList = new ProtocolDataList();
+		this->messageDataList = new ProtocolDataList();
+		this->threadHandle = nullptr;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
-		delete this->callbackList;
 		delete this->socketStream;
+		delete this->callbackList;
+		this->responseDataList->Delete();
+		this->messageDataList->Delete();
+		delete this->responseDataList;
+		delete this->messageDataList;
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -30,21 +37,46 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
 	{
-		if (this->IsConnected())
-			return false;
+		bool success = true;
 
-		this->Disconnect();
+		try
+		{
+			if (this->IsConnected())
+				throw new InternalException();
 
-		if (!this->socketStream->Connect(address, port, timeoutSeconds))
-			return false;
+			if (!this->socketStream)
+			{
+				this->socketStream = new SocketStream();
+				if (!this->socketStream->Connect(address, port, timeoutSeconds))
+					throw new InternalException();
+			}
 
-		//...
+			if (this->threadHandle == nullptr)
+			{
+				this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
+				if (this->threadHandle == nullptr)
+					throw new InternalException();
+			}
+		}
+		catch (InternalException* exc)
+		{
+			delete exc;
+			this->Disconnect();
+			success = false;
+		}
 
-		return true;
+		return success;
 	}
 
 	/*virtual*/ bool SimpleClient::Disconnect()
 	{
+		if (this->threadHandle != nullptr)
+		{
+			this->socketStream->exitSignaled = true;
+			::WaitForSingleObject(this->threadHandle, INFINITE);
+			this->threadHandle = nullptr;
+		}
+
 		if (this->socketStream)
 		{
 			this->socketStream->Disconnect();
@@ -62,12 +94,48 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		if (!this->IsConnected())
-			return false;
+		if (this->responseDataList->GetCount() > 0)
+		{
+			ProtocolData* responseData = this->responseDataList->RemoveHead();
+			Callback callback = this->DequeueCallback();
+			if (!callback || callback(responseData))
+				delete responseData;
+		}
 
-		// TODO: Generate server data on a thread.  Pull for and dispatch responses/messages on this thread.
+		if (this->messageDataList->GetCount() > 0)
+		{
+			ProtocolData* messageData = this->messageDataList->RemoveHead();
+			if (!*this->pushDataCallback || (*this->pushDataCallback)(messageData))
+				delete messageData;
+		}
 
 		return true;
+	}
+
+	/*static*/ DWORD __stdcall SimpleClient::ThreadMain(LPVOID param)
+	{
+		SimpleClient* client = (SimpleClient*)param;
+		return client->ThreadFunc();
+	}
+
+	DWORD SimpleClient::ThreadFunc(void)
+	{
+		while (this->IsConnected())
+		{
+			ProtocolData* serverData = nullptr;
+			if (!ProtocolData::ParseTree(this->socketStream, serverData))
+				break;
+
+			if (serverData)
+			{
+				if (Cast<PushData>(serverData))
+					this->messageDataList->AddTail(serverData);
+				else
+					this->responseDataList->AddTail(serverData);
+			}
+		}
+
+		return 0;
 	}
 
 	/*virtual*/ bool SimpleClient::Flush(void)

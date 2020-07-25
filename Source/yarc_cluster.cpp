@@ -25,7 +25,7 @@ namespace Yarc
 		delete this->redisBinDir;
 		delete this->clusterRootDir;
 		delete this->nodeArray;
-		DeleteList<ReductionObject>(*this->migrationList);
+		DeleteList<ReductionObject*>(*this->migrationList);
 		delete this->migrationList;
 	}
 

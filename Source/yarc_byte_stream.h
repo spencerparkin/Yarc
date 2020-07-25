@@ -42,7 +42,7 @@ namespace Yarc
 		virtual bool ReadBuffer(uint8_t* buffer, uint32_t& bufferSize) override;
 		virtual bool WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize) override;
 
-		bool exitSignaled;
+		volatile bool exitSignaled;
 
 		std::string GetAddress() { return *this->address; }
 		uint16_t GetPort() { return this->port; }

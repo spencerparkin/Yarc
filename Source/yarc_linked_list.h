@@ -145,12 +145,12 @@ namespace Yarc
 	};
 
 	template<typename T>
-	void DeleteList(LinkedList<T*>& list)
+	void DeleteList(LinkedList<T>& list)
 	{
 		while (list.GetCount() > 0)
 		{
 			auto node = list.GetHead();
-			T* value = node->value;
+			T value = node->value;
 			delete value;
 			list.Remove(node);
 		}

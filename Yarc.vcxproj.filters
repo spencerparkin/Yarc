@@ -75,6 +75,9 @@
     <ClInclude Include="Source\yarc_byte_stream.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\yarc_thread_safe_list.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
