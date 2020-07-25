@@ -34,8 +34,6 @@ namespace Yarc
 
 		// In the synchronous case, the caller takes ownership of the response data.
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.
-		// The order responses are received is left undefined, but the fulfillment of requests
-		// is defined to always be in the same order that requests were made.
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) = 0;
 		virtual bool MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData = true);
 
