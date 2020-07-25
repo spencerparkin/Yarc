@@ -134,8 +134,28 @@ namespace Yarc
 		return true;
 	}
 
+	bool SocketStream::ResolveConnection(void)
+	{
+		while (!this->IsConnected())
+		{
+			if (this->exitSignaled)
+				return false;
+
+			if (!this->connectionResolverFunc)
+				return false;
+
+			if (!this->connectionResolverFunc(this))
+				return false;
+		}
+
+		return true;
+	}
+
 	/*virtual*/ bool SocketStream::ReadBuffer(uint8_t* buffer, uint32_t& bufferSize)
 	{
+		if (!this->ResolveConnection())
+			return false;
+
 		while (true)
 		{
 			if (this->exitSignaled)
@@ -183,6 +203,9 @@ namespace Yarc
 
 	/*virtual*/ bool SocketStream::WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize)
 	{
+		if (!this->ResolveConnection())
+			return false;
+
 		uint32_t writeCount = ::send(this->socket, (const char*)buffer, bufferSize, 0);
 		if (writeCount == SOCKET_ERROR)
 		{
