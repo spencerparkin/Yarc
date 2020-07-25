@@ -3,13 +3,20 @@
 
 namespace Yarc
 {
-	ClientInterface::ClientInterface()
+	//------------------------- ClientInterface -------------------------
+
+	ClientInterface::ClientInterface(ConnectionConfig* givenConnectionConfig /*= nullptr*/)
 	{
+		if (!givenConnectionConfig)
+			givenConnectionConfig = ConnectionConfig::Create();
+
+		this->connectionConfig = givenConnectionConfig;
 		this->pushDataCallback = new Callback;
 	}
 
 	/*virtual*/ ClientInterface::~ClientInterface()
 	{
+		delete this->connectionConfig;
 		delete this->pushDataCallback;
 	}
 
@@ -28,8 +35,9 @@ namespace Yarc
 
 		// Note that by blocking here, we ensure that we don't starve socket
 		// threads that need to run for us to get the data from the server.
-		while (!requestServiced && this->IsConnected())
-			this->Update();
+		while (!requestServiced)
+			if (!this->Update())
+				return false;
 
 		return requestServiced;
 	}
@@ -47,8 +55,9 @@ namespace Yarc
 		if (!this->MakeTransactionRequestAsync(requestDataArray, callback, deleteData))
 			return false;
 
-		while (!requestServiced && this->IsConnected())
-			this->Update();
+		while (!requestServiced)
+			if (!this->Update())
+				return false;
 
 		return requestServiced;
 	}
@@ -57,5 +66,39 @@ namespace Yarc
 	{
 		*this->pushDataCallback = givenPushDataCallback;
 		return true;
+	}
+
+	//------------------------- ClientInterface::ConnectionConfig -------------------------
+
+	ClientInterface::ConnectionConfig::ConnectionConfig()
+	{
+		this->address = new std::string;
+		this->port = 6379;
+		this->connectionTimeoutSeconds = -1.0;
+		this->maxConnectionIdleTimeSeconds = 5.0 * 60.0;
+		this->disposition = Disposition::NORMAL;
+	}
+
+	/*virtual*/ ClientInterface::ConnectionConfig::~ConnectionConfig()
+	{
+		delete this->address;
+	}
+
+	/*static*/ ClientInterface::ConnectionConfig* ClientInterface::ConnectionConfig::Create(void)
+	{
+		return new ConnectionConfig();
+	}
+
+	ClientInterface::ConnectionConfig* ClientInterface::ConnectionConfig::Clone(void)
+	{
+		ConnectionConfig* config = new ConnectionConfig();
+
+		*config->address = *this->address;
+		config->port = this->port;
+		config->connectionTimeoutSeconds = this->connectionTimeoutSeconds;
+		config->maxConnectionIdleTimeSeconds = this->maxConnectionIdleTimeSeconds;
+		config->disposition = this->disposition;
+
+		return config;
 	}
 }

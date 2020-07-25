@@ -15,16 +15,13 @@ namespace Yarc
 	{
 	public:
 		
-		ClusterClient();
+		ClusterClient(ConnectionConfig* givenConnectionConfig = nullptr);
 		virtual ~ClusterClient();
 
 		// When used as a DLL, these ensure that the client is allocated and freed in the proper heap.
 		static ClusterClient* Create();
 		static void Destroy(ClusterClient* client);
 
-		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) override;
-		virtual bool Disconnect() override;
-		virtual bool IsConnected() override;
 		virtual bool Update(void) override;
 		virtual bool Flush(void) override;
 		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
@@ -35,7 +32,6 @@ namespace Yarc
 
 		enum State
 		{
-			STATE_NONE,
 			STATE_CLUSTER_CONFIG_DIRTY,
 			STATE_CLUSTER_CONFIG_QUERY_PENDING,
 			STATE_CLUSTER_CONFIG_STABLE,
@@ -105,7 +101,7 @@ namespace Yarc
 		{
 		public:
 
-			ClusterNode();
+			ClusterNode(ConnectionConfig* connectionConfig);
 			virtual ~ClusterNode();
 
 			virtual ReductionResult Reduce() override;

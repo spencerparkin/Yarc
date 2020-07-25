@@ -14,6 +14,7 @@ namespace Yarc
 		this->address = new std::string();
 		this->port = 0;
 		this->exitSignaled = false;
+		this->lastSocketReadWriteTime = 0;
 	}
 
 	/*virtual*/ SocketStream::~SocketStream()
@@ -198,6 +199,7 @@ namespace Yarc
 		}
 
 		bufferSize = readCount;
+		this->lastSocketReadWriteTime = ::clock();
 		return true;
 	}
 
@@ -214,6 +216,7 @@ namespace Yarc
 		}
 
 		bufferSize = writeCount;
+		this->lastSocketReadWriteTime = ::clock();
 		return true;
 	}
 }

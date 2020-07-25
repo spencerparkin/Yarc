@@ -103,13 +103,14 @@ namespace Yarc
 				if (!::CreateProcessW(nullptr, (LPWSTR)command.c_str(), nullptr, nullptr, FALSE, 0, nullptr, nodeFolderPathCStr, &startupInfo, &procInfo))
 					return false;
 
+				ClientInterface::ConnectionConfig* connectionConfig = new ClientInterface::ConnectionConfig();
+				*connectionConfig->address = "127.0.0.1";
+				connectionConfig->port = port;
 				Node node;
 				node.processHandle = (uint64_t)procInfo.hProcess;
-				node.client = new Yarc::SimpleClient();
+				node.client = new SimpleClient(connectionConfig);
 				this->nodeArray->SetCount(i + 1);
 				(*this->nodeArray)[i] = node;
-				if (!node.client->Connect("127.0.0.1", port))
-					return false;
 			}
 
 			//
@@ -272,11 +273,8 @@ namespace Yarc
 			for (uint32_t i = 0; i < this->nodeArray->GetCount(); i++)
 			{
 				Node& node = (*this->nodeArray)[i];
-				if (node.client->IsConnected())
-				{
-					commandData = ProtocolData::ParseCommand("SHUTDOWN NOSAVE");
-					node.client->MakeRequestAsync(commandData, [](const ProtocolData*) { return true; });
-				}
+				commandData = ProtocolData::ParseCommand("SHUTDOWN NOSAVE");
+				node.client->MakeRequestAsync(commandData, [](const ProtocolData*) { return true; });
 			}
 
 			this->FlushAllNodes();

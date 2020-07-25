@@ -4,6 +4,7 @@
 #include <WS2tcpip.h>
 #include <string>
 #include <functional>
+#include <time.h>
 
 namespace Yarc
 {
@@ -29,6 +30,8 @@ namespace Yarc
 		std::string GetAddress() { return *this->address; }
 		uint16_t GetPort() { return this->port; }
 
+		clock_t GetLastSocketReadWriteTime() { return this->lastSocketReadWriteTime; }
+
 	protected:
 
 		bool ResolveConnection(void);
@@ -36,5 +39,6 @@ namespace Yarc
 		SOCKET socket;
 		std::string* address;
 		uint16_t port;
+		clock_t lastSocketReadWriteTime;
 	};
 }

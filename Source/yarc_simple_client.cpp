@@ -6,20 +6,26 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient()
+	SimpleClient::SimpleClient(ConnectionConfig* givenConnectionConfig /*= nullptr*/) : ClientInterface(givenConnectionConfig)
 	{
-		this->socketStream = nullptr;
+		this->socketStream = new SocketStream();
 		this->callbackList = new CallbackList();
 		this->serverDataList = new ProtocolDataList();
 		this->threadHandle = nullptr;
+		this->socketStream->connectionResolverFunc = [=](SocketStream*) -> bool {
+			return this->SetupSocketConnectionAndThread();
+		};
+		::InitializeCriticalSection(&this->manageConnectionMutex);
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
+		this->ShutDownSocketConnectionAndThread();
 		delete this->socketStream;
 		delete this->callbackList;
 		this->serverDataList->Delete();
 		delete this->serverDataList;
+		::DeleteCriticalSection(&this->manageConnectionMutex);
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -32,65 +38,89 @@ namespace Yarc
 		delete client;
 	}
 
-	/*virtual*/ bool SimpleClient::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
+	// This is called when someone wants to read or write on the socket stream.
+	// Sometimes this is called from the main thread; sometimes from the socket thread.
+	// In any case, we need to protect against race conditions here with a mutex.
+	/*virtual*/ bool SimpleClient::SetupSocketConnectionAndThread(void)
 	{
-		bool success = true;
+		::EnterCriticalSection(&this->manageConnectionMutex);
 
-		try
+		if (!this->socketStream->IsConnected())
 		{
-			if (this->IsConnected())
-				throw new InternalException();
+			const char* address = this->connectionConfig->address->c_str();
+			uint16_t port = this->connectionConfig->port;
+			double timeoutSeconds = this->connectionConfig->connectionTimeoutSeconds;
 
-			if (!this->socketStream)
-			{
-				this->socketStream = new SocketStream();
-				if (!this->socketStream->Connect(address, port, timeoutSeconds))
-					throw new InternalException();
-			}
-
-			if (this->threadHandle == nullptr)
-			{
-				this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
-				if (this->threadHandle == nullptr)
-					throw new InternalException();
-			}
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			this->Disconnect();
-			success = false;
+			this->socketStream->Connect(address, port, timeoutSeconds);
 		}
 
-		return success;
+		if (!this->threadHandle)
+		{
+			this->socketStream->exitSignaled = false;
+			this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
+		}
+
+		::LeaveCriticalSection(&this->manageConnectionMutex);
+
+		return this->socketStream->IsConnected() && this->threadHandle != nullptr;
 	}
 
-	/*virtual*/ bool SimpleClient::Disconnect()
+	/*virtual*/ bool SimpleClient::ShutDownSocketConnectionAndThread(void)
 	{
-		if (this->threadHandle != nullptr)
+		::EnterCriticalSection(&this->manageConnectionMutex);
+
+		if (this->socketStream->IsConnected())
+		{
+			this->socketStream->Disconnect();
+		}
+
+		if (this->threadHandle)
 		{
 			this->socketStream->exitSignaled = true;
 			::WaitForSingleObject(this->threadHandle, INFINITE);
 			this->threadHandle = nullptr;
 		}
 
-		if (this->socketStream)
-		{
-			this->socketStream->Disconnect();
-			delete this->socketStream;
-			this->socketStream = nullptr;
-		}
+		::LeaveCriticalSection(&this->manageConnectionMutex);
 
-		return true;
-	}
-
-	/*virtual*/ bool SimpleClient::IsConnected()
-	{
-		return this->socketStream ? this->socketStream->IsConnected() : false;
+		return !this->socketStream->IsConnected() && this->threadHandle == nullptr;
 	}
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
+		if (this->socketStream->exitSignaled)
+			return false;
+
+		switch(this->connectionConfig->disposition)
+		{
+			case ConnectionConfig::Disposition::NORMAL:
+			{
+				break;
+			}
+			case ConnectionConfig::Disposition::LAZY:
+			{
+				clock_t lastSocketReadWriteTime = this->socketStream->GetLastSocketReadWriteTime();
+				clock_t currentTime = ::clock();
+				clock_t socketIdleTime = currentTime - lastSocketReadWriteTime;
+				double socketIdleTimeSeconds = double(socketIdleTime) / double(CLOCKS_PER_SEC);
+				if (socketIdleTimeSeconds >= this->connectionConfig->maxConnectionIdleTimeSeconds)
+				{
+					this->ShutDownSocketConnectionAndThread();
+				}
+				
+				break;
+			}
+			case ConnectionConfig::Disposition::PERSISTENT:
+			{
+				if (!this->socketStream->IsConnected() || !this->threadHandle)
+				{
+					this->SetupSocketConnectionAndThread();
+				}
+
+				break;
+			}
+		}
+
 		while (this->serverDataList->GetCount() > 0)
 		{
 			ProtocolData* serverData = this->serverDataList->RemoveHead();
@@ -138,7 +168,7 @@ namespace Yarc
 
 	DWORD SimpleClient::ThreadFunc(void)
 	{
-		while (this->IsConnected())
+		while (!this->socketStream->exitSignaled)
 		{
 			ProtocolData* serverData = nullptr;
 			if (!ProtocolData::ParseTree(this->socketStream, serverData))
@@ -153,11 +183,11 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Flush(void)
 	{
-		while (this->callbackList->GetCount() > 0 && this->IsConnected())
+		while (this->callbackList->GetCount() > 0)
 			if (!this->Update())
-				break;
+				return false;
 
-		return this->IsConnected();
+		return true;
 	}
 
 	void SimpleClient::EnqueueCallback(Callback callback)
@@ -174,9 +204,6 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		if (!this->IsConnected())
-			return false;
-
 		if (!ProtocolData::PrintTree(this->socketStream, requestData))
 			return false;
 

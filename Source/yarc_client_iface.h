@@ -13,19 +13,39 @@ namespace Yarc
 	class YARC_API ClientInterface
 	{
 	public:
-		ClientInterface();
+
+		class ConnectionConfig
+		{
+		public:
+			ConnectionConfig();
+			virtual ~ConnectionConfig();
+
+			static ConnectionConfig* Create(void);
+
+			ConnectionConfig* Clone(void);
+
+			enum class Disposition
+			{
+				NORMAL,
+				PERSISTENT,
+				LAZY
+			};
+
+			std::string* address;
+			uint16_t port;
+			Disposition disposition;
+			double maxConnectionIdleTimeSeconds;
+			double connectionTimeoutSeconds;
+		};
+
+		ClientInterface(ConnectionConfig* givenConnectionConfig = nullptr);
 		virtual ~ClientInterface();
 
 		// The return value indicates whether the callback takes ownership of the memory.
 		typedef std::function<bool(const ProtocolData* responseData)> Callback;
 
-		// These should be pretty self-explanatory.
-		virtual bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0) = 0;
-		virtual bool Disconnect() = 0;
-		virtual bool IsConnected() = 0;
-
 		// This should be called in the same thread where requests are made; it is where
-		// callbacks will be called.
+		// callbacks will be called and where the connection is managed.
 		virtual bool Update(void) = 0;
 
 		// Wait for all pending requests to get responses.
@@ -61,5 +81,7 @@ namespace Yarc
 	protected:
 
 		Callback* pushDataCallback;
+
+		ConnectionConfig* connectionConfig;
 	};
 }

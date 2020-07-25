@@ -6,17 +6,16 @@ namespace Yarc
 {
 	//----------------------------------------- ClusterClient -----------------------------------------
 
-	ClusterClient::ClusterClient()
+	ClusterClient::ClusterClient(ConnectionConfig* givenConnectionConfig /*= nullptr*/) : ClientInterface(givenConnectionConfig)
 	{
 		this->clusterNodeList = new ReductionObjectList();
 		this->requestList = new ReductionObjectList();
-		this->state = STATE_NONE;
+		this->state = STATE_CLUSTER_CONFIG_DIRTY;
 		this->retryClusterConfigCountdown = 0;
 	}
 
 	/*virtual*/ ClusterClient::~ClusterClient()
 	{
-		this->Disconnect();
 		delete this->clusterNodeList;
 		delete this->requestList;
 	}
@@ -29,46 +28,6 @@ namespace Yarc
 	/*static*/ void ClusterClient::Destroy(ClusterClient* client)
 	{
 		delete client;
-	}
-
-	/*virtual*/ bool ClusterClient::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
-	{
-		if (this->IsConnected())
-			return false;
-
-		ClusterNode* clusterNode = new ClusterNode();
-		if (!clusterNode->client->Connect(address, port, timeoutSeconds))
-		{
-			delete clusterNode;
-			return false;
-		}
-
-		this->clusterNodeList->AddTail(clusterNode);
-		this->state = STATE_CLUSTER_CONFIG_DIRTY;
-
-		return true;
-	}
-
-	/*virtual*/ bool ClusterClient::Disconnect()
-	{
-		DeleteList<ReductionObject*>(*this->clusterNodeList);
-		DeleteList<ReductionObject*>(*this->requestList);
-
-		this->state = STATE_NONE;
-
-		return true;
-	}
-
-	/*virtual*/ bool ClusterClient::IsConnected()
-	{
-		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
-		{
-			ClusterNode* clusterNode = (ClusterNode*)node->value;
-			if (clusterNode->client->IsConnected())
-				return true;
-		}
-
-		return false;
 	}
 
 	void ClusterClient::SignalClusterConfigDirty(void)
@@ -85,6 +44,13 @@ namespace Yarc
 		{
 			case STATE_CLUSTER_CONFIG_DIRTY:
 			{
+				if (this->clusterNodeList->GetCount() == 0)
+				{
+					ConnectionConfig* nodeConnectionConfig = this->connectionConfig->Clone();
+					ClusterNode* clusterNode = new ClusterNode(nodeConnectionConfig);
+					this->clusterNodeList->AddTail(clusterNode);
+				}
+
 				// TODO: Instead of picking a random node, we might choose the node that gave the MOVED error.
 				ClusterNode* clusterNode = this->GetRandomClusterNode();
 				if (clusterNode)
@@ -274,14 +240,11 @@ namespace Yarc
 						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress.c_str(), port);
 						if (!clusterNode)
 						{
-							clusterNode = new ClusterNode();
-							if (clusterNode->client->Connect(ipAddress.c_str(), port))
-								this->clusterNodeList->AddTail(clusterNode);
-							else
-							{
-								delete clusterNode;
-								clusterNode = nullptr;
-							}
+							ConnectionConfig* nodeConnectionConfig = this->connectionConfig->Clone();
+							*nodeConnectionConfig->address = ipAddress;
+							nodeConnectionConfig->port = port;
+							clusterNode = new ClusterNode(nodeConnectionConfig);
+							this->clusterNodeList->AddTail(clusterNode);
 						}
 
 						if (clusterNode)
@@ -302,7 +265,6 @@ namespace Yarc
 				ClusterNode* clusterNode = (ClusterNode*)node->value;
 				if (clusterNode->slotRangeArray.GetCount() == 0)
 				{
-					clusterNode->client->Disconnect();
 					delete clusterNode;
 					this->clusterNodeList->Remove(node);
 				}
@@ -557,9 +519,9 @@ namespace Yarc
 
 	//----------------------------------------- ClusterNode -----------------------------------------
 
-	ClusterClient::ClusterNode::ClusterNode()
+	ClusterClient::ClusterNode::ClusterNode(ConnectionConfig* connectionConfig)
 	{
-		this->client = new SimpleClient();
+		this->client = new SimpleClient(connectionConfig);
 	}
 
 	/*virtual*/ ClusterClient::ClusterNode::~ClusterNode()
@@ -602,8 +564,10 @@ namespace Yarc
 	{
 		this->client->Update();
 
-		if (!this->client->IsConnected())
+#if false
+		if( /* TODO: We detect that the node is gone... */ )
 			return RESULT_DELETE;
+#endif
 
 		return RESULT_NONE;
 	}
