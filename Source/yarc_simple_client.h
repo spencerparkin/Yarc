@@ -13,6 +13,7 @@ namespace Yarc
 {
 	// TODO: Add connection dispositions: normal, persistent or lazy.
 	//       The lazy disposition would make scaling Redis cluster to many nodes more practical.
+	//       Note this may mean removing the connect, disconnect and is-connected functions.
 	class YARC_API SimpleClient : public ClientInterface
 	{
 	public:
