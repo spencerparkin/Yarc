@@ -10,8 +10,7 @@ namespace Yarc
 	{
 		this->socketStream = nullptr;
 		this->callbackList = new CallbackList();
-		this->responseDataList = new ProtocolDataList();
-		this->messageDataList = new ProtocolDataList();
+		this->serverDataList = new ProtocolDataList();
 		this->threadHandle = nullptr;
 	}
 
@@ -19,10 +18,8 @@ namespace Yarc
 	{
 		delete this->socketStream;
 		delete this->callbackList;
-		this->responseDataList->Delete();
-		this->messageDataList->Delete();
-		delete this->responseDataList;
-		delete this->messageDataList;
+		this->serverDataList->Delete();
+		delete this->serverDataList;
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -94,19 +91,40 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		if (this->responseDataList->GetCount() > 0)
+		while (this->serverDataList->GetCount() > 0)
 		{
-			ProtocolData* responseData = this->responseDataList->RemoveHead();
-			Callback callback = this->DequeueCallback();
-			if (!callback || callback(responseData))
-				delete responseData;
-		}
+			ProtocolData* serverData = this->serverDataList->RemoveHead();
+			
+			bool deleteServerData = true;
 
-		if (this->messageDataList->GetCount() > 0)
-		{
-			ProtocolData* messageData = this->messageDataList->RemoveHead();
-			if (!*this->pushDataCallback || (*this->pushDataCallback)(messageData))
-				delete messageData;
+			ProtocolData* messageData = Cast<PushData>(serverData);
+			if (!messageData)
+			{
+				// For backwards compatibility with RESP1, here we check
+				// for the old message structure.
+				const ArrayData* arrayData = Cast<ArrayData>(serverData);
+				if (arrayData && arrayData->GetCount() > 0)
+				{
+					const BlobStringData* blobStringData = Cast<BlobStringData>(arrayData->GetElement(0));
+					if (blobStringData && blobStringData->GetValue() == "messsage")
+						messageData = serverData;
+				}
+			}
+
+			if (messageData)
+			{
+				if (*this->pushDataCallback)
+					deleteServerData = (*this->pushDataCallback)(messageData);
+			}
+			else
+			{
+				Callback callback = this->DequeueCallback();
+				if (callback)
+					deleteServerData = callback(serverData);
+			}
+
+			if (deleteServerData)
+				delete serverData;
 		}
 
 		return true;
@@ -127,12 +145,7 @@ namespace Yarc
 				break;
 
 			if (serverData)
-			{
-				if (Cast<PushData>(serverData))
-					this->messageDataList->AddTail(serverData);
-				else
-					this->responseDataList->AddTail(serverData);
-			}
+				this->serverDataList->AddTail(serverData);
 		}
 
 		return 0;

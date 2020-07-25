@@ -52,8 +52,7 @@ namespace Yarc
 
 		typedef ThreadSafeList<ProtocolData*> ProtocolDataList;
 
-		ProtocolDataList* responseDataList;
-		ProtocolDataList* messageDataList;
+		ProtocolDataList* serverDataList;
 
 		HANDLE threadHandle;
 	};
