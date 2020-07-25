@@ -19,8 +19,8 @@ namespace Yarc
 		bool IsConnected(void);
 		bool Disconnect(void);
 
-		virtual bool ReadBuffer(uint8_t* buffer, uint32_t& bufferSize) override;
-		virtual bool WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize) override;
+		virtual uint32_t ReadBuffer(uint8_t* buffer, uint32_t bufferSize) override;
+		virtual uint32_t WriteBuffer(const uint8_t* buffer, uint32_t bufferSize) override;
 
 		volatile bool exitSignaled;
 

@@ -7,32 +7,8 @@
 #include <string>
 #include <map>
 
-#define YARC_USE_DYNAMIC_CAST
-
 namespace Yarc
 {
-	class ProtocolData;
-
-	template<typename T>
-	inline T* Cast(ProtocolData* protocolData)
-	{
-#if defined YARC_USE_DYNAMIC_CAST
-		return dynamic_cast<T*>(protocolData);
-#else
-		return (protocolData->GetDynamicKind() == T::GetStaticKind()) ? (T*)protocolData : nullptr;
-#endif
-	}
-
-	template<typename T>
-	inline const T* Cast(const ProtocolData* protocolData)
-	{
-#if defined YARC_USE_DYNAMIC_CAST
-		return dynamic_cast<const T*>(protocolData);
-#else
-		return (protocolData->GetDynamicKind() == T::GetStaticKind()) ? (const T*)protocolData : nullptr;
-#endif
-	}
-
 	class ProtocolData
 	{
 	public:
@@ -52,6 +28,8 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) = 0;
 		virtual bool Print(ByteStream* byteStream) const = 0;
 
+		virtual uint8_t DynamicDiscriminant() const = 0;
+
 		// This method is provided for backwards compatibility with RESP1,
 		// and should be preferred over run-time type checking.
 		virtual bool IsNull(void) const { return false; }
@@ -62,12 +40,34 @@ namespace Yarc
 	protected:
 
 		static bool ParseDataType(ByteStream* byteStream, ProtocolData*& protocolData);
+		static bool PrintDataType(ByteStream* byteStream, const ProtocolData* protocolData);
+
 		static bool ParseCount(ByteStream* byteStream, uint32_t& count, bool& streamed);
 		static bool ParseCRLF(ByteStream* byteStream);
 		static bool ParseCRLFTerminatedString(ByteStream* byteStream, std::string& value);
 
 		ProtocolData* attributeData;
 	};
+
+	template<typename T>
+	inline T* Cast(ProtocolData* protocolData)
+	{
+#if defined YARC_USE_DYNAMIC_CAST
+		return dynamic_cast<T*>(protocolData);
+#else
+		return (protocolData->DynamicDiscriminant() == T::StaticDiscriminant()) ? (T*)protocolData : nullptr;
+#endif
+	}
+
+	template<typename T>
+	inline const T* Cast(const ProtocolData* protocolData)
+	{
+#if defined YARC_USE_DYNAMIC_CAST
+		return dynamic_cast<const T*>(protocolData);
+#else
+		return (protocolData->DynamicDiscriminant() == T::StaticDiscriminant()) ? (const T*)protocolData : nullptr;
+#endif
+	}
 
 	class SimpleData : public ProtocolData
 	{
@@ -88,6 +88,9 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
+
+		virtual uint8_t DynamicDiscriminant() const override { return '$'; }
+		static uint8_t StaticDiscriminant() { return '$'; }
 
 		std::string GetValue() const;
 		bool SetValue(const std::string& givenValue);
@@ -116,8 +119,10 @@ namespace Yarc
 		ChunkData();
 		virtual ~ChunkData();
 
+		virtual uint8_t DynamicDiscriminant() const override { return ';'; }
+		static uint8_t StaticDiscriminant() { return ';'; }
+
 		virtual bool Parse(ByteStream* byteStream) override;
-		virtual bool Print(ByteStream* byteStream) const override;
 	};
 
 	class BlobErrorData : public BlobStringData
@@ -127,7 +132,12 @@ namespace Yarc
 		BlobErrorData();
 		virtual ~BlobErrorData();
 
+		virtual uint8_t DynamicDiscriminant() const override { return '!'; }
+		static uint8_t StaticDiscriminant() { return '!'; }
+
 		virtual bool IsError(void) const override { return true; }
+
+		std::string GetErrorCode(void) const;
 	};
 
 	class VerbatimStreamData : public BlobStringData
@@ -136,6 +146,12 @@ namespace Yarc
 
 		VerbatimStreamData();
 		virtual ~VerbatimStreamData();
+
+		virtual uint8_t DynamicDiscriminant() const override { return '='; }
+		static uint8_t StaticDiscriminant() { return '='; }
+
+		std::string GetFormatCode(void) const;
+		std::string GetContent(void) const;
 	};
 
 	class SimpleStringData : public SimpleData
@@ -147,6 +163,9 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
+
+		virtual uint8_t DynamicDiscriminant() const override { return '+'; }
+		static uint8_t StaticDiscriminant() { return '+'; }
 
 		std::string GetValue() const;
 		bool SetValue(const std::string& givenValue);
@@ -163,6 +182,9 @@ namespace Yarc
 		SimpleErrorData();
 		virtual ~SimpleErrorData();
 
+		virtual uint8_t DynamicDiscriminant() const override { return '-'; }
+		static uint8_t StaticDiscriminant() { return '-'; }
+
 		virtual bool IsError(void) const override { return true; }
 
 		std::string GetErrorCode(void) const;
@@ -178,6 +200,9 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
+
+		virtual uint8_t DynamicDiscriminant() const override { return ':'; }
+		static uint8_t StaticDiscriminant() { return ':'; }
 
 		int64_t GetValue() const;
 		bool SetValue(int64_t givenValue);
@@ -198,6 +223,9 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
+		virtual uint8_t DynamicDiscriminant() const override { return ','; }
+		static uint8_t StaticDiscriminant() { return ','; }
+
 		double GetValue() const;
 		bool SetValue(double givenValue);
 
@@ -217,6 +245,9 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
+		virtual uint8_t DynamicDiscriminant() const override { return '#'; }
+		static uint8_t StaticDiscriminant() { return '#'; }
+
 		bool GetValue() const;
 		bool SetValue(bool givenValue);
 
@@ -235,6 +266,9 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
+		virtual uint8_t DynamicDiscriminant() const override { return '<'; }
+		static uint8_t StaticDiscriminant() { return '<'; }
+
 	protected:
 
 		std::string value;		// TODO: Replace with big number type?
@@ -249,6 +283,9 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
+
+		virtual uint8_t DynamicDiscriminant() const override { return '.'; }
+		static uint8_t StaticDiscriminant() { return '.'; }
 	};
 
 	class NullData : public SimpleData
@@ -260,6 +297,9 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
+
+		virtual uint8_t DynamicDiscriminant() const override { return '_'; }
+		static uint8_t StaticDiscriminant() { return '_'; }
 
 		virtual bool IsNull(void) { return true; }
 	};
@@ -282,6 +322,9 @@ namespace Yarc
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
+
+		virtual uint8_t DynamicDiscriminant() const override { return '*'; }
+		static uint8_t StaticDiscriminant() { return '*'; }
 
 		uint32_t GetCount(void) const;
 		bool SetCount(uint32_t count);
@@ -310,6 +353,9 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
+		virtual uint8_t DynamicDiscriminant() const override { return '%'; }
+		static uint8_t StaticDiscriminant() { return '%'; }
+
 		ProtocolData* GetField(const std::string& key);
 		const ProtocolData* Getfield(const std::string& key) const;
 		bool SetField(const std::string& key, ProtocolData* valueData);
@@ -336,6 +382,9 @@ namespace Yarc
 
 		SetData();
 		virtual ~SetData();
+
+		virtual uint8_t DynamicDiscriminant() const override { return '~'; }
+		static uint8_t StaticDiscriminant() { return '~'; }
 	};
 
 	class AttributeData : public MapData
@@ -344,6 +393,9 @@ namespace Yarc
 
 		AttributeData();
 		virtual ~AttributeData();
+
+		virtual uint8_t DynamicDiscriminant() const override { return '|'; }
+		static uint8_t StaticDiscriminant() { return '|'; }
 	};
 
 	class PushData : public ArrayData
@@ -352,5 +404,8 @@ namespace Yarc
 
 		PushData();
 		virtual ~PushData();
+
+		virtual uint8_t DynamicDiscriminant() const override { return '>'; }
+		static uint8_t StaticDiscriminant() { return '>'; }
 	};
 }

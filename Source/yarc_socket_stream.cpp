@@ -152,17 +152,17 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool SocketStream::ReadBuffer(uint8_t* buffer, uint32_t& bufferSize)
+	/*virtual*/ uint32_t SocketStream::ReadBuffer(uint8_t* buffer, uint32_t bufferSize)
 	{
 		if (!this->ResolveConnection())
-			return false;
+			return 0;
 
 		while (true)
 		{
 			if (this->exitSignaled)
 			{
 				this->Disconnect();
-				return false;
+				return 0;
 			}
 
 			fd_set readSet, excSet;
@@ -195,28 +195,26 @@ namespace Yarc
 		if (readCount == SOCKET_ERROR)
 		{
 			this->socket = INVALID_SOCKET;
-			return false;
+			return 0;
 		}
 
-		bufferSize = readCount;
 		this->lastSocketReadWriteTime = ::clock();
-		return true;
+		return readCount;
 	}
 
-	/*virtual*/ bool SocketStream::WriteBuffer(const uint8_t* buffer, uint32_t& bufferSize)
+	/*virtual*/ uint32_t SocketStream::WriteBuffer(const uint8_t* buffer, uint32_t bufferSize)
 	{
 		if (!this->ResolveConnection())
-			return false;
+			return 0;
 
 		uint32_t writeCount = ::send(this->socket, (const char*)buffer, bufferSize, 0);
 		if (writeCount == SOCKET_ERROR)
 		{
 			this->socket = INVALID_SOCKET;
-			return false;
+			return 0;
 		}
 
-		bufferSize = writeCount;
 		this->lastSocketReadWriteTime = ::clock();
-		return true;
+		return writeCount;
 	}
 }

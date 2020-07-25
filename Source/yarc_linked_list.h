@@ -60,6 +60,9 @@ namespace Yarc
 			Node* GetNext() { return this->next; }
 			Node* GetPrev() { return this->prev; }
 
+			const Node* GetNext() const { return this->next; }
+			const Node* GetPrev() const { return this->prev; }
+
 			bool* deleteFlag;
 
 		private:
@@ -134,6 +137,9 @@ namespace Yarc
 
 		Node* GetHead() { return this->head; }
 		Node* GetTail() { return this->tail; }
+
+		const Node* GetHead() const { return this->head; }
+		const Node* GetTail() const { return this->tail; }
 
 		unsigned int GetCount() const { return this->count; }
 

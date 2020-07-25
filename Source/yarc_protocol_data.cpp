@@ -124,7 +124,7 @@ namespace Yarc
 			wordArray->SetElement(i++, bulkStringData);
 		}
 
-		// Commands in the RESP are just arrays of bulk strings.
+		// Commands in RESP are just arrays of bulk strings.
 		return wordArray;
 	}
 
@@ -152,7 +152,11 @@ namespace Yarc
 
 	/*static*/ bool ProtocolData::PrintTree(ByteStream* byteStream, const ProtocolData* protocolData)
 	{
-		return false;
+		if (protocolData->attributeData)
+			if (!protocolData->attributeData->Print(byteStream))
+				return false;
+
+		return protocolData->Print(byteStream);
 	}
 
 	/*static*/ bool ProtocolData::ParseDataType(ByteStream* byteStream, ProtocolData*& protocolData)
@@ -187,6 +191,9 @@ namespace Yarc
 		if (!protocolData)
 			return false;
 
+		if (byte != protocolData->DynamicDiscriminant())
+			return false;
+
 		if (!protocolData->Parse(byteStream))
 		{
 			delete protocolData;
@@ -195,6 +202,14 @@ namespace Yarc
 		}
 
 		return true;
+	}
+
+	/*static*/ bool ProtocolData::PrintDataType(ByteStream* byteStream, const ProtocolData* protocolData)
+	{
+		if (!byteStream->WriteByte(protocolData->DynamicDiscriminant()))
+			return false;
+
+		return protocolData->Print(byteStream);
 	}
 
 	/*static*/ bool ProtocolData::ParseCount(ByteStream* byteStream, uint32_t& count, bool& streamed)
@@ -297,6 +312,8 @@ namespace Yarc
 
 	/*virtual*/ ArrayData::~ArrayData()
 	{
+		for (int i = 0; i < (signed)this->nestedDataArray.GetCount(); i++)
+			delete this->nestedDataArray[i];
 	}
 
 	/*virtual*/ bool ArrayData::Parse(ByteStream* byteStream)
@@ -343,7 +360,17 @@ namespace Yarc
 
 	/*virtual*/ bool ArrayData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		if (!byteStream->WriteFormat("%d", this->nestedDataArray.GetCount()))
+			return false;
+
+		if (!byteStream->WriteFormat("\r\n"))
+			return false;
+
+		for (int i = 0; i < (signed)this->nestedDataArray.GetCount(); i++)
+			if (!PrintTree(byteStream, this->nestedDataArray[i]))
+				return false;
+
+		return true;
 	}
 
 	uint32_t  ArrayData::GetCount(void) const
@@ -397,7 +424,10 @@ namespace Yarc
 
 	/*virtual*/ bool EndData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		if (!byteStream->WriteFormat("\r\n"))
+			return false;
+
+		return true;
 	}
 
 	//-------------------------- BlobStringData --------------------------
@@ -483,6 +513,13 @@ namespace Yarc
 
 	/*virtual*/ bool BlobStringData::Print(ByteStream* byteStream) const
 	{
+		if (!byteStream->WriteFormat("%d\r\n", this->byteArray.GetCount()))
+			return false;
+
+		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
+			if (!byteStream->WriteByte(this->byteArray[i]))
+				return false;
+
 		return false;
 	}
 
@@ -498,12 +535,23 @@ namespace Yarc
 
 	bool BlobStringData::GetToBuffer(uint8_t* buffer, uint32_t bufferSize) const
 	{
-		return false;
+		if (bufferSize < this->byteArray.GetCount())
+			return false;
+
+		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
+			buffer[i] = this->byteArray[i];
+
+		return true;
 	}
 
 	bool BlobStringData::SetFromBuffer(const uint8_t* buffer, uint32_t bufferSize)
 	{
-		return false;
+		this->byteArray.SetCount(bufferSize);
+
+		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
+			this->byteArray[i] = buffer[i];
+
+		return true;
 	}
 
 	std::string BlobStringData::GetValue() const
@@ -553,11 +601,6 @@ namespace Yarc
 		return this->ParseByteArrayData(byteStream, count);
 	}
 
-	/*virtual*/ bool ChunkData::Print(ByteStream* byteStream) const
-	{
-		return false;
-	}
-
 	//-------------------------- BlobErrorData --------------------------
 
 	BlobErrorData::BlobErrorData()
@@ -568,6 +611,12 @@ namespace Yarc
 	{
 	}
 
+	std::string BlobErrorData::GetErrorCode(void) const
+	{
+		// TODO: Write this.
+		return "";
+	}
+
 	//-------------------------- VerbatimStreamData --------------------------
 
 	VerbatimStreamData::VerbatimStreamData()
@@ -576,6 +625,18 @@ namespace Yarc
 
 	/*virtual*/ VerbatimStreamData::~VerbatimStreamData()
 	{
+	}
+
+	std::string VerbatimStreamData::GetFormatCode(void) const
+	{
+		// TODO: Write this.
+		return "";
+	}
+
+	std::string VerbatimStreamData::GetContent(void) const
+	{
+		// TODO: Write this.
+		return "";
 	}
 
 	//-------------------------- SimpleStringData --------------------------
@@ -595,7 +656,7 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleStringData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		return byteStream->WriteFormat("%s\r\n", this->value.c_str());
 	}
 
 	std::string SimpleStringData::GetValue() const
@@ -621,6 +682,7 @@ namespace Yarc
 
 	std::string SimpleErrorData::GetErrorCode(void) const
 	{
+		// TODO: Write this.
 		return "";
 	}
 
@@ -680,7 +742,21 @@ namespace Yarc
 
 	/*virtual*/ bool MapData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		if (!byteStream->WriteFormat("%d\r\n", this->fieldValuePairList.GetCount()))
+			return false;
+
+		for (const FieldValuePairList::Node* node = this->fieldValuePairList.GetHead(); node; node = node->GetNext())
+		{
+			const FieldValuePair& pair = node->value;
+
+			if (!PrintTree(byteStream, pair.fieldData))
+				return false;
+
+			if (!PrintTree(byteStream, pair.valueData))
+				return false;
+		}
+
+		return true;
 	}
 
 	ProtocolData* MapData::GetField(const std::string& key)
@@ -762,7 +838,23 @@ namespace Yarc
 
 	/*virtual*/ bool DoubleData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		if (this->value == DBL_MAX)
+		{
+			if (!byteStream->WriteFormat("inf\r\n"))
+				return false;
+		}
+		else if (this->value == DBL_MIN)
+		{
+			if (!byteStream->WriteFormat("-inf\r\n"))
+				return false;
+		}
+		else
+		{
+			if (!byteStream->WriteFormat("%f\r\n", this->value))
+				return false;
+		}
+
+		return true;
 	}
 
 	double DoubleData::GetValue() const
@@ -805,7 +897,7 @@ namespace Yarc
 
 	/*virtual*/ bool NumberData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		return byteStream->WriteFormat("%lld\r\n", this->value);
 	}
 
 	int64_t NumberData::GetValue() const
@@ -848,7 +940,7 @@ namespace Yarc
 
 	/*virtual*/ bool BooleanData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		return byteStream->WriteFormat("%c\r\n", (this->value ? 't' : 'f'));
 	}
 
 	bool BooleanData::GetValue() const
@@ -886,7 +978,7 @@ namespace Yarc
 
 	/*virtual*/ bool BigNumberData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		return byteStream->WriteFormat("%s\r\n", this->value.c_str());
 	}
 
 	//-------------------------- NullData --------------------------
@@ -906,6 +998,6 @@ namespace Yarc
 
 	/*virtual*/ bool NullData::Print(ByteStream* byteStream) const
 	{
-		return false;
+		return byteStream->WriteFormat("\r\n");
 	}
 }
