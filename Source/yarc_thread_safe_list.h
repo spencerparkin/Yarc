@@ -29,14 +29,14 @@ namespace Yarc
 		{
 			::EnterCriticalSection(&this->criticalSection);
 			this->linkedList.AddTail(value);
-			::EnterCriticalSection(&this->criticalSection);
+			::LeaveCriticalSection(&this->criticalSection);
 		}
 
 		void AddHead(T value)
 		{
 			::EnterCriticalSection(&this->criticalSection);
 			this->linkedList.AddHead(value);
-			::EnterCriticalSection(&this->criticalSection);
+			::LeaveCriticalSection(&this->criticalSection);
 		}
 
 		T RemoveTail()
@@ -44,7 +44,7 @@ namespace Yarc
 			::EnterCriticalSection(&this->criticalSection);
 			T value = this->linkedList.GetTail()->value;
 			this->linkedList.Remove(this->linkedList.GetTail());
-			::EnterCriticalSection(&this->criticalSection);
+			::LeaveCriticalSection(&this->criticalSection);
 			return value;
 		}
 
@@ -53,7 +53,7 @@ namespace Yarc
 			::EnterCriticalSection(&this->criticalSection);
 			T value = this->linkedList.GetHead()->value;
 			this->linkedList.Remove(this->linkedList.GetHead());
-			::EnterCriticalSection(&this->criticalSection);
+			::LeaveCriticalSection(&this->criticalSection);
 			return value;
 		}
 
@@ -61,7 +61,7 @@ namespace Yarc
 		{
 			::EnterCriticalSection(&this->criticalSection);
 			DeleteList<T>(this->linkedList);
-			::EnterCriticalSection(&this->criticalSection);
+			::LeaveCriticalSection(&this->criticalSection);
 		}
 
 	private:

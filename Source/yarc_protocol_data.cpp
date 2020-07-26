@@ -540,6 +540,9 @@ namespace Yarc
 		if (!byteStream->WriteBufferNow(&(*this->byteArray)[0], this->byteArray->GetCount()))
 			return false;
 
+		if (!byteStream->WriteFormat("\r\n"))
+			return false;
+
 		return true;
 	}
 
