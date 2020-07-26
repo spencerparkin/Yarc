@@ -11,7 +11,7 @@ namespace Yarc
 		connectionConfig->connectionTimeoutSeconds = 0.0;
 
 		this->inputClient = new SimpleClient(connectionConfig);
-		this->outputClient = new SimpleClient(connectionConfig);
+		this->outputClient = new SimpleClient(connectionConfig->Clone());
 
 		this->inputClient->RegisterPushDataCallback([=](const ProtocolData* messageData) -> bool {
 			return this->DispatchPubSubMessage(messageData);
