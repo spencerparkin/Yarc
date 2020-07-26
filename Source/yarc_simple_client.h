@@ -49,7 +49,5 @@ namespace Yarc
 
 		typedef ThreadSafeList<ProtocolData*> ProtocolDataList;
 		ProtocolDataList* serverDataList;
-
-		CRITICAL_SECTION manageConnectionMutex;
 	};
 }

@@ -12,10 +12,6 @@ namespace Yarc
 		this->callbackList = new CallbackList();
 		this->serverDataList = new ProtocolDataList();
 		this->threadHandle = nullptr;
-		this->socketStream->connectionResolverFunc = [=](SocketStream*) -> bool {
-			return this->SetupSocketConnectionAndThread();
-		};
-		::InitializeCriticalSection(&this->manageConnectionMutex);
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -25,7 +21,6 @@ namespace Yarc
 		delete this->callbackList;
 		this->serverDataList->Delete();
 		delete this->serverDataList;
-		::DeleteCriticalSection(&this->manageConnectionMutex);
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -38,59 +33,55 @@ namespace Yarc
 		delete client;
 	}
 
-	// This is called when someone wants to read or write on the socket stream.
-	// Sometimes this is called from the main thread; sometimes from the socket thread.
-	// In any case, we need to protect against race conditions here with a mutex.
 	/*virtual*/ bool SimpleClient::SetupSocketConnectionAndThread(void)
 	{
-		::EnterCriticalSection(&this->manageConnectionMutex);
+		bool success = true;
 
-		if (!this->socketStream->IsConnected())
+		try
 		{
-			const char* address = this->connectionConfig->address->c_str();
-			uint16_t port = this->connectionConfig->port;
-			double timeoutSeconds = this->connectionConfig->connectionTimeoutSeconds;
+			if (!this->socketStream->IsConnected())
+			{
+				const char* address = this->connectionConfig->address->c_str();
+				uint16_t port = this->connectionConfig->port;
+				double timeoutSeconds = this->connectionConfig->connectionTimeoutSeconds;
 
-			this->socketStream->Connect(address, port, timeoutSeconds);
+				if (!this->socketStream->Connect(address, port, timeoutSeconds))
+					throw new InternalException();
+			}
+
+			if (!this->threadHandle)
+			{
+				this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
+				if (!this->threadHandle)
+					throw new InternalException();
+			}
+		}
+		catch (InternalException* exc)
+		{
+			delete exc;
+			success = false;
+			this->ShutDownSocketConnectionAndThread();
 		}
 
-		if (!this->threadHandle)
-		{
-			this->socketStream->exitSignaled = false;
-			this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
-		}
-
-		::LeaveCriticalSection(&this->manageConnectionMutex);
-
-		return this->socketStream->IsConnected() && this->threadHandle != nullptr;
+		return success;
 	}
 
 	/*virtual*/ bool SimpleClient::ShutDownSocketConnectionAndThread(void)
 	{
-		::EnterCriticalSection(&this->manageConnectionMutex);
-
 		if (this->socketStream->IsConnected())
-		{
 			this->socketStream->Disconnect();
-		}
 
 		if (this->threadHandle)
 		{
-			this->socketStream->exitSignaled = true;
 			::WaitForSingleObject(this->threadHandle, INFINITE);
 			this->threadHandle = nullptr;
 		}
-
-		::LeaveCriticalSection(&this->manageConnectionMutex);
 
 		return !this->socketStream->IsConnected() && this->threadHandle == nullptr;
 	}
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		if (this->socketStream->exitSignaled)
-			return false;
-
 		switch(this->connectionConfig->disposition)
 		{
 			case ConnectionConfig::Disposition::NORMAL:
@@ -112,7 +103,7 @@ namespace Yarc
 			}
 			case ConnectionConfig::Disposition::PERSISTENT:
 			{
-				if (!this->socketStream->IsConnected() || !this->threadHandle)
+				if (!this->socketStream->IsConnected())
 				{
 					this->SetupSocketConnectionAndThread();
 				}
@@ -130,8 +121,7 @@ namespace Yarc
 			ProtocolData* messageData = Cast<PushData>(serverData);
 			if (!messageData)
 			{
-				// For backwards compatibility with RESP1, here we check
-				// for the old message structure.
+				// For backwards compatibility with RESP1, here we check for the old message structure.
 				const ArrayData* arrayData = Cast<ArrayData>(serverData);
 				if (arrayData && arrayData->GetCount() > 0)
 				{
@@ -168,7 +158,7 @@ namespace Yarc
 
 	DWORD SimpleClient::ThreadFunc(void)
 	{
-		while (!this->socketStream->exitSignaled)
+		while (this->socketStream->IsConnected())
 		{
 			ProtocolData* serverData = nullptr;
 			if (!ProtocolData::ParseTree(this->socketStream, serverData))
@@ -204,6 +194,10 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
+		if (!this->socketStream->IsConnected())
+			if (!this->SetupSocketConnectionAndThread())
+				return false;
+
 		if (!ProtocolData::PrintTree(this->socketStream, requestData))
 			return false;
 

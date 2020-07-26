@@ -22,19 +22,12 @@ namespace Yarc
 		virtual uint32_t ReadBuffer(uint8_t* buffer, uint32_t bufferSize) override;
 		virtual uint32_t WriteBuffer(const uint8_t* buffer, uint32_t bufferSize) override;
 
-		volatile bool exitSignaled;
-
-		typedef std::function<bool(SocketStream*)> ConnectionResolverFunc;
-		ConnectionResolverFunc connectionResolverFunc;
-
 		std::string GetAddress() { return *this->address; }
 		uint16_t GetPort() { return this->port; }
 
 		clock_t GetLastSocketReadWriteTime() { return this->lastSocketReadWriteTime; }
 
 	protected:
-
-		bool ResolveConnection(void);
 
 		SOCKET socket;
 		std::string* address;

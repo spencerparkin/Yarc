@@ -13,7 +13,6 @@ namespace Yarc
 		this->socket = INVALID_SOCKET;
 		this->address = new std::string();
 		this->port = 0;
-		this->exitSignaled = false;
 		this->lastSocketReadWriteTime = 0;
 	}
 
@@ -107,7 +106,6 @@ namespace Yarc
 
 			*this->address = address;
 			this->port = port;
-			this->exitSignaled = false;
 		}
 		catch (InternalException* exc)
 		{
@@ -135,35 +133,12 @@ namespace Yarc
 		return true;
 	}
 
-	bool SocketStream::ResolveConnection(void)
-	{
-		while (!this->IsConnected())
-		{
-			if (this->exitSignaled)
-				return false;
-
-			if (!this->connectionResolverFunc)
-				return false;
-
-			if (!this->connectionResolverFunc(this))
-				return false;
-		}
-
-		return true;
-	}
-
 	/*virtual*/ uint32_t SocketStream::ReadBuffer(uint8_t* buffer, uint32_t bufferSize)
 	{
-		if (!this->ResolveConnection())
-			return 0;
-
 		while (true)
 		{
-			if (this->exitSignaled)
-			{
-				this->Disconnect();
+			if (!this->IsConnected())
 				return 0;
-			}
 
 			fd_set readSet, excSet;
 			FD_ZERO(&readSet);
@@ -187,8 +162,8 @@ namespace Yarc
 				return false;
 
 			// Does the socket have data for us to read?
-			if (!FD_ISSET(this->socket, &readSet))
-				continue;
+			if (FD_ISSET(this->socket, &readSet))
+				break;
 		}
 
 		uint32_t readCount = ::recv(this->socket, (char*)buffer, bufferSize, 0);
@@ -204,7 +179,7 @@ namespace Yarc
 
 	/*virtual*/ uint32_t SocketStream::WriteBuffer(const uint8_t* buffer, uint32_t bufferSize)
 	{
-		if (!this->ResolveConnection())
+		if (!this->IsConnected())
 			return 0;
 
 		uint32_t writeCount = ::send(this->socket, (const char*)buffer, bufferSize, 0);
