@@ -135,37 +135,12 @@ namespace Yarc
 
 	/*virtual*/ uint32_t SocketStream::ReadBuffer(uint8_t* buffer, uint32_t bufferSize)
 	{
-		while (true)
-		{
-			if (!this->IsConnected())
-				return 0;
+		if (!this->IsConnected())
+			return 0;
 
-			fd_set readSet, excSet;
-			FD_ZERO(&readSet);
-			FD_ZERO(&excSet);
-			FD_SET(this->socket, &readSet);
-			FD_SET(this->socket, &excSet);
-
-			// Busy waiting is poor multi-threading practice, but I'm not yet sure how
-			// to get around it.  For now, we must not wait too short, or we'll starve
-			// threads we depend on to send us data.  If we wait too long, then the
-			// program will be slow.
-			timeval timeVal;
-			timeVal.tv_sec = 2;
-			timeVal.tv_usec = 0;
-
-			int32_t count = ::select(0, &readSet, NULL, &excSet, &timeVal);
-			if (count == SOCKET_ERROR)
-				return false;
-
-			if (!FD_ISSET(this->socket, &excSet))
-				return false;
-
-			// Does the socket have data for us to read?
-			if (FD_ISSET(this->socket, &readSet))
-				break;
-		}
-
+		// Note that it's safe to block here even if the thread needs to exit,
+		// because we signal the thread to exit by simply closing the socket,
+		// at which point we should return from this function.
 		uint32_t readCount = ::recv(this->socket, (char*)buffer, bufferSize, 0);
 		if (readCount == SOCKET_ERROR)
 		{
