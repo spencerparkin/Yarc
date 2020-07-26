@@ -15,7 +15,7 @@ namespace Yarc
 	{
 	public:
 
-		SimpleClient(ConnectionConfig* givenConnectionConfig = nullptr);
+		SimpleClient();
 		virtual ~SimpleClient();
 
 		// When used as a DLL, these ensure that the client is allocated and freed in the proper heap.

@@ -12,7 +12,7 @@ namespace Yarc
 	{
 	public:
 
-		PubSub(ClientInterface::ConnectionConfig* connectionConfig);
+		PubSub(ConnectionConfig connectionConfig);
 		virtual ~PubSub();
 
 		bool Subscribe(const std::string& channel, ClientInterface::Callback callback);

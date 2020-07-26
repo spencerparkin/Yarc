@@ -6,7 +6,7 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(ConnectionConfig* givenConnectionConfig /*= nullptr*/) : ClientInterface(givenConnectionConfig)
+	SimpleClient::SimpleClient()
 	{
 		this->socketStream = new SocketStream();
 		this->callbackList = new CallbackList();
@@ -41,11 +41,11 @@ namespace Yarc
 		{
 			if (!this->socketStream->IsConnected())
 			{
-				std::string address = this->connectionConfig->GetResolvedIPAddress();
-				uint16_t port = this->connectionConfig->port;
-				double timeoutSeconds = this->connectionConfig->connectionTimeoutSeconds;
+				const char* ipAddress = this->connectionConfig.GetResolvedIPAddress();
+				uint16_t port = this->connectionConfig.port;
+				double timeoutSeconds = this->connectionConfig.connectionTimeoutSeconds;
 
-				if (!this->socketStream->Connect(address.c_str(), port, timeoutSeconds))
+				if (!this->socketStream->Connect(ipAddress, port, timeoutSeconds))
 					throw new InternalException();
 			}
 
@@ -82,7 +82,7 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		switch(this->connectionConfig->disposition)
+		switch(this->connectionConfig.disposition)
 		{
 			case ConnectionConfig::Disposition::NORMAL:
 			{
@@ -94,7 +94,7 @@ namespace Yarc
 				clock_t currentTime = ::clock();
 				clock_t socketIdleTime = currentTime - lastSocketReadWriteTime;
 				double socketIdleTimeSeconds = double(socketIdleTime) / double(CLOCKS_PER_SEC);
-				if (socketIdleTimeSeconds >= this->connectionConfig->maxConnectionIdleTimeSeconds)
+				if (socketIdleTimeSeconds >= this->connectionConfig.maxConnectionIdleTimeSeconds)
 				{
 					this->ShutDownSocketConnectionAndThread();
 				}

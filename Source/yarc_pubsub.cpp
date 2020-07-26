@@ -3,15 +3,19 @@
 
 namespace Yarc
 {
-	PubSub::PubSub(ClientInterface::ConnectionConfig* connectionConfig)
+	PubSub::PubSub(ConnectionConfig connectionConfig)
 	{
 		this->callbackMap = new CallbackMap;
 
-		connectionConfig->disposition = ClientInterface::ConnectionConfig::Disposition::PERSISTENT;
-		connectionConfig->connectionTimeoutSeconds = 0.0;
+		// Override these, since a we must be connected at all times to receive messages.
+		connectionConfig.disposition = ConnectionConfig::Disposition::PERSISTENT;
+		connectionConfig.connectionTimeoutSeconds = 0.0;
 
-		this->inputClient = new SimpleClient(connectionConfig);
-		this->outputClient = new SimpleClient(connectionConfig->Clone());
+		this->inputClient = new SimpleClient();
+		this->inputClient->connectionConfig = connectionConfig;
+
+		this->outputClient = new SimpleClient();
+		this->outputClient->connectionConfig = connectionConfig;
 
 		this->inputClient->RegisterPushDataCallback([=](const ProtocolData* messageData) -> bool {
 			return this->DispatchPubSubMessage(messageData);

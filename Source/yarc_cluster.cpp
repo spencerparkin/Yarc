@@ -103,12 +103,11 @@ namespace Yarc
 				if (!::CreateProcessW(nullptr, (LPWSTR)command.c_str(), nullptr, nullptr, FALSE, 0, nullptr, nodeFolderPathCStr, &startupInfo, &procInfo))
 					return false;
 
-				ClientInterface::ConnectionConfig* connectionConfig = new ClientInterface::ConnectionConfig();
-				*connectionConfig->address = "127.0.0.1";
-				connectionConfig->port = port;
 				Node node;
 				node.processHandle = (uint64_t)procInfo.hProcess;
-				node.client = new SimpleClient(connectionConfig);
+				node.client = new SimpleClient();
+				node.client->connectionConfig.SetIPAddress("127.0.0.1");
+				node.client->connectionConfig.port = port;
 				this->nodeArray->SetCount(i + 1);
 				(*this->nodeArray)[i] = node;
 			}

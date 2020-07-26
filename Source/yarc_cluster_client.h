@@ -17,7 +17,7 @@ namespace Yarc
 	{
 	public:
 		
-		ClusterClient(ConnectionConfig* givenConnectionConfig = nullptr);
+		ClusterClient();
 		virtual ~ClusterClient();
 
 		// When used as a DLL, these ensure that the client is allocated and freed in the proper heap.
@@ -103,7 +103,7 @@ namespace Yarc
 		{
 		public:
 
-			ClusterNode(ConnectionConfig* connectionConfig);
+			ClusterNode();
 			virtual ~ClusterNode();
 
 			virtual ReductionResult Reduce() override;

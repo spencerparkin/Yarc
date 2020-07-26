@@ -6,7 +6,7 @@ namespace Yarc
 {
 	//----------------------------------------- ClusterClient -----------------------------------------
 
-	ClusterClient::ClusterClient(ConnectionConfig* givenConnectionConfig /*= nullptr*/) : ClientInterface(givenConnectionConfig)
+	ClusterClient::ClusterClient()
 	{
 		this->clusterNodeList = new ReductionObjectList();
 		this->requestList = new ReductionObjectList();
@@ -46,8 +46,8 @@ namespace Yarc
 			{
 				if (this->clusterNodeList->GetCount() == 0)
 				{
-					ConnectionConfig* nodeConnectionConfig = this->connectionConfig->Clone();
-					ClusterNode* clusterNode = new ClusterNode(nodeConnectionConfig);
+					ClusterNode* clusterNode = new ClusterNode();
+					clusterNode->client->connectionConfig = this->connectionConfig;
 					this->clusterNodeList->AddTail(clusterNode);
 				}
 
@@ -240,11 +240,11 @@ namespace Yarc
 						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress.c_str(), port);
 						if (!clusterNode)
 						{
-							ConnectionConfig* nodeConnectionConfig = this->connectionConfig->Clone();
-							*nodeConnectionConfig->address = ipAddress;
-							*nodeConnectionConfig->hostname = "";
-							nodeConnectionConfig->port = port;
-							clusterNode = new ClusterNode(nodeConnectionConfig);
+							clusterNode = new ClusterNode();
+							clusterNode->client->connectionConfig = this->connectionConfig;
+							clusterNode->client->connectionConfig.SetHostname("");
+							clusterNode->client->connectionConfig.SetIPAddress(ipAddress.c_str());
+							clusterNode->client->connectionConfig.port = port;
 							this->clusterNodeList->AddTail(clusterNode);
 						}
 
@@ -518,9 +518,9 @@ namespace Yarc
 
 	//----------------------------------------- ClusterNode -----------------------------------------
 
-	ClusterClient::ClusterNode::ClusterNode(ConnectionConfig* connectionConfig)
+	ClusterClient::ClusterNode::ClusterNode()
 	{
-		this->client = new SimpleClient(connectionConfig);
+		this->client = new SimpleClient();
 	}
 
 	/*virtual*/ ClusterClient::ClusterNode::~ClusterNode()

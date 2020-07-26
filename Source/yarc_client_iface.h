@@ -10,49 +10,58 @@ namespace Yarc
 {
 	class ProtocolData;
 
+	// These are meant to be passed by value everywhere.
+	class YARC_API ConnectionConfig
+	{
+	public:
+		ConnectionConfig();
+		virtual ~ConnectionConfig();
+
+		enum class Disposition
+		{
+			NORMAL,
+			PERSISTENT,
+			LAZY
+		};
+
+		void SetIPAddress(const char* givenIPAddress);
+		void SetHostname(const char* givenHostname);
+
+		const char* GetResolvedIPAddress() const;
+
+		uint16_t port;
+		Disposition disposition;
+		double maxConnectionIdleTimeSeconds;
+		double connectionTimeoutSeconds;
+		char hostname[64];
+		mutable char ipAddress[32];
+	};
+
 	class YARC_API ClientInterface
 	{
 	public:
 
-		class ConnectionConfig
-		{
-		public:
-			ConnectionConfig();
-			virtual ~ConnectionConfig();
-
-			static ConnectionConfig* Create(void);
-
-			ConnectionConfig* Clone(void);
-
-			enum class Disposition
-			{
-				NORMAL,
-				PERSISTENT,
-				LAZY
-			};
-
-			std::string GetResolvedIPAddress() const;
-
-			uint16_t port;
-			Disposition disposition;
-			double maxConnectionIdleTimeSeconds;
-			double connectionTimeoutSeconds;
-			std::string* hostname;
-			mutable std::string* address;
-		};
-
-		ClientInterface(ConnectionConfig* givenConnectionConfig = nullptr);
+		ClientInterface();
 		virtual ~ClientInterface();
+
+		// There is no need to explicitly connect or disconnect a client from a Redis instance.
+		// Setup these connection configuration parameters, then just start using the client.
+		// The client will then manage the connection for you.
+		ConnectionConfig connectionConfig;
 
 		// The return value indicates whether the callback takes ownership of the memory.
 		typedef std::function<bool(const ProtocolData* responseData)> Callback;
 
 		// This should be called in the same thread where requests are made; it is where
-		// callbacks will be called and where the connection is managed.
+		// callbacks will be called and where the connection is managed.  Programs will
+		// typically call this once per iteration of the main program loop.  If there is
+		// no such loop, just use the Flush() method.
 		virtual bool Update(void) = 0;
 
-		// Wait for all pending requests to get responses.
-		// When pipelining, flush should be called periodically to prevent server overload.
+		// Wait for all pending requests to get responses.  When pipelining, flush should
+		// be called periodically to prevent server overload.  The server can queue up
+		// a great deal many requests, but a flush should be called if the queue size
+		// reaches somewhere around ~1000 requests.
 		virtual bool Flush(void) = 0;
 
 		// In the synchronous case, the caller takes ownership of the response data.
@@ -84,7 +93,5 @@ namespace Yarc
 	protected:
 
 		Callback* pushDataCallback;
-
-		ConnectionConfig* connectionConfig;
 	};
 }

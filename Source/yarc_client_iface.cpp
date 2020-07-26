@@ -1,22 +1,18 @@
 #include "yarc_client_iface.h"
 #include "yarc_protocol_data.h"
+#include <WS2tcpip.h>
 
 namespace Yarc
 {
 	//------------------------- ClientInterface -------------------------
 
-	ClientInterface::ClientInterface(ConnectionConfig* givenConnectionConfig /*= nullptr*/)
+	ClientInterface::ClientInterface()
 	{
-		if (!givenConnectionConfig)
-			givenConnectionConfig = ConnectionConfig::Create();
-
-		this->connectionConfig = givenConnectionConfig;
 		this->pushDataCallback = new Callback;
 	}
 
 	/*virtual*/ ClientInterface::~ClientInterface()
 	{
-		delete this->connectionConfig;
 		delete this->pushDataCallback;
 	}
 
@@ -68,50 +64,64 @@ namespace Yarc
 		return true;
 	}
 
-	//------------------------- ClientInterface::ConnectionConfig -------------------------
+	//------------------------- ConnectionConfig -------------------------
 
-	ClientInterface::ConnectionConfig::ConnectionConfig()
+	ConnectionConfig::ConnectionConfig()
 	{
-		this->address = new std::string;
-		this->hostname = new std::string;
+		this->ipAddress[0] = '\0';
+		this->hostname[0] = '\0';
 		this->port = 6379;
 		this->connectionTimeoutSeconds = -1.0;
 		this->maxConnectionIdleTimeSeconds = 5.0 * 60.0;
 		this->disposition = Disposition::NORMAL;
 	}
 
-	/*virtual*/ ClientInterface::ConnectionConfig::~ConnectionConfig()
+	/*virtual*/ ConnectionConfig::~ConnectionConfig()
 	{
-		delete this->address;
-		delete this->hostname;
 	}
 
-	/*static*/ ClientInterface::ConnectionConfig* ClientInterface::ConnectionConfig::Create(void)
+	void ConnectionConfig::SetIPAddress(const char* givenIPAddress)
 	{
-		return new ConnectionConfig();
+		::strcpy_s(this->ipAddress, sizeof(this->ipAddress), givenIPAddress);
 	}
 
-	ClientInterface::ConnectionConfig* ClientInterface::ConnectionConfig::Clone(void)
+	void ConnectionConfig::SetHostname(const char* givenHostname)
 	{
-		ConnectionConfig* config = new ConnectionConfig();
-
-		*config->address = *this->address;
-		*config->hostname = *this->hostname;
-		config->port = this->port;
-		config->connectionTimeoutSeconds = this->connectionTimeoutSeconds;
-		config->maxConnectionIdleTimeSeconds = this->maxConnectionIdleTimeSeconds;
-		config->disposition = this->disposition;
-
-		return config;
+		::strcpy_s(this->hostname, sizeof(this->hostname), givenHostname);
 	}
 
-	std::string ClientInterface::ConnectionConfig::GetResolvedIPAddress() const
+	const char* ConnectionConfig::GetResolvedIPAddress() const
 	{
-		if (this->hostname->length() > 0)
+		if(::strlen(this->hostname) > 0)
 		{
-			// TODO: Resolve hostname to IP address here.
+			char portStr[16];
+			sprintf_s(portStr, sizeof(portStr), "%d", this->port);
+
+			::addrinfo* addrInfo = nullptr;
+			if (0 == ::getaddrinfo(this->hostname, portStr, nullptr, &addrInfo))
+			{
+				while (addrInfo)
+				{
+					if (addrInfo->ai_family == AF_INET)
+						break;
+
+					addrInfo = addrInfo->ai_next;
+				}
+
+				if (addrInfo)
+				{
+					::sockaddr_in* sockAddr = (::sockaddr_in*)addrInfo->ai_addr;
+					sprintf_s(this->ipAddress, sizeof(this->ipAddress), "%d.%d.%d.%d",
+								sockAddr->sin_addr.S_un.S_un_b.s_b1,
+								sockAddr->sin_addr.S_un.S_un_b.s_b2,
+								sockAddr->sin_addr.S_un.S_un_b.s_b3,
+								sockAddr->sin_addr.S_un.S_un_b.s_b4);
+
+					
+				}
+			}
 		}
 		
-		return *this->address;
+		return this->ipAddress;
 	}
 }
