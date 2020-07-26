@@ -343,7 +343,7 @@ namespace Yarc
 
 			if (streamed)
 			{
-				EndData* endData = dynamic_cast<EndData*>(nestedData);
+				EndData* endData = Cast<EndData>(nestedData);
 				if (endData)
 				{
 					delete endData;
@@ -493,7 +493,7 @@ namespace Yarc
 				if (!ParseDataType(byteStream, protocolData))
 					return false;
 
-				ChunkData* chunkData = dynamic_cast<ChunkData*>(protocolData);
+				ChunkData* chunkData = Cast<ChunkData>(protocolData);
 				if (!chunkData)
 				{
 					delete protocolData;
@@ -524,17 +524,10 @@ namespace Yarc
 
 	bool BlobStringData::ParseByteArrayData(ByteStream* byteStream, uint32_t count)
 	{
-		while (count > 0)
-		{
-			uint8_t byte = 0;
-			if (!byteStream->ReadByte(byte))
-				return false;
+		this->byteArray->SetCount(count);
 
-			this->byteArray->SetCount(this->byteArray->GetCount() + 1);
-			(*this->byteArray)[this->byteArray->GetCount() - 1] = byte;
-
-			count--;
-		}
+		if (!byteStream->ReadBufferNow(&(*this->byteArray)[0], count))
+			return false;
 
 		return ParseCRLF(byteStream);
 	}
@@ -544,11 +537,10 @@ namespace Yarc
 		if (!byteStream->WriteFormat("%d\r\n", this->byteArray->GetCount()))
 			return false;
 
-		for (int i = 0; i < (signed)this->byteArray->GetCount(); i++)
-			if (!byteStream->WriteByte((*this->byteArray)[i]))
-				return false;
+		if (!byteStream->WriteBufferNow(&(*this->byteArray)[0], this->byteArray->GetCount()))
+			return false;
 
-		return false;
+		return true;
 	}
 
 	DynamicArray<uint8_t>& BlobStringData::GetByteArray(void)
@@ -749,7 +741,7 @@ namespace Yarc
 
 			if (streamed)
 			{
-				EndData* endData = dynamic_cast<EndData*>(pair.fieldData);
+				EndData* endData = Cast<EndData>(pair.fieldData);
 				if (endData)
 				{
 					delete pair.fieldData;

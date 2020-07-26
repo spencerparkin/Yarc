@@ -55,7 +55,7 @@ namespace Yarc
 		va_list args;
 		va_start(args, format);
 		char buffer[1024];
-		sprintf_s(buffer, sizeof(buffer), format, args);
+		vsprintf_s(buffer, sizeof(buffer), format, args);
 		va_end(args);
 
 		return this->WriteBufferNow((const uint8_t*)buffer, ::strlen(buffer));
