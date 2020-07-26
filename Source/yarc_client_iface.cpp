@@ -73,6 +73,7 @@ namespace Yarc
 	ClientInterface::ConnectionConfig::ConnectionConfig()
 	{
 		this->address = new std::string;
+		this->hostname = new std::string;
 		this->port = 6379;
 		this->connectionTimeoutSeconds = -1.0;
 		this->maxConnectionIdleTimeSeconds = 5.0 * 60.0;
@@ -82,6 +83,7 @@ namespace Yarc
 	/*virtual*/ ClientInterface::ConnectionConfig::~ConnectionConfig()
 	{
 		delete this->address;
+		delete this->hostname;
 	}
 
 	/*static*/ ClientInterface::ConnectionConfig* ClientInterface::ConnectionConfig::Create(void)
@@ -94,11 +96,22 @@ namespace Yarc
 		ConnectionConfig* config = new ConnectionConfig();
 
 		*config->address = *this->address;
+		*config->hostname = *this->hostname;
 		config->port = this->port;
 		config->connectionTimeoutSeconds = this->connectionTimeoutSeconds;
 		config->maxConnectionIdleTimeSeconds = this->maxConnectionIdleTimeSeconds;
 		config->disposition = this->disposition;
 
 		return config;
+	}
+
+	std::string ClientInterface::ConnectionConfig::GetResolvedIPAddress() const
+	{
+		if (this->hostname->length() > 0)
+		{
+			// TODO: Resolve hostname to IP address here.
+		}
+		
+		return *this->address;
 	}
 }

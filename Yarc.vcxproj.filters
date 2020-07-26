@@ -40,6 +40,9 @@
     <ClCompile Include="Source\yarc_socket_stream.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\yarc_pubsub.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\yarc_api.h">
@@ -82,6 +85,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\yarc_socket_stream.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\yarc_pubsub.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

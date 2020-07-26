@@ -26,6 +26,7 @@
     <ClCompile Include="Source\yarc_crc16.cpp" />
     <ClCompile Include="Source\yarc_misc.cpp" />
     <ClCompile Include="Source\yarc_protocol_data.cpp" />
+    <ClCompile Include="Source\yarc_pubsub.cpp" />
     <ClCompile Include="Source\yarc_reducer.cpp" />
     <ClCompile Include="Source\yarc_simple_client.cpp" />
     <ClCompile Include="Source\yarc_dllmain.cpp" />
@@ -38,6 +39,7 @@
     <ClInclude Include="Source\yarc_cluster_client.h" />
     <ClInclude Include="Source\yarc_misc.h" />
     <ClInclude Include="Source\yarc_protocol_data.h" />
+    <ClInclude Include="Source\yarc_pubsub.h" />
     <ClInclude Include="Source\yarc_reducer.h" />
     <ClInclude Include="Source\yarc_simple_client.h" />
     <ClInclude Include="Source\yarc_client_iface.h" />

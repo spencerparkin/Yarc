@@ -242,6 +242,7 @@ namespace Yarc
 						{
 							ConnectionConfig* nodeConnectionConfig = this->connectionConfig->Clone();
 							*nodeConnectionConfig->address = ipAddress;
+							*nodeConnectionConfig->hostname = "";
 							nodeConnectionConfig->port = port;
 							clusterNode = new ClusterNode(nodeConnectionConfig);
 							this->clusterNodeList->AddTail(clusterNode);
@@ -279,9 +280,7 @@ namespace Yarc
 		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 		{
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
-			clusterNode->client->RegisterPushDataCallback([=](const ProtocolData* messageData) -> bool {
-				return givenPushDataCallback(messageData);
-			});
+			clusterNode->client->RegisterPushDataCallback(givenPushDataCallback);
 		}
 
 		return true;

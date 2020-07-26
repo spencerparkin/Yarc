@@ -8,9 +8,11 @@
 
 namespace Yarc
 {
-	// Note that in contrast to the simple client, requests made here asynchronously are
-	// not guarenteed to be responded to in the same order they were made.  They should,
-	// however, be fulfilled in the same order they were made.
+	// During live resharding, I can't yet think of a scenario where two asynchronous
+	// requests targeting the same hash slot are fulfilled by the cluster in an order
+	// opposite that with which they were made.  Nevertheless, it is something I
+	// continue to think about here.  If the order of commands is critical in a particular
+	// case, then either use a Lua script or a transaction.
 	class YARC_API ClusterClient : public ClientInterface
 	{
 	public:

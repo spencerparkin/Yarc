@@ -31,11 +31,14 @@ namespace Yarc
 				LAZY
 			};
 
-			std::string* address;
+			std::string GetResolvedIPAddress() const;
+
 			uint16_t port;
 			Disposition disposition;
 			double maxConnectionIdleTimeSeconds;
 			double connectionTimeoutSeconds;
+			std::string* hostname;
+			mutable std::string* address;
 		};
 
 		ClientInterface(ConnectionConfig* givenConnectionConfig = nullptr);
@@ -75,7 +78,7 @@ namespace Yarc
 		// requests and get responses when susbcribed to one or more channels, you are limited to
 		// only being able to issue the (P)SUBSCRIBE, (P)UNSUBSCRIBE, and QUIT commands.  This seems
 		// to me to be somewhat of a limitation of Redis, but perhaps there is a good reason for it.
-		// In any case, you can use multiple clients to overcome the limitation.
+		// In any case, you can use multiple clients to overcome this limitation.
 		virtual bool RegisterPushDataCallback(Callback givenPushDataCallback);
 
 	protected:

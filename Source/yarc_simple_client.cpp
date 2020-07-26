@@ -41,11 +41,11 @@ namespace Yarc
 		{
 			if (!this->socketStream->IsConnected())
 			{
-				const char* address = this->connectionConfig->address->c_str();
+				std::string address = this->connectionConfig->GetResolvedIPAddress();
 				uint16_t port = this->connectionConfig->port;
 				double timeoutSeconds = this->connectionConfig->connectionTimeoutSeconds;
 
-				if (!this->socketStream->Connect(address, port, timeoutSeconds))
+				if (!this->socketStream->Connect(address.c_str(), port, timeoutSeconds))
 					throw new InternalException();
 			}
 

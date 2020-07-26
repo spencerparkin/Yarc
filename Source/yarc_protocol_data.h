@@ -84,6 +84,8 @@ namespace Yarc
 	public:
 
 		BlobStringData();
+		BlobStringData(const std::string& value);
+		BlobStringData(const uint8_t* buffer, uint32_t bufferSize);
 		virtual ~BlobStringData();
 
 		virtual bool Parse(ByteStream* byteStream) override;

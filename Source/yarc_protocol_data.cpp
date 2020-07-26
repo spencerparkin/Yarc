@@ -441,6 +441,20 @@ namespace Yarc
 		this->isNull = false;
 	}
 
+	BlobStringData::BlobStringData(const std::string& value)
+	{
+		this->byteArray = new DynamicArray<uint8_t>();
+		this->isNull = false;
+		this->SetValue(value);
+	}
+
+	BlobStringData::BlobStringData(const uint8_t* buffer, uint32_t bufferSize)
+	{
+		this->byteArray = new DynamicArray<uint8_t>();
+		this->isNull = false;
+		this->SetFromBuffer(buffer, bufferSize);
+	}
+
 	/*virtual*/ BlobStringData::~BlobStringData()
 	{
 		delete this->byteArray;
