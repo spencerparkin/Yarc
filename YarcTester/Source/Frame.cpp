@@ -8,6 +8,7 @@
 #include <wx/sizer.h>
 #include <wx/utils.h>
 #include <yarc_protocol_data.h>
+#include <yarc_byte_stream.h>
 
 Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame(parent, wxID_ANY, "Yarc Tester", pos, size), timer(this, ID_Timer)
 {
@@ -87,12 +88,10 @@ void Frame::OnTimer(wxTimerEvent& event)
 		Yarc::ClientInterface* client = this->testCase->GetClientInterface();
 		if (client)
 		{
-			if (client->IsConnected())
-				client->Update();
-			else
+			if (!client->Update())
 			{
 				this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
-				this->outputText->AppendText("Client lost connection!\n");
+				this->outputText->AppendText("Client update failed!\n");
 				this->SetTestCase(nullptr);
 			}
 		}
@@ -201,18 +200,18 @@ void Frame::OnCharHook(wxKeyEvent& event)
 					Yarc::ClientInterface* client = this->testCase->GetClientInterface();
 					if (!client->MakeRequestAsync(commandData, [=](const Yarc::ProtocolData* responseData) {
 							
-						const Yarc::Error* error = Yarc::Cast<Yarc::Error>(responseData);
+						const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(responseData);
 						if (error)
 						{
 							this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
-							this->outputText->AppendText(error->GetString());
+							this->outputText->AppendText(error->GetValue());
 						}
 						else
 						{
-							uint8_t protocolData[1024 * 1024];
-							uint32_t protocolDataSize = sizeof(protocolData);
-							responseData->Print(protocolData, protocolDataSize);
-							wxString responseText = protocolData;
+							std::string protocolDataStr;
+							Yarc::StringStream stringStream(&protocolDataStr);
+							Yarc::ProtocolData::PrintTree(&stringStream, responseData);
+							wxString responseText = protocolDataStr;
 							this->outputText->SetDefaultStyle(wxTextAttr(*wxGREEN));
 							this->outputText->AppendText(responseText);
 						}

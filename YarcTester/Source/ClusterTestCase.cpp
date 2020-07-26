@@ -62,10 +62,16 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 		this->client = new Yarc::ClusterClient();
 
 		// We can connect to the cluster by connecting to any node in the cluster.
-		const char* address = (*this->cluster->nodeArray)[0].client->GetAddress();
-		uint16_t port = (*this->cluster->nodeArray)[0].client->GetPort();
+		std::string address = (*this->cluster->nodeArray)[0].client->GetSocketStream()->GetAddress();
+		uint16_t port = (*this->cluster->nodeArray)[0].client->GetSocketStream()->GetPort();
 
-		if (!this->client->Connect(address, port))
+		this->client->connectionConfig.SetIPAddress(address.c_str());
+		this->client->connectionConfig.port = port;
+
+		Yarc::ProtocolData* pongData = nullptr;
+		if (this->client->MakeRequestSync(Yarc::ProtocolData::ParseCommand("PING"), pongData))
+			delete pongData;
+		else
 		{
 			this->logStream << "Failed to connect client to cluster!" << std::endl;
 			return false;
@@ -80,7 +86,6 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 {
 	if (this->client)
 	{
-		this->client->Disconnect();
 		delete this->client;
 		this->client = nullptr;
 	}
@@ -133,38 +138,36 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 			sprintf_s(setCommand, sizeof(setCommand), "SET %s %d", testKey.c_str(), number);
 
 			this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(setCommand), [=](const Yarc::ProtocolData* setCommandResponse) {
-				const Yarc::Error* error = Yarc::Cast<Yarc::Error>(setCommandResponse);
+				const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(setCommandResponse);
 				if (error)
-					this->logStream << "SET command got error response: " << error->GetString() << std::endl;
+					this->logStream << "SET command got error response: " << error->GetValue() << std::endl;
 				else
 				{
 					char getCommand[128];
 					sprintf_s(getCommand, sizeof(getCommand), "GET %s", testKey.c_str());
 
 					this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(getCommand), [=](const Yarc::ProtocolData* getCommandResponse) {
-						const Yarc::Error* error = Yarc::Cast<Yarc::Error>(getCommandResponse);
+						const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(getCommandResponse);
 						if (error)
-							this->logStream << "GET command got error response: " << error->GetString() << std::endl;
+							this->logStream << "GET command got error response: " << error->GetValue() << std::endl;
 						else
 						{
 							std::map<std::string, uint32_t>::iterator iter = this->testKeyMap.find(testKey);
 							if (iter != this->testKeyMap.end())
 							{
-								const Yarc::Integer* integerData = Yarc::Cast<Yarc::Integer>(getCommandResponse);
+								const Yarc::NumberData* integerData = Yarc::Cast<Yarc::NumberData>(getCommandResponse);
 								if (integerData)
 								{
-									if (iter->second != integerData->GetNumber())
+									if (iter->second != integerData->GetValue())
 										this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
 									else
 										iter->second = 0;
 								}
 
-								const Yarc::BulkString* stringData = Yarc::Cast<Yarc::BulkString>(getCommandResponse);
+								const Yarc::BlobStringData* stringData = Yarc::Cast<Yarc::BlobStringData>(getCommandResponse);
 								if (stringData)
 								{
-									char buffer[32];
-									stringData->GetString((uint8_t*)buffer, sizeof(buffer));
-									if (iter->second != ::atoi(buffer))
+									if (iter->second != ::atoi(stringData->GetValue().c_str()))
 										this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
 									else
 									{
