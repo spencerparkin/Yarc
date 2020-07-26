@@ -16,7 +16,9 @@ namespace Yarc
 
 	/*virtual*/ ClusterClient::~ClusterClient()
 	{
+		DeleteList<ReductionObject*>(*this->clusterNodeList);
 		delete this->clusterNodeList;
+		DeleteList<ReductionObject*>(*this->requestList);
 		delete this->requestList;
 	}
 
