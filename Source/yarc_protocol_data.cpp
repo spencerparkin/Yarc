@@ -214,6 +214,7 @@ namespace Yarc
 
 	/*static*/ bool ProtocolData::ParseCount(ByteStream* byteStream, uint32_t& count, bool& streamed)
 	{
+		uint8_t byte = 0;
 		streamed = false;
 		count = 0;
 		char buffer[128];
@@ -224,24 +225,34 @@ namespace Yarc
 			if (i >= sizeof(buffer) - 1)
 				return false;
 
-			uint8_t byte = 0;
 			if (!byteStream->ReadByte(byte))
 				return false;
 
 			if (byte == '?')
 			{
 				streamed = true;
-				break;
+				return ParseCRLF(byteStream);
 			}
 
 			if (!::isdigit(byte))
-				return false;
+				break;
 
 			buffer[i++] = byte;
 		}
 
+		// TODO: Did the number parse succeed?
 		buffer[i] = '\0';
 		count = (uint32_t)::strtol(buffer, nullptr, 10);
+
+		if (byte != '\r')
+			return false;
+
+		if (!byteStream->ReadByte(byte))
+			return false;
+
+		if (byte != '\n')
+			return false;
+
 		return true;
 	}
 
@@ -328,12 +339,10 @@ namespace Yarc
 
 		if (!streamed && count == -1)
 		{
+			// This is for backwards compatibility.
 			this->isNull = true;
 			return true;
 		}
-
-		if (!ParseCRLF(byteStream))
-			return false;
 
 		while (streamed || count > 0)
 		{
@@ -478,12 +487,10 @@ namespace Yarc
 
 		if (!streamed && count == -1)
 		{
+			// This is for backwards compatibility.
 			this->isNull = true;
 			return true;
 		}
-
-		if (!ParseCRLF(byteStream))
-			return false;
 
 		if (streamed)
 		{
@@ -613,9 +620,6 @@ namespace Yarc
 			return false;
 
 		if (streamed)
-			return false;
-
-		if (!ParseCRLF(byteStream))
 			return false;
 
 		if (count == 0)

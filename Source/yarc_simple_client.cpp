@@ -147,6 +147,19 @@ namespace Yarc
 				delete serverData;
 		}
 
+		if (this->threadHandle)
+		{
+			DWORD exitCode = 0;
+			if (::GetExitCodeThread(this->threadHandle, &exitCode))
+			{
+				if (exitCode != STILL_ACTIVE)
+				{
+					this->ShutDownSocketConnectionAndThread();
+					return false;
+				}
+			}
+		}
+
 		return true;
 	}
 
