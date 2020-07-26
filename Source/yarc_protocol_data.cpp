@@ -307,13 +307,16 @@ namespace Yarc
 
 	ArrayData::ArrayData()
 	{
+		this->nestedDataArray = new NestedDataArray();
 		this->isNull = false;
 	}
 
 	/*virtual*/ ArrayData::~ArrayData()
 	{
-		for (int i = 0; i < (signed)this->nestedDataArray.GetCount(); i++)
-			delete this->nestedDataArray[i];
+		for (int i = 0; i < (signed)this->nestedDataArray->GetCount(); i++)
+			delete (*this->nestedDataArray)[i];
+
+		delete this->nestedDataArray;
 	}
 
 	/*virtual*/ bool ArrayData::Parse(ByteStream* byteStream)
@@ -348,8 +351,8 @@ namespace Yarc
 				}
 			}
 
-			this->nestedDataArray.SetCount(this->nestedDataArray.GetCount() + 1);
-			this->nestedDataArray[this->nestedDataArray.GetCount() - 1] = nestedData;
+			this->nestedDataArray->SetCount(this->nestedDataArray->GetCount() + 1);
+			(*this->nestedDataArray)[this->nestedDataArray->GetCount() - 1] = nestedData;
 
 			if (!streamed)
 				count--;
@@ -360,14 +363,14 @@ namespace Yarc
 
 	/*virtual*/ bool ArrayData::Print(ByteStream* byteStream) const
 	{
-		if (!byteStream->WriteFormat("%d", this->nestedDataArray.GetCount()))
+		if (!byteStream->WriteFormat("%d", this->nestedDataArray->GetCount()))
 			return false;
 
 		if (!byteStream->WriteFormat("\r\n"))
 			return false;
 
-		for (int i = 0; i < (signed)this->nestedDataArray.GetCount(); i++)
-			if (!PrintTree(byteStream, this->nestedDataArray[i]))
+		for (int i = 0; i < (signed)this->nestedDataArray->GetCount(); i++)
+			if (!PrintTree(byteStream, (*this->nestedDataArray)[i]))
 				return false;
 
 		return true;
@@ -375,21 +378,21 @@ namespace Yarc
 
 	uint32_t  ArrayData::GetCount(void) const
 	{
-		return this->nestedDataArray.GetCount();
+		return this->nestedDataArray->GetCount();
 	}
 
 	bool  ArrayData::SetCount(uint32_t count)
 	{
-		this->nestedDataArray.SetCount(count);
+		this->nestedDataArray->SetCount(count);
 		return true;
 	}
 
 	ProtocolData* ArrayData::GetElement(uint32_t i)
 	{
-		if (i >= this->nestedDataArray.GetCount())
+		if (i >= this->nestedDataArray->GetCount())
 			return nullptr;
 
-		return this->nestedDataArray[i];
+		return (*this->nestedDataArray)[i];
 	}
 
 	const ProtocolData* ArrayData::GetElement(uint32_t i) const
@@ -399,11 +402,11 @@ namespace Yarc
 
 	bool  ArrayData::SetElement(uint32_t i, ProtocolData* protocolData)
 	{
-		if (i >= this->nestedDataArray.GetCount())
+		if (i >= this->nestedDataArray->GetCount())
 			return false;
 
-		delete this->nestedDataArray[i];
-		this->nestedDataArray[i] = protocolData;
+		delete (*this->nestedDataArray)[i];
+		(*this->nestedDataArray)[i] = protocolData;
 		return true;
 	}
 
@@ -434,11 +437,13 @@ namespace Yarc
 
 	BlobStringData::BlobStringData()
 	{
+		this->byteArray = new DynamicArray<uint8_t>();
 		this->isNull = false;
 	}
 
 	/*virtual*/ BlobStringData::~BlobStringData()
 	{
+		delete this->byteArray;
 	}
 
 	/*virtual*/ bool BlobStringData::Parse(ByteStream* byteStream)
@@ -472,16 +477,16 @@ namespace Yarc
 					return false;
 				}
 
-				if (chunkData->byteArray.GetCount() == 0)
+				if (chunkData->byteArray->GetCount() == 0)
 				{
 					delete protocolData;
 					return true;
 				}
 
-				for (int i = 0; i < (signed)chunkData->byteArray.GetCount(); i++)
+				for (int i = 0; i < (signed)chunkData->byteArray->GetCount(); i++)
 				{
-					this->byteArray.SetCount(this->byteArray.GetCount() + 1);
-					this->byteArray[this->byteArray.GetCount() - 1] = chunkData->byteArray[i];
+					this->byteArray->SetCount(this->byteArray->GetCount() + 1);
+					(*this->byteArray)[this->byteArray->GetCount() - 1] = (*chunkData->byteArray)[i];
 				}
 			}
 		}
@@ -502,8 +507,8 @@ namespace Yarc
 			if (!byteStream->ReadByte(byte))
 				return false;
 
-			this->byteArray.SetCount(this->byteArray.GetCount() + 1);
-			this->byteArray[this->byteArray.GetCount() - 1] = byte;
+			this->byteArray->SetCount(this->byteArray->GetCount() + 1);
+			(*this->byteArray)[this->byteArray->GetCount() - 1] = byte;
 
 			count--;
 		}
@@ -513,11 +518,11 @@ namespace Yarc
 
 	/*virtual*/ bool BlobStringData::Print(ByteStream* byteStream) const
 	{
-		if (!byteStream->WriteFormat("%d\r\n", this->byteArray.GetCount()))
+		if (!byteStream->WriteFormat("%d\r\n", this->byteArray->GetCount()))
 			return false;
 
-		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
-			if (!byteStream->WriteByte(this->byteArray[i]))
+		for (int i = 0; i < (signed)this->byteArray->GetCount(); i++)
+			if (!byteStream->WriteByte((*this->byteArray)[i]))
 				return false;
 
 		return false;
@@ -525,31 +530,31 @@ namespace Yarc
 
 	DynamicArray<uint8_t>& BlobStringData::GetByteArray(void)
 	{
-		return this->byteArray;
+		return *this->byteArray;
 	}
 
 	const DynamicArray<uint8_t>& BlobStringData::GetByteArray(void) const
 	{
-		return this->byteArray;
+		return *this->byteArray;
 	}
 
 	bool BlobStringData::GetToBuffer(uint8_t* buffer, uint32_t bufferSize) const
 	{
-		if (bufferSize < this->byteArray.GetCount())
+		if (bufferSize < this->byteArray->GetCount())
 			return false;
 
-		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
-			buffer[i] = this->byteArray[i];
+		for (int i = 0; i < (signed)this->byteArray->GetCount(); i++)
+			buffer[i] = (*this->byteArray)[i];
 
 		return true;
 	}
 
 	bool BlobStringData::SetFromBuffer(const uint8_t* buffer, uint32_t bufferSize)
 	{
-		this->byteArray.SetCount(bufferSize);
+		this->byteArray->SetCount(bufferSize);
 
-		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
-			this->byteArray[i] = buffer[i];
+		for (int i = 0; i < (signed)this->byteArray->GetCount(); i++)
+			(*this->byteArray)[i] = buffer[i];
 
 		return true;
 	}
@@ -557,17 +562,17 @@ namespace Yarc
 	std::string BlobStringData::GetValue() const
 	{
 		std::string byteArrayStr;
-		for (int i = 0; i < (signed)this->byteArray.GetCount(); i++)
-			byteArrayStr += this->byteArray[i];
+		for (int i = 0; i < (signed)this->byteArray->GetCount(); i++)
+			byteArrayStr += (*this->byteArray)[i];
 		
 		return byteArrayStr;
 	}
 
 	bool BlobStringData::SetValue(const std::string& givenValue)
 	{
-		this->byteArray.SetCount(givenValue.length());
+		this->byteArray->SetCount(givenValue.length());
 		for (int i = 0; i < (signed)givenValue.length(); i++)
-			this->byteArray[i] = givenValue[i];
+			(*this->byteArray)[i] = givenValue[i];
 
 		return true;
 	}
@@ -643,30 +648,32 @@ namespace Yarc
 
 	SimpleStringData::SimpleStringData()
 	{
+		this->value = new std::string;
 	}
 
 	/*virtual*/ SimpleStringData::~SimpleStringData()
 	{
+		delete this->value;
 	}
 
 	/*virtual*/ bool SimpleStringData::Parse(ByteStream* byteStream)
 	{
-		return ParseCRLFTerminatedString(byteStream, this->value);
+		return ParseCRLFTerminatedString(byteStream, *this->value);
 	}
 
 	/*virtual*/ bool SimpleStringData::Print(ByteStream* byteStream) const
 	{
-		return byteStream->WriteFormat("%s\r\n", this->value.c_str());
+		return byteStream->WriteFormat("%s\r\n", this->value->c_str());
 	}
 
 	std::string SimpleStringData::GetValue() const
 	{
-		return this->value;
+		return *this->value;
 	}
 
 	bool SimpleStringData::SetValue(const std::string& givenValue)
 	{
-		this->value = givenValue;
+		*this->value = givenValue;
 		return true;
 	}
 
@@ -690,10 +697,12 @@ namespace Yarc
 
 	MapData::MapData()
 	{
+		this->fieldValuePairList = new FieldValuePairList();
 	}
 
 	/*virtual*/ MapData::~MapData()
 	{
+		delete this->fieldValuePairList;
 	}
 
 	/*virtual*/ bool MapData::Parse(ByteStream* byteStream)
@@ -731,7 +740,7 @@ namespace Yarc
 				return false;
 			}
 
-			this->fieldValuePairList.AddTail(pair);
+			this->fieldValuePairList->AddTail(pair);
 
 			if (!streamed)
 				count -= 2;
@@ -742,10 +751,10 @@ namespace Yarc
 
 	/*virtual*/ bool MapData::Print(ByteStream* byteStream) const
 	{
-		if (!byteStream->WriteFormat("%d\r\n", this->fieldValuePairList.GetCount()))
+		if (!byteStream->WriteFormat("%d\r\n", this->fieldValuePairList->GetCount()))
 			return false;
 
-		for (const FieldValuePairList::Node* node = this->fieldValuePairList.GetHead(); node; node = node->GetNext())
+		for (const FieldValuePairList::Node* node = this->fieldValuePairList->GetHead(); node; node = node->GetNext())
 		{
 			const FieldValuePair& pair = node->value;
 
@@ -761,16 +770,19 @@ namespace Yarc
 
 	ProtocolData* MapData::GetField(const std::string& key)
 	{
+		// TODO: Write this.
 		return nullptr;
 	}
 
 	const ProtocolData* MapData::Getfield(const std::string& key) const
 	{
+		// TODO: Write this.
 		return nullptr;
 	}
 
 	bool MapData::SetField(const std::string& key, ProtocolData* valueData)
 	{
+		// TODO: Write this.
 		return false;
 	}
 
@@ -958,19 +970,21 @@ namespace Yarc
 
 	BigNumberData::BigNumberData()
 	{
+		this->value = new std::string;
 	}
 
 	/*virtual*/ BigNumberData::~BigNumberData()
 	{
+		delete this->value;
 	}
 
 	/*virtual*/ bool BigNumberData::Parse(ByteStream* byteStream)
 	{
-		if (!ParseCRLFTerminatedString(byteStream, this->value))
+		if (!ParseCRLFTerminatedString(byteStream, *this->value))
 			return false;
 
-		for (int i = 0; i < (signed)this->value.length(); i++)
-			if (!::isdigit(this->value.c_str()[i]))
+		for (int i = 0; i < (signed)this->value->length(); i++)
+			if (!::isdigit(this->value->c_str()[i]))
 				return false;
 
 		return true;
@@ -978,7 +992,7 @@ namespace Yarc
 
 	/*virtual*/ bool BigNumberData::Print(ByteStream* byteStream) const
 	{
-		return byteStream->WriteFormat("%s\r\n", this->value.c_str());
+		return byteStream->WriteFormat("%s\r\n", this->value->c_str());
 	}
 
 	//-------------------------- NullData --------------------------

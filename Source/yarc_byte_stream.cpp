@@ -48,4 +48,43 @@ namespace Yarc
 
 		return true;
 	}
+
+	//----------------------------------- StringStream -----------------------------------
+
+	StringStream::StringStream(std::string* givenStringBuffer)
+	{
+		this->stringBuffer = givenStringBuffer;
+		this->readOffset = 0;
+	}
+
+	/*virtual*/ StringStream::~StringStream()
+	{
+	}
+
+	/*virtual*/ uint32_t StringStream::ReadBuffer(uint8_t* buffer, uint32_t bufferSize)
+	{
+		uint32_t i = 0;
+		
+		while (i < bufferSize)
+		{
+			if (this->readOffset >= this->stringBuffer->length())
+				break;
+
+			buffer[i] = this->stringBuffer->c_str()[i];
+
+			i++;
+		}
+
+		return i;
+	}
+
+	/*virtual*/ uint32_t StringStream::WriteBuffer(const uint8_t* buffer, uint32_t bufferSize)
+	{
+		for (uint32_t i = 0; i < bufferSize; i++)
+		{
+			*this->stringBuffer += buffer[i];
+		}
+
+		return bufferSize;
+	}
 }

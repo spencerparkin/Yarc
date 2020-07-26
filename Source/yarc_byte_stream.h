@@ -1,10 +1,12 @@
 #pragma once
 
+#include "yarc_api.h"
 #include <stdint.h>
+#include <string>
 
 namespace Yarc
 {
-	class ByteStream
+	class YARC_API ByteStream
 	{
 	public:
 
@@ -27,5 +29,19 @@ namespace Yarc
 
 		// Provided for convenience, this works just like printf or sprintf.
 		bool WriteFormat(const char* format, ...);
+	};
+
+	class YARC_API StringStream : public ByteStream
+	{
+	public:
+
+		StringStream(std::string* givenStringBuffer);
+		virtual ~StringStream();
+
+		virtual uint32_t ReadBuffer(uint8_t* buffer, uint32_t bufferSize) override;
+		virtual uint32_t WriteBuffer(const uint8_t* buffer, uint32_t bufferSize) override;
+
+		std::string* stringBuffer;
+		uint32_t readOffset;
 	};
 }

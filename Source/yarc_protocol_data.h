@@ -9,7 +9,7 @@
 
 namespace Yarc
 {
-	class ProtocolData
+	class YARC_API ProtocolData
 	{
 	public:
 
@@ -69,7 +69,7 @@ namespace Yarc
 #endif
 	}
 
-	class SimpleData : public ProtocolData
+	class YARC_API SimpleData : public ProtocolData
 	{
 	public:
 
@@ -79,7 +79,7 @@ namespace Yarc
 
 	// This is the equivalent of the bulk-string in RESP1.
 	// We handle the case of streamed strings here in the case that ? is given as the fixed size.
-	class BlobStringData : public SimpleData
+	class YARC_API BlobStringData : public SimpleData
 	{
 	public:
 
@@ -107,12 +107,12 @@ namespace Yarc
 
 		bool ParseByteArrayData(ByteStream* byteStream, uint32_t count);
 
-		DynamicArray<uint8_t> byteArray;
+		DynamicArray<uint8_t>* byteArray;
 
 		bool isNull;
 	};
 
-	class ChunkData : public BlobStringData
+	class YARC_API ChunkData : public BlobStringData
 	{
 	public:
 
@@ -125,7 +125,7 @@ namespace Yarc
 		virtual bool Parse(ByteStream* byteStream) override;
 	};
 
-	class BlobErrorData : public BlobStringData
+	class YARC_API BlobErrorData : public BlobStringData
 	{
 	public:
 
@@ -140,7 +140,7 @@ namespace Yarc
 		std::string GetErrorCode(void) const;
 	};
 
-	class VerbatimStreamData : public BlobStringData
+	class YARC_API VerbatimStreamData : public BlobStringData
 	{
 	public:
 
@@ -154,7 +154,7 @@ namespace Yarc
 		std::string GetContent(void) const;
 	};
 
-	class SimpleStringData : public SimpleData
+	class YARC_API SimpleStringData : public SimpleData
 	{
 	public:
 
@@ -172,10 +172,10 @@ namespace Yarc
 
 	protected:
 
-		std::string value;
+		std::string* value;
 	};
 
-	class SimpleErrorData : public SimpleStringData
+	class YARC_API SimpleErrorData : public SimpleStringData
 	{
 	public:
 
@@ -190,7 +190,7 @@ namespace Yarc
 		std::string GetErrorCode(void) const;
 	};
 
-	class NumberData : public SimpleData
+	class YARC_API NumberData : public SimpleData
 	{
 	public:
 
@@ -212,7 +212,7 @@ namespace Yarc
 		int64_t value;
 	};
 
-	class DoubleData : public SimpleData
+	class YARC_API DoubleData : public SimpleData
 	{
 	public:
 
@@ -234,7 +234,7 @@ namespace Yarc
 		double value;
 	};
 
-	class BooleanData : public SimpleData
+	class YARC_API BooleanData : public SimpleData
 	{
 	public:
 
@@ -256,7 +256,7 @@ namespace Yarc
 		bool value;
 	};
 
-	class BigNumberData : public SimpleData
+	class YARC_API BigNumberData : public SimpleData
 	{
 	public:
 
@@ -271,10 +271,10 @@ namespace Yarc
 
 	protected:
 
-		std::string value;		// TODO: Replace with big number type?
+		std::string* value;		// TODO: Replace with big number type?
 	};
 
-	class EndData : public SimpleData
+	class YARC_API EndData : public SimpleData
 	{
 	public:
 
@@ -288,7 +288,7 @@ namespace Yarc
 		static uint8_t StaticDiscriminant() { return '.'; }
 	};
 
-	class NullData : public SimpleData
+	class YARC_API NullData : public SimpleData
 	{
 	public:
 
@@ -304,7 +304,7 @@ namespace Yarc
 		virtual bool IsNull(void) { return true; }
 	};
 
-	class AggregateData : public ProtocolData
+	class YARC_API AggregateData : public ProtocolData
 	{
 	public:
 		
@@ -313,7 +313,7 @@ namespace Yarc
 	};
 
 	// We handle the case of a streamed aggregate type here in the case that ? is given as the fixed size.
-	class ArrayData : public AggregateData
+	class YARC_API ArrayData : public AggregateData
 	{
 	public:
 
@@ -338,12 +338,12 @@ namespace Yarc
 	protected:
 
 		typedef DynamicArray<ProtocolData*> NestedDataArray;
-		NestedDataArray nestedDataArray;
+		NestedDataArray* nestedDataArray;
 
 		bool isNull;
 	};
 
-	class MapData : public AggregateData
+	class YARC_API MapData : public AggregateData
 	{
 	public:
 
@@ -369,14 +369,14 @@ namespace Yarc
 		};
 
 		typedef LinkedList<FieldValuePair> FieldValuePairList;
+		FieldValuePairList* fieldValuePairList;
 
-		FieldValuePairList fieldValuePairList;
-
-		typedef std::map<std::string, FieldValuePairList::Node*> NestedDataMap;
-		NestedDataMap nestedDataMap;
+		// TODO: This won't export with the DLL, but should we make our own map container?
+		//typedef std::map<std::string, FieldValuePairList::Node*> NestedDataMap;
+		//NestedDataMap nestedDataMap;
 	};
 
-	class SetData : public ArrayData
+	class YARC_API SetData : public ArrayData
 	{
 	public:
 
@@ -387,7 +387,7 @@ namespace Yarc
 		static uint8_t StaticDiscriminant() { return '~'; }
 	};
 
-	class AttributeData : public MapData
+	class YARC_API AttributeData : public MapData
 	{
 	public:
 
@@ -398,7 +398,7 @@ namespace Yarc
 		static uint8_t StaticDiscriminant() { return '|'; }
 	};
 
-	class PushData : public ArrayData
+	class YARC_API PushData : public ArrayData
 	{
 	public:
 

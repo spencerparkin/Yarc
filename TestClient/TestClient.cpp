@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <yarc_simple_client.h>
+#include <yarc_byte_stream.h>
 #include <yarc_protocol_data.h>
 #include <stdio.h>
 
@@ -10,38 +11,34 @@ int main()
 {
 	ClientInterface* client = new SimpleClient();
 
-	if (client->Connect("127.0.0.1", 6379, 20.0))
+	while(true)
 	{
-		while (client->IsConnected())
+		std::cout << "Command: ";
+		std::flush(std::cout);
+
+		std::string command;
+		std::getline(std::cin, command);
+
+		if (command == "exit")
+			break;
+
+		ProtocolData* commandData = ProtocolData::ParseCommand(command.c_str());
+		if (!commandData)
+			std::cout << "Failed to parse!" << std::endl;
+		else
 		{
-			std::cout << "Command: ";
-			std::flush(std::cout);
-
-			std::string command;
-			std::getline(std::cin, command);
-
-			if (command == "exit")
-				break;
-
-			ProtocolData* commandData = ProtocolData::ParseCommand(command.c_str());
-			if (!commandData)
-				std::cout << "Failed to parse!" << std::endl;
+			ProtocolData* resultData = nullptr;
+			if (!client->MakeRequestSync(commandData, resultData))
+				std::cout << "Failed to issue command!" << std::endl;
 			else
 			{
-				ProtocolData* resultData = nullptr;
-				if (!client->MakeRequestSync(commandData, resultData))
-					std::cout << "Failed to issue command!" << std::endl;
-				else
-				{
-					uint32_t protocolDataSize = 1024 * 1024;
-					uint8_t* protocolData = new uint8_t[protocolDataSize];
-					resultData->Print(protocolData, protocolDataSize);
-					std::cout << protocolData << std::endl;
-					delete[] protocolData;
-				}
-
-				delete resultData;
+				std::string protocolDataStr;
+				Yarc::StringStream stringStream(&protocolDataStr);
+				ProtocolData::PrintTree(&stringStream, resultData);
+				std::cout << protocolDataStr << std::endl;
 			}
+
+			delete resultData;
 		}
 	}
 
