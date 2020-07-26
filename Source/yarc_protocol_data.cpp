@@ -135,10 +135,10 @@ namespace Yarc
 		if (!ParseDataType(byteStream, protocolData))
 			return false;
 
-		AttributeData* attributeData = dynamic_cast<AttributeData*>(protocolData);
+		AttributeData* attributeData = Cast<AttributeData>(protocolData);
 		if (attributeData)
 		{
-			if (!ParseTree(byteStream, protocolData))
+			if (!ParseDataType(byteStream, protocolData))
 			{
 				delete attributeData;
 				return false;
@@ -153,10 +153,10 @@ namespace Yarc
 	/*static*/ bool ProtocolData::PrintTree(ByteStream* byteStream, const ProtocolData* protocolData)
 	{
 		if (protocolData->attributeData)
-			if (!protocolData->attributeData->Print(byteStream))
+			if (!ProtocolData::PrintDataType(byteStream, protocolData->attributeData))
 				return false;
 
-		return protocolData->Print(byteStream);
+		return ProtocolData::PrintDataType(byteStream, protocolData);
 	}
 
 	/*static*/ bool ProtocolData::ParseDataType(ByteStream* byteStream, ProtocolData*& protocolData)
@@ -383,7 +383,16 @@ namespace Yarc
 
 	bool  ArrayData::SetCount(uint32_t count)
 	{
+		uint32_t oldCount = this->nestedDataArray->GetCount();
+
+		for (uint32_t i = count; i < oldCount; i++)
+			delete (*this->nestedDataArray)[i];
+
 		this->nestedDataArray->SetCount(count);
+
+		for (uint32_t i = oldCount; i < count; i++)
+			(*this->nestedDataArray)[i] = nullptr;
+
 		return true;
 	}
 

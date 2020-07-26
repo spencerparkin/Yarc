@@ -16,14 +16,38 @@ namespace Yarc
 	{
 	}
 
-	/*virtual*/ bool ByteStream::ReadByte(uint8_t& byte)
+	bool ByteStream::ReadBufferNow(uint8_t* buffer, uint32_t bufferSize)
 	{
-		return this->ReadBuffer(&byte, 1) == 1;
+		uint32_t bufferOffset = 0;
+		uint32_t remainingBytes = bufferSize;
+		while (remainingBytes > 0)
+		{
+			uint32_t bytesRead = this->ReadBuffer(&buffer[bufferOffset], remainingBytes);
+			if (bytesRead == -1)
+				return false;
+
+			remainingBytes -= bytesRead;
+			bufferOffset += bytesRead;
+		}
+
+		return true;
 	}
 
-	/*virtual*/ bool ByteStream::WriteByte(uint8_t byte)
+	bool ByteStream::WriteBufferNow(const uint8_t* buffer, uint32_t bufferSize)
 	{
-		return this->WriteBuffer(&byte, 1) == 1;
+		uint32_t bufferOffset = 0;
+		uint32_t remainingBytes = bufferSize;
+		while (remainingBytes > 0)
+		{
+			uint32_t bytesWritten = this->WriteBuffer((const uint8_t*)&buffer[bufferOffset], remainingBytes);
+			if (bytesWritten == -1)
+				return false;
+
+			remainingBytes -= bytesWritten;
+			bufferOffset += bytesWritten;
+		}
+
+		return true;
 	}
 
 	bool ByteStream::WriteFormat(const char* format, ...)
@@ -34,19 +58,17 @@ namespace Yarc
 		sprintf_s(buffer, sizeof(buffer), format, args);
 		va_end(args);
 
-		uint32_t bufferOffset = 0;
-		uint32_t remainingBytes = ::strlen(buffer);
-		while (remainingBytes > 0)
-		{
-			uint32_t bytesWritten = this->WriteBuffer((const uint8_t*)&buffer[bufferOffset], remainingBytes);
-			if (bytesWritten == 0)
-				return false;
+		return this->WriteBufferNow((const uint8_t*)buffer, ::strlen(buffer));
+	}
 
-			remainingBytes -= bytesWritten;
-			bufferOffset += bytesWritten;
-		}
+	bool ByteStream::ReadByte(uint8_t& byte)
+	{
+		return this->ReadBufferNow(&byte, 1);
+	}
 
-		return true;
+	bool ByteStream::WriteByte(uint8_t byte)
+	{
+		return this->WriteBufferNow(&byte, 1);
 	}
 
 	//----------------------------------- StringStream -----------------------------------

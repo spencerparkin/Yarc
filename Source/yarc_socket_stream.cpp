@@ -136,7 +136,7 @@ namespace Yarc
 	/*virtual*/ uint32_t SocketStream::ReadBuffer(uint8_t* buffer, uint32_t bufferSize)
 	{
 		if (!this->IsConnected())
-			return 0;
+			return -1;
 
 		// Note that it's safe to block here even if the thread needs to exit,
 		// because we signal the thread to exit by simply closing the socket,
@@ -144,27 +144,34 @@ namespace Yarc
 		uint32_t readCount = ::recv(this->socket, (char*)buffer, bufferSize, 0);
 		if (readCount == SOCKET_ERROR)
 		{
+			// We should check the error code here, but typically, this means
+			// that we have lost our connection.  We do this on purpose to
+			// signal thread shut-down, but it could also happen by accident.
 			this->socket = INVALID_SOCKET;
-			return 0;
+			return -1;
 		}
 
-		this->lastSocketReadWriteTime = ::clock();
+		if(readCount > 0)
+			this->lastSocketReadWriteTime = ::clock();
+
 		return readCount;
 	}
 
 	/*virtual*/ uint32_t SocketStream::WriteBuffer(const uint8_t* buffer, uint32_t bufferSize)
 	{
 		if (!this->IsConnected())
-			return 0;
+			return -1;
 
 		uint32_t writeCount = ::send(this->socket, (const char*)buffer, bufferSize, 0);
 		if (writeCount == SOCKET_ERROR)
 		{
 			this->socket = INVALID_SOCKET;
-			return 0;
+			return -1;
 		}
 
-		this->lastSocketReadWriteTime = ::clock();
+		if(writeCount > 0)
+			this->lastSocketReadWriteTime = ::clock();
+
 		return writeCount;
 	}
 }

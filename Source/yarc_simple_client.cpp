@@ -77,7 +77,7 @@ namespace Yarc
 			this->threadHandle = nullptr;
 		}
 
-		return !this->socketStream->IsConnected() && this->threadHandle == nullptr;
+		return true;
 	}
 
 	/*virtual*/ bool SimpleClient::Update(void)

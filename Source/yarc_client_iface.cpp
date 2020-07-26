@@ -68,7 +68,7 @@ namespace Yarc
 
 	ConnectionConfig::ConnectionConfig()
 	{
-		this->ipAddress[0] = '\0';
+		strcpy_s(this->ipAddress, sizeof(this->ipAddress), "127.0.0.1");
 		this->hostname[0] = '\0';
 		this->port = 6379;
 		this->connectionTimeoutSeconds = -1.0;
@@ -94,6 +94,9 @@ namespace Yarc
 	{
 		if(::strlen(this->hostname) > 0)
 		{
+			WSADATA data;
+			::WSAStartup(MAKEWORD(2, 2), &data);
+
 			char portStr[16];
 			sprintf_s(portStr, sizeof(portStr), "%d", this->port);
 
