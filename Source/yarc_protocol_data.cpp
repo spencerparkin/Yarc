@@ -521,11 +521,9 @@ namespace Yarc
 					return true;
 				}
 
-				for (int i = 0; i < (signed)chunkData->byteArray->GetCount(); i++)
-				{
-					this->byteArray->SetCount(this->byteArray->GetCount() + 1);
-					(*this->byteArray)[this->byteArray->GetCount() - 1] = (*chunkData->byteArray)[i];
-				}
+				uint32_t count = this->byteArray->GetCount();
+				this->byteArray->SetCount(count + chunkData->byteArray->GetCount());
+				::memcpy(&(*this->byteArray)[count], &(*chunkData->byteArray)[0], chunkData->byteArray->GetCount());
 			}
 		}
 		else
