@@ -420,7 +420,7 @@ namespace Yarc
 								this->responseData = responseData;
 								this->state = STATE_READY;
 								return false;
-								});
+							});
 
 							if (requestMade)
 								this->state = STATE_PENDING;

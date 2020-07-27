@@ -24,7 +24,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 	::srand(0);
 
 	this->keySettingGettingEnabled = true;
-	this->keySlotMigratingEnabled = true;
+	this->keySlotMigratingEnabled = false;
 }
 
 /*virtual*/ ClusterTestCase::~ClusterTestCase()
