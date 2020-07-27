@@ -61,7 +61,6 @@ namespace Yarc
 			{
 				MARK_IMPORTING,
 				MARK_MIGRATING,
-				BE_LAZY,
 				MIGRATING_KEYS,
 				WAITING,
 				UNMARK,
@@ -72,7 +71,6 @@ namespace Yarc
 			Node* sourceNode;
 			Node* destinationNode;
 			uint16_t hashSlot;
-			uint32_t lazyCount;
 		};
 
 		ReductionObjectList* migrationList;

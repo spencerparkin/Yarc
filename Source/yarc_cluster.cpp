@@ -335,7 +335,10 @@ namespace Yarc
 
 		ArrayData* arrayData = Cast<ArrayData>(responseData);
 		if (!arrayData || arrayData->GetCount() == 0)
+		{
+			delete responseData;
 			return nullptr;
+		}
 
 		uint32_t i = RandomNumber(0, arrayData->GetCount() - 1);
 
@@ -377,7 +380,10 @@ namespace Yarc
 
 		ArrayData* arrayData = Cast<ArrayData>(responseData);
 		if (!arrayData || arrayData->GetCount() == 0)
+		{
+			delete responseData;
 			return nullptr;
+		}
 
 		Node* sourceNode = nullptr;
 		Node* destinationNode = nullptr;
@@ -399,7 +405,10 @@ namespace Yarc
 		}
 
 		if (!sourceNode)
+		{
+			delete responseData;
 			return nullptr;
+		}
 
 		while (!destinationNode || destinationNode == sourceNode)
 		{
@@ -410,6 +419,7 @@ namespace Yarc
 			destinationNode = this->FindNodeWithID(destinationID.c_str());
 		}
 
+		delete responseData;
 		return new Migration(sourceNode, destinationNode, hashSlot);
 	}
 
@@ -429,7 +439,6 @@ namespace Yarc
 		this->sourceNode = givenSourceNode;
 		this->destinationNode = givenDestinationNode;
 		this->hashSlot = givenHashSlot;
-		this->lazyCount = 512;
 		this->state = State::MARK_IMPORTING;
 	}
 
@@ -476,7 +485,7 @@ namespace Yarc
 					if (responseData->IsError())
 						this->state = State::BAIL;
 					else
-						this->state = State::BE_LAZY;
+						this->state = State::MIGRATING_KEYS;
 					return true;
 				}))
 				{
@@ -487,14 +496,6 @@ namespace Yarc
 					this->state = State::WAITING;
 				}
 
-				break;
-			}
-			case State::BE_LAZY:
-			{
-				if (this->lazyCount == 0)
-					this->state = State::MIGRATING_KEYS;
-				else
-					this->lazyCount--;
 				break;
 			}
 			case State::MIGRATING_KEYS:
