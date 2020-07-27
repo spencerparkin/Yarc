@@ -207,15 +207,29 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		if (!this->socketStream->IsConnected())
-			if (!this->SetupSocketConnectionAndThread())
-				return false;
+		bool success = true;
 
-		if (!ProtocolData::PrintTree(this->socketStream, requestData))
-			return false;
+		try
+		{
+			if (!this->socketStream->IsConnected())
+				if (!this->SetupSocketConnectionAndThread())
+					throw new InternalException();
 
-		this->EnqueueCallback(callback);
-		return true;
+			if (!ProtocolData::PrintTree(this->socketStream, requestData))
+				throw new InternalException();
+
+			this->EnqueueCallback(callback);
+		}
+		catch (InternalException* exc)
+		{
+			delete exc;
+			success = false;
+		}
+
+		if (deleteData)
+			delete requestData;
+
+		return success;
 	}
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
