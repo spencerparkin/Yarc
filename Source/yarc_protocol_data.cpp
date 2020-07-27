@@ -618,7 +618,7 @@ namespace Yarc
 	bool BlobStringData::SetValue(const char* givenValue)
 	{
 		this->byteArray->SetCount((uint32_t)::strlen(givenValue));
-		for (int i = 0; i < givenValue[i] != '\0'; i++)
+		for (int i = 0; givenValue[i] != '\0'; i++)
 			(*this->byteArray)[i] = givenValue[i];
 
 		return true;
