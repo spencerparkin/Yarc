@@ -45,8 +45,13 @@ namespace Yarc
 
 	bool PubSub::Subscribe(const std::string& channel, ClientInterface::Callback callback)
 	{
+		return this->Subscribe(channel.c_str(), callback);
+	}
+
+	bool PubSub::Subscribe(const char* channel, ClientInterface::Callback callback)
+	{
 		ProtocolData* responseData = nullptr;
-		if (!this->inputClient->MakeRequestSync(ProtocolData::ParseCommand("SUBSCRIBE %s", channel.c_str()), responseData))
+		if (!this->inputClient->MakeRequestSync(ProtocolData::ParseCommand("SUBSCRIBE %s", channel), responseData))
 			return false;
 
 		// TODO: Make sure we got +OK from the server.
@@ -61,6 +66,11 @@ namespace Yarc
 
 	bool PubSub::Unsubscribe(const std::string& channel)
 	{
+		return this->Unsubscribe(channel.c_str());
+	}
+
+	bool PubSub::Unsubscribe(const char* channel)
+	{
 		CallbackMap::iterator iter = this->callbackMap->find(channel);
 		if (iter != this->callbackMap->end())
 			this->callbackMap->erase(iter);
@@ -68,7 +78,7 @@ namespace Yarc
 			return false;
 
 		ProtocolData* responseData = nullptr;
-		if (!this->inputClient->MakeRequestSync(ProtocolData::ParseCommand("UNSUBSCRIBE %s", channel.c_str()), responseData))
+		if (!this->inputClient->MakeRequestSync(ProtocolData::ParseCommand("UNSUBSCRIBE %s", channel), responseData))
 			return false;
 
 		// TODO: Make sure we got +OK from the server.
@@ -77,6 +87,11 @@ namespace Yarc
 	}
 
 	bool PubSub::Publish(const std::string& channel, ProtocolData* publishData)
+	{
+		return this->Publish(channel.c_str(), publishData);
+	}
+
+	bool PubSub::Publish(const char* channel, ProtocolData* publishData)
 	{
 		ArrayData* commandData = new ArrayData();
 		commandData->SetCount(3);
@@ -91,7 +106,17 @@ namespace Yarc
 		return this->Publish(channel, new BlobStringData(buffer, bufferSize));
 	}
 
+	bool PubSub::Publish(const char* channel, const uint8_t* buffer, uint32_t bufferSize)
+	{
+		return this->Publish(channel, new BlobStringData(buffer, bufferSize));
+	}
+
 	bool PubSub::Publish(const std::string& channel, const std::string& message)
+	{
+		return this->Publish(channel, new BlobStringData(message));
+	}
+
+	bool PubSub::Publish(const char* channel, const char* message)
 	{
 		return this->Publish(channel, new BlobStringData(message));
 	}
@@ -145,5 +170,13 @@ namespace Yarc
 
 		this->inputClient->Flush();
 		return true;
+	}
+
+	// For one of my use-cases, this function cannot be made inline,
+	// because however the compiler impliments it, it gives the wrong
+	// answer, which is quite odd.
+	uint32_t PubSub::GetSubscriptionCount()
+	{
+		return (uint32_t)this->callbackMap->size();
 	}
 }
