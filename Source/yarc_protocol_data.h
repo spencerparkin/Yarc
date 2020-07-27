@@ -161,6 +161,7 @@ namespace Yarc
 	public:
 
 		SimpleStringData();
+		SimpleStringData(const std::string& givenValue);
 		virtual ~SimpleStringData();
 
 		virtual bool Parse(ByteStream* byteStream) override;
@@ -312,6 +313,8 @@ namespace Yarc
 		
 		AggregateData();
 		virtual ~AggregateData();
+
+		virtual void Clear(void) {}
 	};
 
 	// We handle the case of a streamed aggregate type here in the case that ? is given as the fixed size.
@@ -327,6 +330,8 @@ namespace Yarc
 
 		virtual uint8_t DynamicDiscriminant() const override { return '*'; }
 		static uint8_t StaticDiscriminant() { return '*'; }
+
+		virtual void Clear(void) override;
 
 		uint32_t GetCount(void) const;
 		bool SetCount(uint32_t count);
@@ -358,11 +363,11 @@ namespace Yarc
 		virtual uint8_t DynamicDiscriminant() const override { return '%'; }
 		static uint8_t StaticDiscriminant() { return '%'; }
 
+		virtual void Clear(void) override;
+
 		ProtocolData* GetField(const std::string& key);
 		const ProtocolData* Getfield(const std::string& key) const;
 		bool SetField(const std::string& key, ProtocolData* valueData);
-
-	protected:
 
 		struct FieldValuePair
 		{
@@ -371,11 +376,16 @@ namespace Yarc
 		};
 
 		typedef LinkedList<FieldValuePair> FieldValuePairList;
+
+		FieldValuePairList* GetPairList() { return this->fieldValuePairList; }
+		const FieldValuePairList* GetPairList() const { return this->fieldValuePairList; }
+
+	protected:
+
 		FieldValuePairList* fieldValuePairList;
 
-		// TODO: This won't export with the DLL, but should we make our own map container?
-		//typedef std::map<std::string, FieldValuePairList::Node*> NestedDataMap;
-		//NestedDataMap nestedDataMap;
+		typedef std::map<std::string, ProtocolData*> NestedDataMap;
+		NestedDataMap* nestedDataMap;
 	};
 
 	class YARC_API SetData : public ArrayData

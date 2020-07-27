@@ -324,14 +324,22 @@ namespace Yarc
 
 	/*virtual*/ ArrayData::~ArrayData()
 	{
+		this->Clear();
+		delete this->nestedDataArray;
+	}
+
+	void ArrayData::Clear(void)
+	{
 		for (int i = 0; i < (signed)this->nestedDataArray->GetCount(); i++)
 			delete (*this->nestedDataArray)[i];
 
-		delete this->nestedDataArray;
+		this->nestedDataArray->SetCount(0);
 	}
 
 	/*virtual*/ bool ArrayData::Parse(ByteStream* byteStream)
 	{
+		this->Clear();
+
 		uint32_t count = 0;
 		bool streamed = false;
 		if (!ParseCount(byteStream, count, streamed))
@@ -673,6 +681,11 @@ namespace Yarc
 		this->value = new std::string;
 	}
 
+	SimpleStringData::SimpleStringData(const std::string& givenValue)
+	{
+		this->value = new std::string(givenValue);
+	}
+
 	/*virtual*/ SimpleStringData::~SimpleStringData()
 	{
 		delete this->value;
@@ -723,9 +736,17 @@ namespace Yarc
 	MapData::MapData()
 	{
 		this->fieldValuePairList = new FieldValuePairList();
+		this->nestedDataMap = new NestedDataMap;
 	}
 
 	/*virtual*/ MapData::~MapData()
+	{
+		this->Clear();
+		delete this->fieldValuePairList;
+		delete this->nestedDataMap;
+	}
+
+	void MapData::Clear(void)
 	{
 		for (FieldValuePairList::Node* node = this->fieldValuePairList->GetHead(); node; node = node->GetNext())
 		{
@@ -734,11 +755,20 @@ namespace Yarc
 			delete pair.valueData;
 		}
 
-		delete this->fieldValuePairList;
+		this->fieldValuePairList->RemoveAll();
+
+		while (this->nestedDataMap->size() > 0)
+		{
+			NestedDataMap::iterator iter = this->nestedDataMap->begin();
+			delete iter->second;
+			this->nestedDataMap->erase(iter);
+		}
 	}
 
 	/*virtual*/ bool MapData::Parse(ByteStream* byteStream)
 	{
+		this->Clear();
+
 		uint32_t count = 0;
 		bool streamed = false;
 		if (!ParseCount(byteStream, count, streamed))
@@ -775,12 +805,36 @@ namespace Yarc
 				count--;
 		}
 
+		FieldValuePairList::Node* node = this->fieldValuePairList->GetHead();
+		while (node)
+		{
+			FieldValuePairList::Node* nextNode = node->GetNext();
+
+			FieldValuePair& pair = node->value;
+			
+			SimpleStringData* stringData = Cast<SimpleStringData>(pair.fieldData);
+			BlobStringData* blobStringData = Cast<BlobStringData>(pair.fieldData);
+
+			if (stringData)
+				this->SetField(stringData->GetValue(), pair.valueData);
+			else if (blobStringData)
+				this->SetField(blobStringData->GetValue(), pair.valueData);
+
+			if (stringData || blobStringData)
+			{
+				delete pair.fieldData;
+				this->fieldValuePairList->Remove(node);
+			}
+
+			node = nextNode;
+		}
+
 		return true;
 	}
 
 	/*virtual*/ bool MapData::Print(ByteStream* byteStream) const
 	{
-		if (!byteStream->WriteFormat("%d\r\n", this->fieldValuePairList->GetCount()))
+		if (!byteStream->WriteFormat("%d\r\n", this->fieldValuePairList->GetCount() + this->nestedDataMap->size()))
 			return false;
 
 		for (const FieldValuePairList::Node* node = this->fieldValuePairList->GetHead(); node; node = node->GetNext())
@@ -794,25 +848,45 @@ namespace Yarc
 				return false;
 		}
 
+		for (NestedDataMap::iterator iter = this->nestedDataMap->begin(); iter != this->nestedDataMap->end(); iter++)
+		{
+			BlobStringData blobStringData(iter->first);
+
+			if (!PrintTree(byteStream, &blobStringData))
+				return false;
+
+			if (!PrintTree(byteStream, iter->second))
+				return false;
+		}
+
 		return true;
 	}
 
 	ProtocolData* MapData::GetField(const std::string& key)
 	{
-		// TODO: Write this.
-		return nullptr;
+		NestedDataMap::iterator iter = this->nestedDataMap->find(key);
+		if (iter == this->nestedDataMap->end())
+			return nullptr;
+
+		return iter->second;
 	}
 
 	const ProtocolData* MapData::Getfield(const std::string& key) const
 	{
-		// TODO: Write this.
-		return nullptr;
+		return const_cast<MapData*>(this)->GetField(key);
 	}
 
 	bool MapData::SetField(const std::string& key, ProtocolData* valueData)
 	{
-		// TODO: Write this.
-		return false;
+		NestedDataMap::iterator iter = this->nestedDataMap->find(key);
+		if (iter != this->nestedDataMap->end())
+		{
+			delete iter->second;
+			this->nestedDataMap->erase(iter);
+		}
+
+		this->nestedDataMap->insert(std::pair<std::string, ProtocolData*>(key, valueData));
+		return true;
 	}
 
 	//-------------------------- SetData --------------------------
