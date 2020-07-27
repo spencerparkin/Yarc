@@ -33,6 +33,8 @@ namespace Yarc
 
 		bool Update(void);
 
+		uint32_t GetSubscriptionCount() { return (uint32_t)this->callbackMap->size(); }
+
 	private:
 
 		bool Resubscribe(void);

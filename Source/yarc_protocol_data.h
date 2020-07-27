@@ -304,7 +304,7 @@ namespace Yarc
 		virtual uint8_t DynamicDiscriminant() const override { return '_'; }
 		static uint8_t StaticDiscriminant() { return '_'; }
 
-		virtual bool IsNull(void) { return true; }
+		virtual bool IsNull(void) const override { return true; }
 	};
 
 	class YARC_API AggregateData : public ProtocolData
