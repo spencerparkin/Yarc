@@ -155,7 +155,10 @@ namespace Yarc
 			// request or flush operation.
 
 			if (!this->socketStream->IsConnected())
+			{
+				this->ShutDownSocketConnectionAndThread();
 				return false;
+			}
 
 			if (this->threadHandle)
 			{
