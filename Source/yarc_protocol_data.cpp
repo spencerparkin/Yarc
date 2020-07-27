@@ -281,7 +281,7 @@ namespace Yarc
 
 			value += byte;
 
-			int i = value.length();
+			int i = (uint32_t)value.length();
 			if (i >= 2)
 			{
 				const char* buffer = value.c_str();
@@ -601,7 +601,7 @@ namespace Yarc
 
 	bool BlobStringData::SetValue(const std::string& givenValue)
 	{
-		this->byteArray->SetCount(givenValue.length());
+		this->byteArray->SetCount((uint32_t)givenValue.length());
 		for (int i = 0; i < (signed)givenValue.length(); i++)
 			(*this->byteArray)[i] = givenValue[i];
 
@@ -722,7 +722,7 @@ namespace Yarc
 
 	std::string SimpleErrorData::GetErrorCode(void) const
 	{
-		uint32_t i = this->value->find(' ');
+		uint32_t i = (uint32_t)this->value->find(' ');
 		if (i == std::string::npos)
 			return "";
 

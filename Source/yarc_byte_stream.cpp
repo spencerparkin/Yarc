@@ -58,7 +58,7 @@ namespace Yarc
 		vsprintf_s(buffer, sizeof(buffer), format, args);
 		va_end(args);
 
-		return this->WriteBufferNow((const uint8_t*)buffer, ::strlen(buffer));
+		return this->WriteBufferNow((const uint8_t*)buffer, (uint32_t)::strlen(buffer));
 	}
 
 	bool ByteStream::ReadByte(uint8_t& byte)

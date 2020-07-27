@@ -163,7 +163,7 @@ namespace Yarc
 						i++;
 					}
 
-					i = nodeAddr.find(':');
+					i = (uint32_t)nodeAddr.find(':');
 					if (i != -1)
 					{
 						std::string portStr = nodeAddr.substr(i + 1, nodeAddr.length() - i - 1);
