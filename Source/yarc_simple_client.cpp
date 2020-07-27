@@ -39,6 +39,8 @@ namespace Yarc
 
 		try
 		{
+			this->callbackList->RemoveAll();
+
 			if (!this->socketStream->IsConnected())
 			{
 				const char* ipAddress = this->connectionConfig.GetResolvedIPAddress();
@@ -76,6 +78,8 @@ namespace Yarc
 			::WaitForSingleObject(this->threadHandle, INFINITE);
 			this->threadHandle = nullptr;
 		}
+
+		this->callbackList->RemoveAll();
 
 		return true;
 	}
