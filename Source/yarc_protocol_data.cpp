@@ -711,8 +711,11 @@ namespace Yarc
 
 	std::string SimpleErrorData::GetErrorCode(void) const
 	{
-		// TODO: Write this.
-		return "";
+		uint32_t i = this->value->find(' ');
+		if (i == std::string::npos)
+			return "";
+
+		return this->value->substr(0, i);
 	}
 
 	//-------------------------- MapData --------------------------

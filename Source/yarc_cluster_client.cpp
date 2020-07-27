@@ -355,10 +355,10 @@ namespace Yarc
 				const SimpleErrorData* errorData = Cast<SimpleErrorData>(this->responseData);
 				if (errorData)
 				{
-					std::string errorMessage = errorData->GetValue();
-					if (errorMessage == "ASK")
+					std::string errorCode = errorData->GetErrorCode();
+					if (errorCode == "ASK")
 					{
-						this->ParseRedirectAddressAndPort(errorMessage.c_str());
+						this->ParseRedirectAddressAndPort(errorData->GetValue().c_str());
 
 						delete this->responseData;
 						this->responseData = nullptr;
@@ -401,12 +401,12 @@ namespace Yarc
 
 						break;
 					}
-					else if (errorMessage == "MOVED")
+					else if (errorCode == "MOVED")
 					{
 						this->clusterClient->SignalClusterConfigDirty();
 						result = RESULT_BAIL;
 
-						this->ParseRedirectAddressAndPort(errorMessage.c_str());
+						this->ParseRedirectAddressAndPort(errorData->GetValue().c_str());
 
 						delete this->responseData;
 						this->responseData = nullptr;
