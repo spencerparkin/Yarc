@@ -737,9 +737,6 @@ namespace Yarc
 		if (!ParseCount(byteStream, count, streamed))
 			return false;
 
-		if (count % 2 != 0)
-			return false;
-
 		while (streamed || count > 0)
 		{
 			FieldValuePair pair;
@@ -768,7 +765,7 @@ namespace Yarc
 			this->fieldValuePairList->AddTail(pair);
 
 			if (!streamed)
-				count -= 2;
+				count--;
 		}
 
 		return true;
