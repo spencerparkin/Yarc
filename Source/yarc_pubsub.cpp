@@ -7,7 +7,7 @@ namespace Yarc
 	{
 		this->callbackMap = new CallbackMap;
 
-		// Override these, since a we must be connected at all times to receive messages.
+		// Override these, since we must be connected at all times to receive messages.
 		connectionConfig.disposition = ConnectionConfig::Disposition::PERSISTENT;
 		connectionConfig.connectionTimeoutSeconds = 0.0;
 
@@ -19,6 +19,10 @@ namespace Yarc
 
 		this->inputClient->RegisterPushDataCallback([=](const ProtocolData* messageData) -> bool {
 			return this->DispatchPubSubMessage(messageData);
+		});
+
+		this->inputClient->SetPostConnectCallback([=](SimpleClient*) -> bool {
+			return this->Resubscribe();
 		});
 	}
 
@@ -116,6 +120,19 @@ namespace Yarc
 	{
 		this->inputClient->Update();
 		this->outputClient->Update();
+		return true;
+	}
+
+	bool PubSub::Resubscribe(void)
+	{
+		for (CallbackMap::iterator iter = this->callbackMap->begin(); iter != this->callbackMap->end(); iter++)
+		{
+			const std::string& channel = iter->first;
+			if (!this->inputClient->MakeRequestAsync(ProtocolData::ParseCommand("SUBSCRIBE %s", channel.c_str())))
+				return false;
+		}
+
+		this->inputClient->Flush();
 		return true;
 	}
 }

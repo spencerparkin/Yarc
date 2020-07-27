@@ -30,6 +30,8 @@ namespace Yarc
 
 	private:
 
+		bool Resubscribe(void);
+
 		bool DispatchPubSubMessage(const ProtocolData* messageData);
 
 		SimpleClient* inputClient;

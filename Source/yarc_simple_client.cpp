@@ -12,6 +12,8 @@ namespace Yarc
 		this->callbackList = new CallbackList();
 		this->serverDataList = new ProtocolDataList();
 		this->threadHandle = nullptr;
+		this->postConnectCallback = new EventCallback;
+		this->preDisconnectCallback = new EventCallback;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
@@ -21,6 +23,8 @@ namespace Yarc
 		delete this->callbackList;
 		this->serverDataList->Delete();
 		delete this->serverDataList;
+		delete this->postConnectCallback;
+		delete this->preDisconnectCallback;
 	}
 
 	/*static*/ SimpleClient* SimpleClient::Create()
@@ -57,6 +61,9 @@ namespace Yarc
 				if (!this->threadHandle)
 					throw new InternalException();
 			}
+
+			if (*this->postConnectCallback)
+				(*this->postConnectCallback)(this);
 		}
 		catch (InternalException* exc)
 		{
@@ -70,6 +77,9 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::ShutDownSocketConnectionAndThread(void)
 	{
+		if (*this->preDisconnectCallback)
+			(*this->preDisconnectCallback)(this);
+
 		if (this->socketStream->IsConnected())
 			this->socketStream->Disconnect();
 
@@ -82,6 +92,26 @@ namespace Yarc
 		this->callbackList->RemoveAll();
 
 		return true;
+	}
+
+	void SimpleClient::SetPostConnectCallback(EventCallback givenCallback)
+	{
+		*this->postConnectCallback = givenCallback;
+	}
+
+	void SimpleClient::SetPreDisconnectCallback(EventCallback givenCallback)
+	{
+		*this->preDisconnectCallback = givenCallback;
+	}
+
+	SimpleClient::EventCallback SimpleClient::GetPostConnectCallback(void)
+	{
+		return *this->postConnectCallback;
+	}
+
+	SimpleClient::EventCallback SimpleClient::GetPreDisconnectCallback(void)
+	{
+		return *this->preDisconnectCallback;
 	}
 
 	/*virtual*/ bool SimpleClient::Update(void)

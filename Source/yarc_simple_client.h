@@ -30,7 +30,18 @@ namespace Yarc
 
 		SocketStream* GetSocketStream() { return this->socketStream; }
 
+		typedef std::function<bool(SimpleClient*)> EventCallback;
+
+		void SetPostConnectCallback(EventCallback givenCallback);
+		void SetPreDisconnectCallback(EventCallback givenCallback);
+
+		EventCallback GetPostConnectCallback(void);
+		EventCallback GetPreDisconnectCallback(void);
+
 	protected:
+
+		EventCallback* postConnectCallback;
+		EventCallback* preDisconnectCallback;
 
 		virtual bool SetupSocketConnectionAndThread(void);
 		virtual bool ShutDownSocketConnectionAndThread(void);
