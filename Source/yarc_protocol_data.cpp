@@ -502,7 +502,7 @@ namespace Yarc
 
 		if (streamed)
 		{
-			while (true)
+			while (true)		// TODO: Test streaming.  Is there an easy way to do this in Redis 6?
 			{
 				ProtocolData* protocolData = nullptr;
 				if (!ParseDataType(byteStream, protocolData))
