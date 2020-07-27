@@ -15,6 +15,9 @@ namespace Yarc
 		PubSub(ConnectionConfig connectionConfig);
 		virtual ~PubSub();
 
+		static PubSub* Create(ConnectionConfig connectionConfig);
+		static void Destroy(PubSub* pubSub);
+
 		bool Subscribe(const std::string& channel, ClientInterface::Callback callback);
 		bool Unsubscribe(const std::string& channel);
 

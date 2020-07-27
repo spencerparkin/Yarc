@@ -3,6 +3,16 @@
 
 namespace Yarc
 {
+	/*static*/ PubSub* PubSub::Create(ConnectionConfig connectionConfig)
+	{
+		return new PubSub(connectionConfig);
+	}
+
+	/*static*/ void PubSub::Destroy(PubSub* pubSub)
+	{
+		delete pubSub;
+	}
+
 	PubSub::PubSub(ConnectionConfig connectionConfig)
 	{
 		this->callbackMap = new CallbackMap;
