@@ -147,15 +147,26 @@ namespace Yarc
 				delete serverData;
 		}
 
-		if (this->threadHandle)
+		if (this->callbackList->GetCount() > 0)
 		{
-			DWORD exitCode = 0;
-			if (::GetExitCodeThread(this->threadHandle, &exitCode))
+			// If we're expecting responses to requests and we're
+			// not connected or our thread isn't running, then our
+			// update needs to fail to break us out of any synchronous
+			// request or flush operation.
+
+			if (!this->socketStream->IsConnected())
+				return false;
+
+			if (this->threadHandle)
 			{
-				if (exitCode != STILL_ACTIVE)
+				DWORD exitCode = 0;
+				if (::GetExitCodeThread(this->threadHandle, &exitCode))
 				{
-					this->ShutDownSocketConnectionAndThread();
-					return false;
+					if (exitCode != STILL_ACTIVE)
+					{
+						this->ShutDownSocketConnectionAndThread();
+						return false;
+					}
 				}
 			}
 		}
