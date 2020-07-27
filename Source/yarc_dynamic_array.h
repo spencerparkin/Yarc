@@ -62,6 +62,16 @@ namespace Yarc
 			this->count = newCount;
 		}
 
+		T* GetBuffer()
+		{
+			return this->data;
+		}
+
+		const T* GetBuffer() const
+		{
+			return this->data;
+		}
+
 	private:
 
 		T* data;

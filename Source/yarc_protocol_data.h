@@ -85,6 +85,7 @@ namespace Yarc
 
 		BlobStringData();
 		BlobStringData(const std::string& value);
+		BlobStringData(const char* value);
 		BlobStringData(const uint8_t* buffer, uint32_t bufferSize);
 		virtual ~BlobStringData();
 
@@ -96,6 +97,7 @@ namespace Yarc
 
 		std::string GetValue() const;
 		bool SetValue(const std::string& givenValue);
+		bool SetValue(const char* givenValue);
 
 		bool GetToBuffer(uint8_t* buffer, uint32_t bufferSize) const;
 		bool SetFromBuffer(const uint8_t* buffer, uint32_t bufferSize);

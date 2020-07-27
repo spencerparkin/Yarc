@@ -474,6 +474,13 @@ namespace Yarc
 		this->SetValue(value);
 	}
 
+	BlobStringData::BlobStringData(const char* value)
+	{
+		this->byteArray = new DynamicArray<uint8_t>();
+		this->isNull = false;
+		this->SetValue(value);
+	}
+
 	BlobStringData::BlobStringData(const uint8_t* buffer, uint32_t bufferSize)
 	{
 		this->byteArray = new DynamicArray<uint8_t>();
@@ -523,7 +530,7 @@ namespace Yarc
 
 				uint32_t count = this->byteArray->GetCount();
 				this->byteArray->SetCount(count + chunkData->byteArray->GetCount());
-				::memcpy(&(*this->byteArray)[count], &(*chunkData->byteArray)[0], chunkData->byteArray->GetCount());
+				::memcpy(this->byteArray->GetBuffer(), chunkData->byteArray->GetBuffer(), chunkData->byteArray->GetCount());
 			}
 		}
 		else
@@ -539,7 +546,7 @@ namespace Yarc
 	{
 		this->byteArray->SetCount(count);
 
-		if (!byteStream->ReadBufferNow(&(*this->byteArray)[0], count))
+		if (!byteStream->ReadBufferNow(this->byteArray->GetBuffer(), count))
 			return false;
 
 		return ParseCRLF(byteStream);
@@ -550,7 +557,7 @@ namespace Yarc
 		if (!byteStream->WriteFormat("%d\r\n", this->byteArray->GetCount()))
 			return false;
 
-		if (!byteStream->WriteBufferNow(&(*this->byteArray)[0], this->byteArray->GetCount()))
+		if (!byteStream->WriteBufferNow(this->byteArray->GetBuffer(), this->byteArray->GetCount()))
 			return false;
 
 		if (!byteStream->WriteFormat("\r\n"))
@@ -603,6 +610,15 @@ namespace Yarc
 	{
 		this->byteArray->SetCount((uint32_t)givenValue.length());
 		for (int i = 0; i < (signed)givenValue.length(); i++)
+			(*this->byteArray)[i] = givenValue[i];
+
+		return true;
+	}
+
+	bool BlobStringData::SetValue(const char* givenValue)
+	{
+		this->byteArray->SetCount((uint32_t)::strlen(givenValue));
+		for (int i = 0; i < givenValue[i] != '\0'; i++)
 			(*this->byteArray)[i] = givenValue[i];
 
 		return true;
