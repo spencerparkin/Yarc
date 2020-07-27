@@ -79,9 +79,10 @@ namespace Yarc
 	bool PubSub::Publish(const std::string& channel, ProtocolData* publishData)
 	{
 		ArrayData* commandData = new ArrayData();
-		commandData->SetCount(2);
+		commandData->SetCount(3);
 		commandData->SetElement(0, new BlobStringData("PUBLISH"));
-		commandData->SetElement(1, publishData);
+		commandData->SetElement(1, new BlobStringData(channel));
+		commandData->SetElement(2, publishData);
 		return this->outputClient->MakeRequestAsync(commandData);
 	}
 

@@ -66,9 +66,10 @@ namespace Yarc
 				if (error != WSAEWOULDBLOCK)
 					throw new InternalException();
 
+				bool timedOut = true;
 				double startTime = double(::clock()) / double(CLOCKS_PER_SEC);
 				double elapsedTime = 0.0f;
-				while (elapsedTime < timeoutSeconds)
+				while (elapsedTime <= timeoutSeconds)
 				{
 					fd_set writeSet, excSet;
 					FD_ZERO(&writeSet);
@@ -89,13 +90,16 @@ namespace Yarc
 
 					// Is the socket writable?
 					if (FD_ISSET(this->socket, &writeSet))
+					{
+						timedOut = false;
 						break;
+					}
 
 					double currentTime = double(::clock()) / double(CLOCKS_PER_SEC);
 					elapsedTime = currentTime - startTime;
 				}
 
-				if (elapsedTime >= timeoutSeconds)
+				if (timedOut)
 					throw new InternalException();
 
 				arg = 0;
