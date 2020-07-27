@@ -163,7 +163,7 @@ namespace Yarc
 				if (arrayData && arrayData->GetCount() > 0)
 				{
 					const BlobStringData* blobStringData = Cast<BlobStringData>(arrayData->GetElement(0));
-					if (blobStringData && blobStringData->GetValue() == "messsage")
+					if (blobStringData && blobStringData->GetValue() == "message")
 						messageData = serverData;
 				}
 			}
@@ -173,7 +173,7 @@ namespace Yarc
 				if (*this->pushDataCallback)
 					deleteServerData = (*this->pushDataCallback)(messageData);
 			}
-			else
+			else if (this->callbackList->GetCount() > 0)
 			{
 				Callback callback = this->DequeueCallback();
 				if (callback)

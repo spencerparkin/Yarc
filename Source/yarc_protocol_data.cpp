@@ -80,7 +80,7 @@ namespace Yarc
 		va_list args;
 		va_start(args, commandFormat);
 		char command[1024];
-		sprintf_s(command, sizeof(command), commandFormat, args);
+		vsprintf_s(command, sizeof(command), commandFormat, args);
 		va_end(args);
 
 		struct Word
