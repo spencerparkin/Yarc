@@ -727,6 +727,13 @@ namespace Yarc
 
 	/*virtual*/ MapData::~MapData()
 	{
+		for (FieldValuePairList::Node* node = this->fieldValuePairList->GetHead(); node; node = node->GetNext())
+		{
+			FieldValuePair& pair = node->value;
+			delete pair.fieldData;
+			delete pair.valueData;
+		}
+
 		delete this->fieldValuePairList;
 	}
 
