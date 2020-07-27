@@ -78,7 +78,10 @@ namespace Yarc
 	/*virtual*/ bool SimpleClient::ShutDownSocketConnectionAndThread(void)
 	{
 		if (*this->preDisconnectCallback)
-			(*this->preDisconnectCallback)(this);
+		{
+			if(this->socketStream->IsConnected() && this->threadHandle != nullptr)
+				(*this->preDisconnectCallback)(this);
+		}
 
 		if (this->socketStream->IsConnected())
 			this->socketStream->Disconnect();
