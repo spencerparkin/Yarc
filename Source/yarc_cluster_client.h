@@ -4,6 +4,7 @@
 #include "yarc_simple_client.h"
 #include "yarc_linked_list.h"
 #include "yarc_dynamic_array.h"
+#include "yarc_socket_stream.h"
 #include "yarc_reducer.h"
 
 namespace Yarc
@@ -70,8 +71,7 @@ namespace Yarc
 			ClusterClient* clusterClient;
 			const ProtocolData* responseData;
 			Callback callback;
-			char redirectAddress[64];
-			uint16_t redirectPort;
+			Address redirectAddress;
 			bool deleteData;
 		};
 
@@ -123,7 +123,7 @@ namespace Yarc
 		};
 
 		ClusterNode* FindClusterNodeForSlot(uint16_t slot);
-		ClusterNode* FindClusterNodeForIPPort(const char* ipAddress, uint16_t port);
+		ClusterNode* FindClusterNodeForAddress(const Address& address);
 		ClusterNode* GetRandomClusterNode();
 		void ProcessClusterConfig(const ProtocolData* responseData);
 		void SignalClusterConfigDirty(void);

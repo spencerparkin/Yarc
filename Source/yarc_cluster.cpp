@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <sstream>
+#include <stdio.h>
 
 namespace Yarc
 {
@@ -106,8 +107,8 @@ namespace Yarc
 				Node node;
 				node.processHandle = (uint64_t)procInfo.hProcess;
 				node.client = new SimpleClient();
-				node.client->connectionConfig.SetIPAddress("127.0.0.1");
-				node.client->connectionConfig.port = port;
+				node.client->connectionConfig.address.SetIPAddress("127.0.0.1");
+				node.client->connectionConfig.address.port = port;
 				this->nodeArray->SetCount(i + 1);
 				(*this->nodeArray)[i] = node;
 			}
@@ -522,7 +523,8 @@ namespace Yarc
 							if (stringData)
 							{
 								std::string keyBuffer = stringData->GetValue();
-								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", this->destinationNode->client->GetSocketStream()->GetAddress().c_str(), this->destinationNode->client->GetSocketStream()->GetPort(), keyBuffer.c_str());
+								const Address& address = this->destinationNode->client->GetSocketStream()->GetAddress();
+								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", address.ipAddress, address.port, keyBuffer.c_str());
 
 								ProtocolData* migrateKeysResponseData = nullptr;
 								if (!this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), migrateKeysResponseData))

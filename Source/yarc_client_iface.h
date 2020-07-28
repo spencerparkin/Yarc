@@ -2,6 +2,7 @@
 
 #include "yarc_api.h"
 #include "yarc_dynamic_array.h"
+#include "yarc_socket_stream.h"
 #include <functional>
 #include <string>
 #include <map>
@@ -10,7 +11,6 @@ namespace Yarc
 {
 	class ProtocolData;
 
-	// These are meant to be passed by value everywhere.
 	class YARC_API ConnectionConfig
 	{
 	public:
@@ -24,17 +24,10 @@ namespace Yarc
 			LAZY
 		};
 
-		void SetIPAddress(const char* givenIPAddress);
-		void SetHostname(const char* givenHostname);
-
-		const char* GetResolvedIPAddress() const;
-
-		uint16_t port;
 		Disposition disposition;
 		double maxConnectionIdleTimeSeconds;
 		double connectionTimeoutSeconds;
-		char hostname[64];
-		mutable char ipAddress[32];
+		Address address;
 	};
 
 	class YARC_API ClientInterface

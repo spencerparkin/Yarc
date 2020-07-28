@@ -47,11 +47,8 @@ namespace Yarc
 
 			if (!this->socketStream->IsConnected())
 			{
-				const char* ipAddress = this->connectionConfig.GetResolvedIPAddress();
-				uint16_t port = this->connectionConfig.port;
 				double timeoutSeconds = this->connectionConfig.connectionTimeoutSeconds;
-
-				if (!this->socketStream->Connect(ipAddress, port, timeoutSeconds))
+				if (!this->socketStream->Connect(this->connectionConfig.address, timeoutSeconds))
 					throw new InternalException();
 			}
 
@@ -83,6 +80,7 @@ namespace Yarc
 				(*this->preDisconnectCallback)(this);
 		}
 
+		// This is also our signal for the thread to exit cleanly.
 		if (this->socketStream->IsConnected())
 			this->socketStream->Disconnect();
 
