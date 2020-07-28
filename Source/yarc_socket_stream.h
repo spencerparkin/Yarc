@@ -19,6 +19,7 @@ namespace Yarc
 		void SetHostname(const char* givenHostname);
 
 		const char* GetResolvedIPAddress() const;
+		std::string GetIPAddressAndPort() const;
 
 		char hostname[64];
 		mutable char ipAddress[32];

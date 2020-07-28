@@ -76,6 +76,13 @@ namespace Yarc
 		return this->ipAddress;
 	}
 
+	std::string Address::GetIPAddressAndPort() const
+	{
+		char ipPort[64];
+		sprintf_s(ipPort, sizeof(ipPort), "%s:%d", this->GetResolvedIPAddress(), this->port);
+		return ipPort;
+	}
+
 	//----------------------------------- SocketStream -----------------------------------
 
 	SocketStream::SocketStream()
