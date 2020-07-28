@@ -60,5 +60,7 @@ namespace Yarc
 
 		typedef ThreadSafeList<ProtocolData*> ProtocolDataList;
 		ProtocolDataList* serverDataList;
+
+		volatile bool threadExitSignal;
 	};
 }

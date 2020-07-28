@@ -63,17 +63,4 @@ namespace Yarc
 		*this->pushDataCallback = givenPushDataCallback;
 		return true;
 	}
-
-	//------------------------- ConnectionConfig -------------------------
-
-	ConnectionConfig::ConnectionConfig()
-	{
-		this->connectionTimeoutSeconds = -1.0;
-		this->maxConnectionIdleTimeSeconds = 5.0 * 60.0;
-		this->disposition = Disposition::NORMAL;
-	}
-
-	/*virtual*/ ConnectionConfig::~ConnectionConfig()
-	{
-	}
 }

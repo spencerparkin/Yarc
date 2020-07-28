@@ -107,8 +107,8 @@ namespace Yarc
 				Node node;
 				node.processHandle = (uint64_t)procInfo.hProcess;
 				node.client = new SimpleClient();
-				node.client->connectionConfig.address.SetIPAddress("127.0.0.1");
-				node.client->connectionConfig.address.port = port;
+				node.client->address.SetIPAddress("127.0.0.1");
+				node.client->address.port = port;
 				this->nodeArray->SetCount(i + 1);
 				(*this->nodeArray)[i] = node;
 			}

@@ -17,15 +17,11 @@ namespace Yarc
 	{
 		this->callbackMap = new CallbackMap;
 
-		// Override these, since we must be connected at all times to receive messages.
-		this->connectionConfig.disposition = ConnectionConfig::Disposition::PERSISTENT;
-		this->connectionConfig.connectionTimeoutSeconds = 0.0;
-
 		this->inputClient = new SimpleClient();
-		this->inputClient->connectionConfig = this->connectionConfig;
+		this->inputClient->address = this->address;
 
 		this->outputClient = new SimpleClient();
-		this->outputClient->connectionConfig = this->connectionConfig;
+		this->outputClient->address = this->address;
 
 		this->inputClient->RegisterPushDataCallback([=](const ProtocolData* messageData) -> bool {
 			return this->DispatchPubSubMessage(messageData);

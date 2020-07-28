@@ -11,25 +11,6 @@ namespace Yarc
 {
 	class ProtocolData;
 
-	class YARC_API ConnectionConfig
-	{
-	public:
-		ConnectionConfig();
-		virtual ~ConnectionConfig();
-
-		enum class Disposition
-		{
-			NORMAL,
-			PERSISTENT,
-			LAZY
-		};
-
-		Disposition disposition;
-		double maxConnectionIdleTimeSeconds;
-		double connectionTimeoutSeconds;
-		Address address;
-	};
-
 	class YARC_API ClientInterface
 	{
 	public:
@@ -38,9 +19,10 @@ namespace Yarc
 		virtual ~ClientInterface();
 
 		// There is no need to explicitly connect or disconnect a client from a Redis instance.
-		// Setup these connection configuration parameters, then just start using the client.
-		// The client will then manage the connection for you.
-		ConnectionConfig connectionConfig;
+		// Configure the address of the Redis end-point, then just start using the client.
+		// The client will then manage the connection for you.  In part, this is so that we
+		// can take advantage of connection pooling.
+		Address address;
 
 		// The return value indicates whether the callback takes ownership of the memory.
 		typedef std::function<bool(const ProtocolData* responseData)> Callback;

@@ -49,7 +49,7 @@ namespace Yarc
 				if (this->clusterNodeList->GetCount() == 0)
 				{
 					ClusterNode* clusterNode = new ClusterNode();
-					clusterNode->client->connectionConfig = this->connectionConfig;
+					clusterNode->client->address = this->address;
 					this->clusterNodeList->AddTail(clusterNode);
 				}
 
@@ -245,8 +245,7 @@ namespace Yarc
 						if (!clusterNode)
 						{
 							clusterNode = new ClusterNode();
-							clusterNode->client->connectionConfig = this->connectionConfig;
-							clusterNode->client->connectionConfig.address = address;
+							clusterNode->client->address = address;
 							this->clusterNodeList->AddTail(clusterNode);
 						}
 

@@ -23,6 +23,7 @@
     <ClCompile Include="Source\yarc_client_iface.cpp" />
     <ClCompile Include="Source\yarc_cluster.cpp" />
     <ClCompile Include="Source\yarc_cluster_client.cpp" />
+    <ClCompile Include="Source\yarc_connection_pool.cpp" />
     <ClCompile Include="Source\yarc_crc16.cpp" />
     <ClCompile Include="Source\yarc_misc.cpp" />
     <ClCompile Include="Source\yarc_protocol_data.cpp" />
@@ -34,6 +35,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\yarc_cluster.h" />
+    <ClInclude Include="Source\yarc_connection_pool.h" />
     <ClInclude Include="Source\yarc_crc16.h" />
     <ClInclude Include="Source\yarc_dynamic_array.h" />
     <ClInclude Include="Source\yarc_cluster_client.h" />
