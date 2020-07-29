@@ -589,7 +589,7 @@ namespace Yarc
 		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 		{
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
-			if (clusterNode->client->GetSocketStream()->GetAddress() == address)
+			if (clusterNode->client->address == address)
 				return clusterNode;
 		}
 
