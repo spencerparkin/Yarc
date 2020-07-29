@@ -7,6 +7,7 @@ Yarc is a C++-based Windows client for Redis.  It directly supports...
  * Pub-Sub
  * Cluster
  * Transactions
+ * Connection Pooling
  
 Other Redis features would be exposed indirectly through the raw-use of the Redis server communication protocol.
 

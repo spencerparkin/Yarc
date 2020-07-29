@@ -2,6 +2,7 @@
 
 #include "yarc_api.h"
 #include "yarc_dynamic_array.h"
+#include "yarc_socket_stream.h"
 #include <functional>
 #include <string>
 #include <map>
@@ -9,33 +10,6 @@
 namespace Yarc
 {
 	class ProtocolData;
-
-	// These are meant to be passed by value everywhere.
-	class YARC_API ConnectionConfig
-	{
-	public:
-		ConnectionConfig();
-		virtual ~ConnectionConfig();
-
-		enum class Disposition
-		{
-			NORMAL,
-			PERSISTENT,
-			LAZY
-		};
-
-		void SetIPAddress(const char* givenIPAddress);
-		void SetHostname(const char* givenHostname);
-
-		const char* GetResolvedIPAddress() const;
-
-		uint16_t port;
-		Disposition disposition;
-		double maxConnectionIdleTimeSeconds;
-		double connectionTimeoutSeconds;
-		char hostname[64];
-		mutable char ipAddress[32];
-	};
 
 	class YARC_API ClientInterface
 	{
@@ -45,9 +19,10 @@ namespace Yarc
 		virtual ~ClientInterface();
 
 		// There is no need to explicitly connect or disconnect a client from a Redis instance.
-		// Setup these connection configuration parameters, then just start using the client.
-		// The client will then manage the connection for you.
-		ConnectionConfig connectionConfig;
+		// Configure the address of the Redis end-point, then just start using the client.
+		// The client will then manage the connection for you.  In part, this is so that we
+		// can take advantage of connection pooling.
+		Address address;
 
 		// The return value indicates whether the callback takes ownership of the memory.
 		typedef std::function<bool(const ProtocolData* responseData)> Callback;

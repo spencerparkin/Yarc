@@ -1,33 +1,109 @@
 #include "yarc_socket_stream.h"
 #include "yarc_misc.h"
 #include <time.h>
+#include <string.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
 namespace Yarc
 {
+	//----------------------------------- Address -----------------------------------
+
+	Address::Address()
+	{
+		::strcpy_s(this->ipAddress, sizeof(this->ipAddress), "127.0.0.1");
+		this->hostname[0] = '\0';
+		this->port = 6379;
+	}
+
+	/*virtual*/ Address::~Address()
+	{
+	}
+
+	bool Address::operator==(const Address& address) const
+	{
+		if (this->port != address.port)
+			return false;
+
+		return 0 == ::strcmp(this->GetResolvedIPAddress(), address.GetResolvedIPAddress());
+	}
+
+	void Address::SetIPAddress(const char* givenIPAddress)
+	{
+		::strcpy_s(this->ipAddress, sizeof(this->ipAddress), givenIPAddress);
+	}
+
+	void Address::SetHostname(const char* givenHostname)
+	{
+		::strcpy_s(this->hostname, sizeof(this->hostname), givenHostname);
+	}
+
+	const char* Address::GetResolvedIPAddress() const
+	{
+		if (::strlen(this->hostname) > 0)
+		{
+			WSADATA data;
+			::WSAStartup(MAKEWORD(2, 2), &data);
+
+			char portStr[16];
+			sprintf_s(portStr, sizeof(portStr), "%d", this->port);
+
+			::addrinfo* addrInfo = nullptr;
+			if (0 == ::getaddrinfo(this->hostname, portStr, nullptr, &addrInfo))
+			{
+				while (addrInfo)
+				{
+					if (addrInfo->ai_family == AF_INET)
+						break;
+
+					addrInfo = addrInfo->ai_next;
+				}
+
+				if (addrInfo)
+				{
+					::sockaddr_in* sockAddr = (::sockaddr_in*)addrInfo->ai_addr;
+					::sprintf_s(this->ipAddress, sizeof(this->ipAddress), "%d.%d.%d.%d",
+						sockAddr->sin_addr.S_un.S_un_b.s_b1,
+						sockAddr->sin_addr.S_un.S_un_b.s_b2,
+						sockAddr->sin_addr.S_un.S_un_b.s_b3,
+						sockAddr->sin_addr.S_un.S_un_b.s_b4);
+
+
+				}
+			}
+		}
+
+		return this->ipAddress;
+	}
+
+	std::string Address::GetIPAddressAndPort() const
+	{
+		char ipPort[64];
+		sprintf_s(ipPort, sizeof(ipPort), "%s:%d", this->GetResolvedIPAddress(), this->port);
+		return ipPort;
+	}
+
 	//----------------------------------- SocketStream -----------------------------------
 
 	SocketStream::SocketStream()
 	{
 		this->socket = INVALID_SOCKET;
-		this->address = new std::string();
-		this->port = 0;
 		this->lastSocketReadWriteTime = 0;
 	}
 
 	/*virtual*/ SocketStream::~SocketStream()
 	{
 		(void)this->Disconnect();
-		delete this->address;
 	}
 
-	bool SocketStream::Connect(const char* address, uint16_t port /*= 6379*/, double timeoutSeconds /*= -1.0*/)
+	bool SocketStream::Connect(const Address& givenAddress, double timeoutSeconds /*= -1.0*/)
 	{
 		bool success = true;
 
 		try
 		{
+			this->address = givenAddress;
+
 			if (this->socket != INVALID_SOCKET)
 				throw new InternalException();
 
@@ -42,8 +118,8 @@ namespace Yarc
 
 			sockaddr_in sockaddr;
 			sockaddr.sin_family = AF_INET;
-			::InetPtonA(sockaddr.sin_family, address, &sockaddr.sin_addr);
-			sockaddr.sin_port = ::htons(port);
+			::InetPtonA(sockaddr.sin_family, this->address.ipAddress, &sockaddr.sin_addr);
+			sockaddr.sin_port = ::htons(this->address.port);
 
 			if (timeoutSeconds < 0.0)
 			{
@@ -107,9 +183,6 @@ namespace Yarc
 				if (result != NO_ERROR)
 					throw new InternalException();
 			}
-
-			*this->address = address;
-			this->port = port;
 		}
 		catch (InternalException* exc)
 		{
@@ -123,6 +196,8 @@ namespace Yarc
 
 	bool SocketStream::IsConnected(void)
 	{
+		// There's really no way to know until you try to read or write on the socket.
+		// But as far as we know, if we have a valid socket handle, then we should assume we're connected.
 		return this->socket != INVALID_SOCKET;
 	}
 

@@ -62,11 +62,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 		this->client = new Yarc::ClusterClient();
 
 		// We can connect to the cluster by connecting to any node in the cluster.
-		std::string address = (*this->cluster->nodeArray)[0].client->GetSocketStream()->GetAddress();
-		uint16_t port = (*this->cluster->nodeArray)[0].client->GetSocketStream()->GetPort();
-
-		this->client->connectionConfig.SetIPAddress(address.c_str());
-		this->client->connectionConfig.port = port;
+		this->client->address = (*this->cluster->nodeArray)[0].client->GetSocketStream()->GetAddress();
 
 		Yarc::ProtocolData* pongData = nullptr;
 		if (this->client->MakeRequestSync(Yarc::ProtocolData::ParseCommand("PING"), pongData))

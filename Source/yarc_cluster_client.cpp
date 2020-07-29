@@ -49,7 +49,7 @@ namespace Yarc
 				if (this->clusterNodeList->GetCount() == 0)
 				{
 					ClusterNode* clusterNode = new ClusterNode();
-					clusterNode->client->connectionConfig = this->connectionConfig;
+					clusterNode->client->address = this->address;
 					this->clusterNodeList->AddTail(clusterNode);
 				}
 
@@ -233,20 +233,19 @@ namespace Yarc
 						const BlobStringData* clusterNodeIPStringData = Cast<BlobStringData>(clusterNodeIPPortArrayData->GetElement(0));
 						const NumberData* clusterNodePortIntegerData = Cast<NumberData>(clusterNodeIPPortArrayData->GetElement(1));
 
-						std::string ipAddress;
+						Address address;
+						address.SetHostname("");
+
 						if (clusterNodeIPStringData)
-							ipAddress = clusterNodeIPStringData->GetValue();
+							address.SetIPAddress(clusterNodeIPStringData->GetValue().c_str());
 
-						uint16_t port = clusterNodePortIntegerData ? (uint16_t)clusterNodePortIntegerData->GetValue() : 0;
+						address.port = clusterNodePortIntegerData ? (uint16_t)clusterNodePortIntegerData->GetValue() : 0;
 
-						ClusterNode* clusterNode = this->FindClusterNodeForIPPort(ipAddress.c_str(), port);
+						ClusterNode* clusterNode = this->FindClusterNodeForAddress(address);
 						if (!clusterNode)
 						{
 							clusterNode = new ClusterNode();
-							clusterNode->client->connectionConfig = this->connectionConfig;
-							clusterNode->client->connectionConfig.SetHostname("");
-							clusterNode->client->connectionConfig.SetIPAddress(ipAddress.c_str());
-							clusterNode->client->connectionConfig.port = port;
+							clusterNode->client->address = address;
 							this->clusterNodeList->AddTail(clusterNode);
 						}
 
@@ -296,8 +295,6 @@ namespace Yarc
 		this->callback = givenCallback;
 		this->clusterClient = givenClusterClient;
 		this->state = STATE_UNSENT;
-		this->redirectAddress[0] = '\0';
-		this->redirectPort = 0;
 		this->deleteData = false;
 	}
 
@@ -363,7 +360,7 @@ namespace Yarc
 						delete this->responseData;
 						this->responseData = nullptr;
 
-						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
+						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
 						if (!clusterNode)
 						{
 							this->state = STATE_UNSENT;
@@ -374,7 +371,7 @@ namespace Yarc
 						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const ProtocolData* askingResponseData) {
 							
 							// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
-							ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
+							ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
 							if (!clusterNode)
 								this->state = STATE_UNSENT;
 							else
@@ -411,7 +408,7 @@ namespace Yarc
 						delete this->responseData;
 						this->responseData = nullptr;
 
-						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForIPPort(this->redirectAddress, this->redirectPort);
+						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
 						if (!clusterNode)
 							this->state = STATE_UNSENT;
 						else
@@ -461,9 +458,9 @@ namespace Yarc
 		while (token)
 		{
 			if (i == 2)
-				strcpy_s(this->redirectAddress, sizeof(this->redirectAddress), token);
+				this->redirectAddress.SetIPAddress(token);
 			else if (i == 3)
-				this->redirectPort = ::atoi(token);
+				this->redirectAddress.port = ::atoi(token);
 			token = ::strtok_s(nullptr, " :", &context);
 			i++;
 		}
@@ -563,12 +560,11 @@ namespace Yarc
 
 	/*virtual*/ ReductionObject::ReductionResult ClusterClient::ClusterNode::Reduce()
 	{
-		this->client->Update();
-
-#if false
-		if( /* TODO: We detect that the node is gone... */ )
-			return RESULT_DELETE;
-#endif
+		if (this->client)
+		{
+			if (!this->client->Update())
+				return RESULT_DELETE;
+		}
 
 		return RESULT_NONE;
 	}
@@ -587,14 +583,14 @@ namespace Yarc
 		return nullptr;
 	}
 
-	ClusterClient::ClusterNode* ClusterClient::FindClusterNodeForIPPort(const char* ipAddress, uint16_t port)
+	ClusterClient::ClusterNode* ClusterClient::FindClusterNodeForAddress(const Address& address)
 	{
+		// A linear search is fine here for now.  If we ever discover it's a point of slowness, we could easily optimize it.
 		for (ReductionObjectList::Node* node = this->clusterNodeList->GetHead(); node; node = node->GetNext())
 		{
 			ClusterNode* clusterNode = (ClusterNode*)node->value;
-			if (::strcmp(clusterNode->client->GetSocketStream()->GetAddress().c_str(), ipAddress) == 0)
-				if (clusterNode->client->GetSocketStream()->GetPort() == port)
-					return clusterNode;
+			if (clusterNode->client->address == address)
+				return clusterNode;
 		}
 
 		return nullptr;

@@ -8,6 +8,24 @@
 
 namespace Yarc
 {
+	struct YARC_API Address
+	{
+		Address();
+		virtual ~Address();
+
+		bool operator==(const Address& address) const;
+
+		void SetIPAddress(const char* givenIPAddress);
+		void SetHostname(const char* givenHostname);
+
+		const char* GetResolvedIPAddress() const;
+		std::string GetIPAddressAndPort() const;
+
+		char hostname[64];
+		mutable char ipAddress[32];
+		uint16_t port;
+	};
+
 	class SocketStream : public ByteStream
 	{
 	public:
@@ -15,23 +33,21 @@ namespace Yarc
 		SocketStream();
 		virtual ~SocketStream();
 
-		bool Connect(const char* address, uint16_t port = 6379, double timeoutSeconds = -1.0);
+		bool Connect(const Address& givenAddress, double timeoutSeconds = -1.0);
 		bool IsConnected(void);
 		bool Disconnect(void);
 
 		virtual uint32_t ReadBuffer(uint8_t* buffer, uint32_t bufferSize) override;
 		virtual uint32_t WriteBuffer(const uint8_t* buffer, uint32_t bufferSize) override;
 
-		std::string GetAddress() { return *this->address; }
-		uint16_t GetPort() { return this->port; }
+		const Address& GetAddress() const { return this->address; }
 
 		clock_t GetLastSocketReadWriteTime() { return this->lastSocketReadWriteTime; }
 
 	protected:
 
 		SOCKET socket;
-		std::string* address;
-		uint16_t port;
+		Address address;
 		clock_t lastSocketReadWriteTime;
 	};
 }

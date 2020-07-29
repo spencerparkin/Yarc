@@ -15,7 +15,7 @@ namespace Yarc
 		PubSub();
 		virtual ~PubSub();
 
-		ConnectionConfig connectionConfig;
+		Address address;
 
 		static PubSub* Create(void);
 		static void Destroy(PubSub* pubSub);

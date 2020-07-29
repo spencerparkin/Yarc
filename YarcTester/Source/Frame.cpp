@@ -1,7 +1,7 @@
-#include "Frame.h"
-#include "App.h"
 #include "SimpleTestCase.h"
 #include "ClusterTestCase.h"
+#include "Frame.h"
+#include "App.h"
 #include <wx/menu.h>
 #include <wx/aboutdlg.h>
 #include <wx/dirdlg.h>

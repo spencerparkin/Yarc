@@ -1,5 +1,6 @@
 #include "yarc_simple_client.h"
 #include "yarc_protocol_data.h"
+#include "yarc_connection_pool.h"
 #include "yarc_misc.h"
 
 namespace Yarc
@@ -8,18 +9,18 @@ namespace Yarc
 
 	SimpleClient::SimpleClient()
 	{
-		this->socketStream = new SocketStream();
+		this->socketStream = nullptr;
 		this->callbackList = new CallbackList();
 		this->serverDataList = new ProtocolDataList();
 		this->threadHandle = nullptr;
 		this->postConnectCallback = new EventCallback;
 		this->preDisconnectCallback = new EventCallback;
+		this->threadExitSignal = false;
 	}
 
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
 		this->ShutDownSocketConnectionAndThread();
-		delete this->socketStream;
 		delete this->callbackList;
 		this->serverDataList->Delete();
 		delete this->serverDataList;
@@ -45,18 +46,16 @@ namespace Yarc
 		{
 			this->callbackList->RemoveAll();
 
-			if (!this->socketStream->IsConnected())
+			if (!this->socketStream)
 			{
-				const char* ipAddress = this->connectionConfig.GetResolvedIPAddress();
-				uint16_t port = this->connectionConfig.port;
-				double timeoutSeconds = this->connectionConfig.connectionTimeoutSeconds;
-
-				if (!this->socketStream->Connect(ipAddress, port, timeoutSeconds))
+				this->socketStream = theConnectionPool.CheckoutSocketStream(this->address);
+				if (!this->socketStream || !this->socketStream->IsConnected())
 					throw new InternalException();
 			}
 
 			if (!this->threadHandle)
 			{
+				this->threadExitSignal = false;
 				this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
 				if (!this->threadHandle)
 					throw new InternalException();
@@ -79,17 +78,53 @@ namespace Yarc
 	{
 		if (*this->preDisconnectCallback)
 		{
-			if(this->socketStream->IsConnected() && this->threadHandle != nullptr)
+			if(this->socketStream && this->socketStream->IsConnected() && this->threadHandle != nullptr)
 				(*this->preDisconnectCallback)(this);
 		}
 
-		if (this->socketStream->IsConnected())
-			this->socketStream->Disconnect();
+		bool canRecycleConnection = false;
 
 		if (this->threadHandle)
 		{
-			::WaitForSingleObject(this->threadHandle, INFINITE);
+			// If the socket is disconnected/closed for any reason, the blocking I/O will fail, and the thread will exit.
+			// So that's one way to signal the thread to exit, if we need to do it that way.  Ideally, however, what we'll do is
+			// simply set a flag, send a PING, get a PONG, and then exit based on that flag.  This not only accomplishes
+			// the thread exit cleanly, but it also lets us recycle the connection in the connection pool with the
+			// connection resting at a proper protocol boundary, both for sending and receiving protocol data.
+			if (!this->socketStream)
+			{
+				// If our socket stream pointer is null, then the thread would crash anyway.  We should never get here ever.
+				::TerminateThread(this->threadHandle, 0);
+			}
+			else
+			{
+				if (this->socketStream->IsConnected())
+				{
+					this->threadExitSignal = true;
+					ProtocolData* responseData = nullptr;
+					if (!this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
+						this->socketStream->Disconnect();
+					else
+					{
+						delete responseData;
+						canRecycleConnection = true;
+					}
+				}
+
+				::WaitForSingleObject(this->threadHandle, INFINITE);
+			}
+
 			this->threadHandle = nullptr;
+		}
+
+		if (this->socketStream)
+		{
+			if (canRecycleConnection)
+				theConnectionPool.CheckinSocketStream(this->socketStream);
+			else
+				delete this->socketStream;
+
+			this->socketStream = nullptr;
 		}
 
 		this->callbackList->RemoveAll();
@@ -119,35 +154,8 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		switch(this->connectionConfig.disposition)
-		{
-			case ConnectionConfig::Disposition::NORMAL:
-			{
-				break;
-			}
-			case ConnectionConfig::Disposition::LAZY:
-			{
-				clock_t lastSocketReadWriteTime = this->socketStream->GetLastSocketReadWriteTime();
-				clock_t currentTime = ::clock();
-				clock_t socketIdleTime = currentTime - lastSocketReadWriteTime;
-				double socketIdleTimeSeconds = double(socketIdleTime) / double(CLOCKS_PER_SEC);
-				if (socketIdleTimeSeconds >= this->connectionConfig.maxConnectionIdleTimeSeconds)
-				{
-					this->ShutDownSocketConnectionAndThread();
-				}
-				
-				break;
-			}
-			case ConnectionConfig::Disposition::PERSISTENT:
-			{
-				if (!this->socketStream->IsConnected())
-				{
-					this->SetupSocketConnectionAndThread();
-				}
-
-				break;
-			}
-		}
+		if (!this->socketStream)
+			return false;
 
 		while (this->serverDataList->GetCount() > 0)
 		{
@@ -192,22 +200,14 @@ namespace Yarc
 			// request or flush operation.
 
 			if (!this->socketStream->IsConnected())
-			{
-				this->ShutDownSocketConnectionAndThread();
 				return false;
-			}
 
 			if (this->threadHandle)
 			{
 				DWORD exitCode = 0;
 				if (::GetExitCodeThread(this->threadHandle, &exitCode))
-				{
 					if (exitCode != STILL_ACTIVE)
-					{
-						this->ShutDownSocketConnectionAndThread();
 						return false;
-					}
-				}
 			}
 		}
 
@@ -230,6 +230,9 @@ namespace Yarc
 
 			if (serverData)
 				this->serverDataList->AddTail(serverData);
+
+			if (this->threadExitSignal)
+				break;
 		}
 
 		return 0;
@@ -262,7 +265,7 @@ namespace Yarc
 
 		try
 		{
-			if (!this->socketStream->IsConnected())
+			if (!this->socketStream)
 				if (!this->SetupSocketConnectionAndThread())
 					throw new InternalException();
 
