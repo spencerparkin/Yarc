@@ -5,6 +5,7 @@
 #include "yarc_linked_list.h"
 #include "yarc_dynamic_array.h"
 #include "yarc_socket_stream.h"
+#include "yarc_protocol_data.h"
 #include "yarc_reducer.h"
 
 namespace Yarc
@@ -59,6 +60,8 @@ namespace Yarc
 
 			bool ParseRedirectAddressAndPort(const char* errorMessage);
 
+			bool HandleError(const SimpleErrorData* errorData, ReductionResult& result);
+
 			enum State
 			{
 				STATE_NONE,
@@ -72,6 +75,7 @@ namespace Yarc
 			const ProtocolData* responseData;
 			Callback callback;
 			Address redirectAddress;
+			uint32_t redirectCount;
 			bool deleteData;
 		};
 

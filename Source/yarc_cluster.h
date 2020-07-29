@@ -64,6 +64,7 @@ namespace Yarc
 				MIGRATING_KEYS,
 				WAITING,
 				UNMARK,
+				WAIT_FOR_GOSSIP,
 				BAIL
 			};
 
@@ -71,6 +72,7 @@ namespace Yarc
 			Node* sourceNode;
 			Node* destinationNode;
 			uint16_t hashSlot;
+			uint32_t gossipCountdown;
 		};
 
 		ReductionObjectList* migrationList;

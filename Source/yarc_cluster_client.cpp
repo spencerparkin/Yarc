@@ -296,6 +296,7 @@ namespace Yarc
 		this->clusterClient = givenClusterClient;
 		this->state = STATE_UNSENT;
 		this->deleteData = false;
+		this->redirectCount = 0;
 	}
 
 	/*virtual*/ ClusterClient::Request::~Request()
@@ -339,95 +340,10 @@ namespace Yarc
 			}
 			case STATE_READY:
 			{
-				// There are two kinds of redirections we need to handle here: -ASK and -MOVED.
-				// Those of the first kind are a form of redirection used during the intermediate
-				// stages of key migration for a slot from one node to another.  In this case, we
-				// must perform the redirection, but proceed as if the cluster configuration has
-				// not yet changed.  Only once the migration is complete should there be considered
-				// a change in configuration, but we need not watch for that.  Queries to the
-				// migrated slot will eventually result in a redirect of the second kind, at which
-				// point we will not only perform a redirection, but also invalidate our current
-				// understanding of the entire cluster configuration.  This is recommended as it is
-				// likely that if one slot has migrated, then so too have many slots migrated.
 				const SimpleErrorData* errorData = Cast<SimpleErrorData>(this->responseData);
 				if (errorData)
-				{
-					std::string errorCode = errorData->GetErrorCode();
-					if (errorCode == "ASK")
-					{
-						this->ParseRedirectAddressAndPort(errorData->GetValue().c_str());
-
-						delete this->responseData;
-						this->responseData = nullptr;
-
-						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
-						if (!clusterNode)
-						{
-							this->state = STATE_UNSENT;
-							break;
-						}
-
-						ProtocolData* askingCommandData = ProtocolData::ParseCommand("ASKING");
-						bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const ProtocolData* askingResponseData) {
-							
-							// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
-							ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
-							if (!clusterNode)
-								this->state = STATE_UNSENT;
-							else
-							{
-								bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
-									this->responseData = responseData;
-									this->state = STATE_READY;
-									return false;
-								});
-
-								if (requestMade)
-									this->state = STATE_PENDING;
-								else
-									this->state = STATE_UNSENT;
-							}
-
-							return true;
-						});
-
-						if (askingRequestMade)
-							this->state = STATE_PENDING;
-						else
-							this->state = STATE_UNSENT;
-
+					if (this->HandleError(errorData, result))
 						break;
-					}
-					else if (errorCode == "MOVED")
-					{
-						this->clusterClient->SignalClusterConfigDirty();
-						result = RESULT_BAIL;
-
-						this->ParseRedirectAddressAndPort(errorData->GetValue().c_str());
-
-						delete this->responseData;
-						this->responseData = nullptr;
-
-						ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
-						if (!clusterNode)
-							this->state = STATE_UNSENT;
-						else
-						{
-							bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
-								this->responseData = responseData;
-								this->state = STATE_READY;
-								return false;
-							});
-
-							if (requestMade)
-								this->state = STATE_PENDING;
-							else
-								this->state = STATE_UNSENT;
-						}
-						
-						break;
-					}
-				}
 				
 				// If we get here, the client gets to handle the response.
 				if (!this->callback(this->responseData))
@@ -445,6 +361,111 @@ namespace Yarc
 		}
 
 		return result;
+	}
+
+	bool ClusterClient::Request::HandleError(const SimpleErrorData* errorData, ReductionResult& result)
+	{
+		// There are two kinds of redirections we need to handle here: -ASK and -MOVED.
+		// Those of the first kind are a form of redirection used during the intermediate
+		// stages of key migration for a slot from one node to another.  In this case, we
+		// must perform the redirection, but proceed as if the cluster configuration has
+		// not yet changed.  Only once the migration is complete should there be considered
+		// a change in configuration, but we need not watch for that.  Queries to the
+		// migrated slot will eventually result in a redirect of the second kind, at which
+		// point we will not only perform a redirection, but also invalidate our current
+		// understanding of the entire cluster configuration.  This is recommended as it is
+		// likely that if one slot has migrated, then so too have many slots migrated.
+		std::string errorCode = errorData->GetErrorCode();
+		if (errorCode == "ASK")
+		{
+			if (++this->redirectCount == 2)
+			{
+				this->state = STATE_UNSENT;
+				this->redirectCount = 0;
+				return true;
+			}
+
+			this->ParseRedirectAddressAndPort(errorData->GetValue().c_str());
+
+			delete this->responseData;
+			this->responseData = nullptr;
+
+			ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
+			if (!clusterNode)
+			{
+				this->state = STATE_UNSENT;
+				return true;
+			}
+
+			ProtocolData* askingCommandData = ProtocolData::ParseCommand("ASKING");
+			bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const ProtocolData* askingResponseData) {
+
+				// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
+				ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
+				if (!clusterNode)
+					this->state = STATE_UNSENT;
+				else
+				{
+					bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
+						this->responseData = responseData;
+						this->state = STATE_READY;
+						return false;
+					});
+
+					if (requestMade)
+						this->state = STATE_PENDING;
+					else
+						this->state = STATE_UNSENT;
+				}
+
+				return true;
+			});
+
+			if (askingRequestMade)
+				this->state = STATE_PENDING;
+			else
+				this->state = STATE_UNSENT;
+
+			return true;
+		}
+		else if (errorCode == "MOVED")
+		{
+			this->clusterClient->SignalClusterConfigDirty();
+			result = RESULT_BAIL;	// Don't process any more requests until we've reconfigured.
+
+			if (++this->redirectCount == 2)
+			{
+				this->state = STATE_UNSENT;
+				this->redirectCount = 0;
+				return true;
+			}
+
+			this->ParseRedirectAddressAndPort(errorData->GetValue().c_str());
+
+			delete this->responseData;
+			this->responseData = nullptr;
+
+			ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
+			if (!clusterNode)
+				this->state = STATE_UNSENT;
+			else
+			{
+				bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
+					this->responseData = responseData;
+					this->state = STATE_READY;
+					return false;
+				});
+
+				if (requestMade)
+					this->state = STATE_PENDING;
+				else
+					this->state = STATE_UNSENT;
+			}
+
+			return true;
+		}
+
+		return false;
 	}
 
 	bool ClusterClient::Request::ParseRedirectAddressAndPort(const char* errorMessage)
@@ -561,10 +582,7 @@ namespace Yarc
 	/*virtual*/ ReductionObject::ReductionResult ClusterClient::ClusterNode::Reduce()
 	{
 		if (this->client)
-		{
-			if (!this->client->Update())
-				return RESULT_DELETE;
-		}
+			this->client->Update();
 
 		return RESULT_NONE;
 	}

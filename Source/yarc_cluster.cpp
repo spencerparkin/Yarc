@@ -441,6 +441,7 @@ namespace Yarc
 		this->destinationNode = givenDestinationNode;
 		this->hashSlot = givenHashSlot;
 		this->state = State::MARK_IMPORTING;
+		this->gossipCountdown = 512;
 	}
 
 	/*virtual*/ Cluster::Migration::~Migration()
@@ -561,13 +562,25 @@ namespace Yarc
 				this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), responseData);
 				delete responseData;
 
-				this->state = State::BAIL;
+				this->state = State::WAIT_FOR_GOSSIP;
 
 				break;
 			}
 			case State::WAITING:
 			{
 				// Wait for async request to finish.
+				break;
+			}
+			case State::WAIT_FOR_GOSSIP:
+			{
+				// If we don't do this, we can get into an odd state where a key is redirected
+				// between two nodes forever, and each time we keep regetting the same cluster
+				// configuration.  I'm not sure what's really going on, but this seems to fix it.
+				if (this->gossipCountdown == 0)
+					this->state = State::BAIL;
+				else
+					this->gossipCountdown--;
+
 				break;
 			}
 			case State::BAIL:
