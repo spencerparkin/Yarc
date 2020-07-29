@@ -217,15 +217,9 @@ namespace Yarc
 		if (!this->IsConnected())
 			return -1;
 
-		// Note that it's safe to block here even if the thread needs to exit,
-		// because we signal the thread to exit by simply closing the socket,
-		// at which point we should return from this function.
 		uint32_t readCount = ::recv(this->socket, (char*)buffer, bufferSize, 0);
 		if (readCount == SOCKET_ERROR)
 		{
-			// We should check the error code here, but typically, this means
-			// that we have lost our connection.  We do this on purpose to
-			// signal thread shut-down, but it could also happen by accident.
 			this->socket = INVALID_SOCKET;
 			return -1;
 		}
