@@ -1,6 +1,6 @@
 # Yarc -- Yet Another Redis Client
 
-Yarc is a C++-based Windows client for Redis.  It directly supports...
+Yarc is a C++-based Linux & Windows client for Redis.  It directly supports...
 
  * RESP, RESP3 (attributes, streaming, maps, etc.)
  * Pipelining
