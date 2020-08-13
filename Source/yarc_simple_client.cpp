@@ -12,7 +12,7 @@ namespace Yarc
 		this->socketStream = nullptr;
 		this->callbackList = new CallbackList();
 		this->serverDataList = new ProtocolDataList();
-		this->threadHandle = nullptr;
+		this->thread = nullptr;
 		this->postConnectCallback = new EventCallback;
 		this->preDisconnectCallback = new EventCallback;
 		this->threadExitSignal = false;
@@ -21,6 +21,7 @@ namespace Yarc
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
 		this->ShutDownSocketConnectionAndThread();
+		delete this->thread;
 		delete this->callbackList;
 		this->serverDataList->Delete();
 		delete this->serverDataList;
@@ -53,11 +54,11 @@ namespace Yarc
 					throw new InternalException();
 			}
 
-			if (!this->threadHandle)
+			if (!this->thread)
 			{
 				this->threadExitSignal = false;
-				this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
-				if (!this->threadHandle)
+				this->thread = new Thread();
+				if(!this->thread->SpawnThread([=]() { this->ThreadFunc(); }))
 					throw new InternalException();
 			}
 
@@ -78,13 +79,13 @@ namespace Yarc
 	{
 		if (*this->preDisconnectCallback)
 		{
-			if(this->socketStream && this->socketStream->IsConnected() && this->threadHandle != nullptr)
+			if(this->socketStream && this->socketStream->IsConnected() && this->thread != nullptr)
 				(*this->preDisconnectCallback)(this);
 		}
 
 		bool canRecycleConnection = false;
 
-		if (this->threadHandle)
+		if (this->thread)
 		{
 			// If the socket is disconnected/closed for any reason, the blocking I/O will fail, and the thread will exit.
 			// So that's one way to signal the thread to exit, if we need to do it that way.  Ideally, however, what we'll do is
@@ -94,7 +95,7 @@ namespace Yarc
 			if (!this->socketStream)
 			{
 				// If our socket stream pointer is null, then the thread would crash anyway.  We should never get here ever.
-				::TerminateThread(this->threadHandle, 0);
+				this->thread->KillThread();
 			}
 			else
 			{
@@ -111,10 +112,11 @@ namespace Yarc
 					}
 				}
 
-				::WaitForSingleObject(this->threadHandle, INFINITE);
+				this->thread->WaitForThreadExit();
 			}
 
-			this->threadHandle = nullptr;
+			delete this->thread;
+			this->thread = nullptr;
 		}
 
 		if (this->socketStream)
@@ -202,25 +204,14 @@ namespace Yarc
 			if (!this->socketStream->IsConnected())
 				return false;
 
-			if (this->threadHandle)
-			{
-				DWORD exitCode = 0;
-				if (::GetExitCodeThread(this->threadHandle, &exitCode))
-					if (exitCode != STILL_ACTIVE)
-						return false;
-			}
+			if (this->thread && !this->thread->IsStillRunning())
+				return false;
 		}
 
 		return true;
 	}
 
-	/*static*/ DWORD __stdcall SimpleClient::ThreadMain(LPVOID param)
-	{
-		SimpleClient* client = (SimpleClient*)param;
-		return client->ThreadFunc();
-	}
-
-	DWORD SimpleClient::ThreadFunc(void)
+	void SimpleClient::ThreadFunc(void)
 	{
 		while (this->socketStream->IsConnected())
 		{
@@ -234,8 +225,6 @@ namespace Yarc
 			if (this->threadExitSignal)
 				break;
 		}
-
-		return 0;
 	}
 
 	/*virtual*/ bool SimpleClient::Flush(void)

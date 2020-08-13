@@ -1,9 +1,9 @@
 #pragma once
 
 #include <stdint.h>
-#include <WS2tcpip.h>
 #include <string>
 #include "yarc_api.h"
+#include "yarc_thread.h"
 #include "yarc_client_iface.h"
 #include "yarc_linked_list.h"
 #include "yarc_socket_stream.h"
@@ -52,10 +52,9 @@ namespace Yarc
 		void EnqueueCallback(Callback callback);
 		Callback DequeueCallback();
 
-		static DWORD __stdcall ThreadMain(LPVOID param);
-		DWORD ThreadFunc(void);
-		HANDLE threadHandle;
+		void ThreadFunc(void);
 
+		Thread* thread;
 		SocketStream* socketStream;
 
 		typedef ThreadSafeList<ProtocolData*> ProtocolDataList;

@@ -1,10 +1,19 @@
 #pragma once
 
 #include "yarc_byte_stream.h"
-#include <WS2tcpip.h>
+#if defined __WINDOWS__
+#	include <WS2tcpip.h>
+#elif defined __LINUX__
+#	include <sys/socket.h>
+#	include <sys/types.h>
+#endif
 #include <string>
 #include <functional>
 #include <time.h>
+
+#if defined __LINUX__
+typedef int SOCKET;
+#endif
 
 namespace Yarc
 {
@@ -46,7 +55,7 @@ namespace Yarc
 
 	protected:
 
-		SOCKET socket;
+		SOCKET sock;
 		Address address;
 		clock_t lastSocketReadWriteTime;
 	};

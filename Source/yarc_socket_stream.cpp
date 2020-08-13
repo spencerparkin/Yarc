@@ -67,8 +67,6 @@ namespace Yarc
 						sockAddr->sin_addr.S_un.S_un_b.s_b2,
 						sockAddr->sin_addr.S_un.S_un_b.s_b3,
 						sockAddr->sin_addr.S_un.S_un_b.s_b4);
-
-
 				}
 			}
 		}
@@ -87,7 +85,7 @@ namespace Yarc
 
 	SocketStream::SocketStream()
 	{
-		this->socket = INVALID_SOCKET;
+		this->sock = INVALID_SOCKET;
 		this->lastSocketReadWriteTime = 0;
 	}
 
@@ -104,7 +102,7 @@ namespace Yarc
 		{
 			this->address = givenAddress;
 
-			if (this->socket != INVALID_SOCKET)
+			if (this->sock != INVALID_SOCKET)
 				throw new InternalException();
 
 			WSADATA data;
@@ -198,15 +196,15 @@ namespace Yarc
 	{
 		// There's really no way to know until you try to read or write on the socket.
 		// But as far as we know, if we have a valid socket handle, then we should assume we're connected.
-		return this->socket != INVALID_SOCKET;
+		return this->sock != INVALID_SOCKET;
 	}
 
 	bool SocketStream::Disconnect(void)
 	{
-		if (this->socket != INVALID_SOCKET)
+		if (this->sock != INVALID_SOCKET)
 		{
 			::closesocket(this->socket);
-			this->socket = INVALID_SOCKET;
+			this->sock = INVALID_SOCKET;
 		}
 
 		return true;
@@ -217,10 +215,10 @@ namespace Yarc
 		if (!this->IsConnected())
 			return -1;
 
-		uint32_t readCount = ::recv(this->socket, (char*)buffer, bufferSize, 0);
+		uint32_t readCount = ::recv(this->sock, (char*)buffer, bufferSize, 0);
 		if (readCount == SOCKET_ERROR)
 		{
-			this->socket = INVALID_SOCKET;
+			this->sock = INVALID_SOCKET;
 			return -1;
 		}
 
@@ -235,7 +233,7 @@ namespace Yarc
 		if (!this->IsConnected())
 			return -1;
 
-		uint32_t writeCount = ::send(this->socket, (const char*)buffer, bufferSize, 0);
+		uint32_t writeCount = ::send(this->sock, (const char*)buffer, bufferSize, 0);
 		if (writeCount == SOCKET_ERROR)
 		{
 			this->socket = INVALID_SOCKET;

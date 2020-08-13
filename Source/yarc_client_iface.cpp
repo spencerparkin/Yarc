@@ -1,6 +1,10 @@
 #include "yarc_client_iface.h"
 #include "yarc_protocol_data.h"
-#include <WS2tcpip.h>
+#if defined __WINDOWS__
+#	include <WS2tcpip.h>
+#elif defined __LINUX__
+#	include <sys/socket.h>
+#endif
 
 namespace Yarc
 {
