@@ -8,16 +8,18 @@ SRCS = yarc_byte_stream.cpp \
 		yarc_crc16.cpp \
 		yarc_dllmain.cpp \
 		yarc_misc.cpp \
+		yarc_process.cpp \
 		yarc_protocol_data.cpp \
 		yarc_pubsub.cpp \
 		yarc_reducer.cpp \
 		yarc_simple_client.cpp \
-		yarc_socket_stream.cpp
+		yarc_socket_stream.cpp \
+		yarc_thread.cpp
 
 OBJS = $(SRCS:.cpp=.o)
 LIB = yarc.so
 CC = g++-8
-CCFLAGS = -g -Wall -D__LINUX__
+CCFLAGS = -g -Wall -D__LINUX__ -std=c++2a
 LD = ld
 LDFLAGS = -shared -Bsymbolic -lc
 

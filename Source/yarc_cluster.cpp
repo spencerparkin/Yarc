@@ -6,6 +6,9 @@
 #include <fstream>
 #include <sstream>
 #include <stdio.h>
+#if defined __LINUX__
+#	include <unistd.h>
+#endif
 
 namespace Yarc
 {
@@ -72,7 +75,7 @@ namespace Yarc
 			{
 				uint16_t port = i + 7000;
 
-				sprintf_s(buffer, sizeof(buffer), "%04d", port);
+				sprintf(buffer, "%04d", port);
 
 				std::filesystem::path nodeFolderPath = clusetrRootPath / std::string(buffer);
 				std::filesystem::create_directory(nodeFolderPath);
@@ -81,31 +84,32 @@ namespace Yarc
 				std::ofstream redisConfStream;
 				redisConfStream.open(redisConfFilePath, std::ios::out);
 
-				sprintf_s(buffer, sizeof(buffer), "port %04d", port);
+				sprintf(buffer, "port %04d", port);
 				redisConfStream << std::string(buffer) << std::endl;
 				redisConfStream << "cluster-enabled yes" << std::endl;
 				redisConfStream << "cluster-node-timeout 5000" << std::endl;
 				redisConfStream << "appendonly yes" << std::endl;
 				redisConfStream.close();
 
-				PROCESS_INFORMATION procInfo;
-				::ZeroMemory(&procInfo, sizeof(procInfo));
-
-				STARTUPINFO startupInfo;
-				::ZeroMemory(&startupInfo, sizeof(startupInfo));
-				startupInfo.cb = sizeof(startupInfo);
-				
+#if defined __WINDOWS__
 				const wchar_t* nodeFolderPathCStr = nodeFolderPath.c_str();
 				if (0 != ::_wchdir(nodeFolderPathCStr))
 					return false;
-
-				std::wstring command = redisServerPath.c_str();
-				command += std::wstring(L" redis.conf");
-				if (!::CreateProcessW(nullptr, (LPWSTR)command.c_str(), nullptr, nullptr, FALSE, 0, nullptr, nodeFolderPathCStr, &startupInfo, &procInfo))
+#elif defined __LINUX__
+				if(0 != ::chdir(nodeFolderPath.c_str()))
 					return false;
+#endif
+
+				Process* process = new Process();
+				std::string command = redisServerPath + std::string(" redis.conf");
+				if(!process->Spawn(command))
+				{
+					delete process;
+					return false;
+				}
 
 				Node node;
-				node.processHandle = (uint64_t)procInfo.hProcess;
+				node.process = process;
 				node.client = new SimpleClient();
 				node.client->address.SetIPAddress("127.0.0.1");
 				node.client->address.port = port;
@@ -133,7 +137,11 @@ namespace Yarc
 			this->FlushAllNodes();
 
 			// We have to wait a bit for knowledge of who's who to propagate/gossip across the cluster.
+#if defined __WINDOWS__
 			::Sleep(5000);
+#elif defined __LINUX__
+			::sleep(5);
+#endif
 
 			//
 			// STEP 5: Identify the cluster view from an arbitrary node in the cluster.
@@ -171,7 +179,7 @@ namespace Yarc
 						uint16_t port = ::atoi(portStr.c_str());
 						i = port - 7000;
 						Node& node = (*this->nodeArray)[i];
-						strcpy_s(node.id, sizeof(node.id), nodeId.c_str());
+						strcpy(node.id, nodeId.c_str());
 					}
 				}
 			}
@@ -217,7 +225,7 @@ namespace Yarc
 					Node& slaveNode = (*this->nodeArray)[i];
 					Node& masterNode = (*this->nodeArray)[j];
 
-					sprintf_s(buffer, sizeof(buffer), "CLUSTER REPLICATE %s", masterNode.id);
+					sprintf(buffer, "CLUSTER REPLICATE %s", masterNode.id);
 					commandData = ProtocolData::ParseCommand(buffer);
 					slaveNode.client->MakeRequestAsync(commandData, [](const ProtocolData*) { return true; });
 				}
@@ -240,13 +248,13 @@ namespace Yarc
 		uint32_t slot = minSlot;
 		while (slot <= maxSlot)
 		{
-			strcpy_s(commandBuffer, sizeof(commandBuffer), "CLUSTER ADDSLOTS");
+			strcpy(commandBuffer, "CLUSTER ADDSLOTS");
 
 			for (uint32_t i = 0; i < 100 && slot <= maxSlot; i++)
 			{
 				char slotBuffer[32];
-				sprintf_s(slotBuffer, sizeof(slotBuffer), " %d", slot++);
-				strcat_s(commandBuffer, sizeof(commandBuffer), slotBuffer);
+				sprintf(slotBuffer, " %d", slot++);
+				strcat(commandBuffer, slotBuffer);
 			}
 
 			ProtocolData* commandData = ProtocolData::ParseCommand(commandBuffer);
@@ -286,7 +294,8 @@ namespace Yarc
 			for (uint32_t i = 0; i < this->nodeArray->GetCount(); i++)
 			{
 				Node& node = (*this->nodeArray)[i];
-				::WaitForSingleObject((HANDLE)node.processHandle, INFINITE);
+				node.process->WaitForExit();
+				delete node.process;
 			}
 
 			//

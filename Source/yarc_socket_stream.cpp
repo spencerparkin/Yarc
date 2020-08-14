@@ -3,7 +3,9 @@
 #include <time.h>
 #include <string.h>
 
-#pragma comment(lib, "Ws2_32.lib")
+#if defined __WINDOWS__
+#	pragma comment(lib, "Ws2_32.lib")
+#endif
 
 namespace Yarc
 {
