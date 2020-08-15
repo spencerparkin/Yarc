@@ -22,6 +22,9 @@ using namespace Yarc;
 
 int main()
 {
+	ConnectionPool connectionPool;
+	SetConnectionPool(&connectionPool);
+
 	// This connects to 127.0.0.1 on port 6379 by default.
 	ClientInterface* client = new SimpleClient();
 	client->MakeRequestAsync(ProtocolData::ParseCommand("SET greeting \"Hello, world!\""));

@@ -17,11 +17,11 @@ SRCS = yarc_byte_stream.cpp \
 		yarc_thread.cpp
 
 OBJS = $(SRCS:.cpp=.o)
-LIB = yarc.so
+LIB = libyarc.so
 CC = g++-8
 CCFLAGS = -g -Wall -D__LINUX__ -std=c++2a -fPIC
 LD = ld
-LDFLAGS = -shared -lc
+LDFLAGS = -shared
 
 all: $(LIB)
 
