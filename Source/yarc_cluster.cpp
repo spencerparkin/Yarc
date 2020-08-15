@@ -101,7 +101,7 @@ namespace Yarc
 #endif
 
 				Process* process = new Process();
-				std::string command = redisServerPath + std::string(" redis.conf");
+				std::string command = redisServerPath.generic_string() + std::string(" redis.conf");
 				if(!process->Spawn(command))
 				{
 					delete process;
@@ -127,7 +127,7 @@ namespace Yarc
 			for (uint32_t i = 0; i < nodeArray->GetCount() - 1; i++)
 			{
 				uint16_t port = i + 7001;
-				sprintf_s(buffer, sizeof(buffer), "CLUSTER MEET 127.0.0.1 %04d", port);
+				sprintf(buffer, "CLUSTER MEET 127.0.0.1 %04d", port);
 				commandData = ProtocolData::ParseCommand(buffer);
 				(*this->nodeArray)[i].client->MakeRequestAsync(commandData, [](const ProtocolData* responseData) {
 					return true;
@@ -173,7 +173,7 @@ namespace Yarc
 					}
 
 					i = (uint32_t)nodeAddr.find(':');
-					if (i != -1)
+					if (i != uint32_t(-1))
 					{
 						std::string portStr = nodeAddr.substr(i + 1, nodeAddr.length() - i - 1);
 						uint16_t port = ::atoi(portStr.c_str());
@@ -466,7 +466,7 @@ namespace Yarc
 			case State::MARK_IMPORTING:
 			{
 				char command[512];
-				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
+				sprintf(command, "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
 
 				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
 					const SimpleErrorData* errorData = Cast<SimpleErrorData>(responseData);
@@ -489,9 +489,8 @@ namespace Yarc
 			case State::MARK_MIGRATING:
 			{
 				char command[512];
-				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d MIGRATING %s", this->hashSlot, this->destinationNode->id);
+				sprintf(command, "CLUSTER SETSLOT %d MIGRATING %s", this->hashSlot, this->destinationNode->id);
 
-				ProtocolData* responseData = nullptr;
 				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
 					if (responseData->IsError())
 						this->state = State::BAIL;
@@ -515,7 +514,7 @@ namespace Yarc
 				// Of course, this is innefficient, but the whole point here is to test the client.
 
 				char command[512];
-				sprintf_s(command, sizeof(command), "CLUSTER GETKEYSINSLOT %d 1", this->hashSlot);
+				sprintf(command, "CLUSTER GETKEYSINSLOT %d 1", this->hashSlot);
 
 				ProtocolData* getKeysResponseData = nullptr;
 				if (!this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), getKeysResponseData))
@@ -534,7 +533,7 @@ namespace Yarc
 							{
 								std::string keyBuffer = stringData->GetValue();
 								const Address& address = this->destinationNode->client->GetSocketStream()->GetAddress();
-								sprintf_s(command, sizeof(command), "MIGRATE %s %d %s 0 5000", address.ipAddress, address.port, keyBuffer.c_str());
+								sprintf(command, "MIGRATE %s %d %s 0 5000", address.ipAddress, address.port, keyBuffer.c_str());
 
 								ProtocolData* migrateKeysResponseData = nullptr;
 								if (!this->sourceNode->client->MakeRequestSync(ProtocolData::ParseCommand(command), migrateKeysResponseData))
@@ -561,7 +560,7 @@ namespace Yarc
 				// It will propagate across the cluster using the gossip protocol.
 
 				char command[512];
-				sprintf_s(command, sizeof(command), "CLUSTER SETSLOT %d NODE %s", this->hashSlot, this->destinationNode->id);
+				sprintf(command, "CLUSTER SETSLOT %d NODE %s", this->hashSlot, this->destinationNode->id);
 
 				ProtocolData* responseData = nullptr;
 

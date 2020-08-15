@@ -471,18 +471,17 @@ namespace Yarc
 	bool ClusterClient::Request::ParseRedirectAddressAndPort(const char* errorMessage)
 	{
 		char buffer[512];
-		strcpy_s(buffer, sizeof(buffer), errorMessage);
+		strcpy(buffer, errorMessage);
 
 		uint32_t i = 0;
-		char* context = nullptr;
-		char* token = ::strtok_s(buffer, " :", &context);
+		char* token = ::strtok(buffer, " :");
 		while (token)
 		{
 			if (i == 2)
 				this->redirectAddress.SetIPAddress(token);
 			else if (i == 3)
 				this->redirectAddress.port = ::atoi(token);
-			token = ::strtok_s(nullptr, " :", &context);
+			token = ::strtok(nullptr, " :");
 			i++;
 		}
 

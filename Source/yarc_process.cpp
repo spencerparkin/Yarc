@@ -1,4 +1,11 @@
 #include "yarc_process.h"
+#include <string.h>
+#if defined __LINUX__
+#   include <unistd.h>
+#   include <sys/wait.h>
+#elif defined __WINDOWS__
+#   include <Windows.h>
+#endif
 
 namespace Yarc
 {

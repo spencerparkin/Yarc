@@ -80,7 +80,7 @@ namespace Yarc
 		va_list args;
 		va_start(args, commandFormat);
 		char command[1024];
-		vsprintf_s(command, sizeof(command), commandFormat, args);
+		vsprintf(command, commandFormat, args);
 		va_end(args);
 
 		struct Word
@@ -222,7 +222,7 @@ namespace Yarc
 
 		while (true)
 		{
-			if (i >= sizeof(buffer) - 1)
+			if (unsigned(i) >= sizeof(buffer) - 1)
 				return false;
 
 			if (!byteStream->ReadByte(byte))
@@ -345,7 +345,7 @@ namespace Yarc
 		if (!ParseCount(byteStream, count, streamed))
 			return false;
 
-		if (!streamed && count == -1)
+		if (!streamed && count == uint32_t(-1))
 		{
 			// This is for backwards compatibility.
 			this->isNull = true;
@@ -500,7 +500,7 @@ namespace Yarc
 		if (!ParseCount(byteStream, count, streamed))
 			return false;
 
-		if (!streamed && count == -1)
+		if (!streamed && count == uint32_t(-1))
 		{
 			// This is for backwards compatibility.
 			this->isNull = true;

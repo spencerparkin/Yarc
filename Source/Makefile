@@ -19,9 +19,9 @@ SRCS = yarc_byte_stream.cpp \
 OBJS = $(SRCS:.cpp=.o)
 LIB = yarc.so
 CC = g++-8
-CCFLAGS = -g -Wall -D__LINUX__ -std=c++2a
+CCFLAGS = -g -Wall -D__LINUX__ -std=c++2a -fPIC
 LD = ld
-LDFLAGS = -shared -Bsymbolic -lc
+LDFLAGS = -shared -lc
 
 all: $(LIB)
 

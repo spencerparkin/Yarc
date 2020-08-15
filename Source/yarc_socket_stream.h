@@ -6,13 +6,21 @@
 #elif defined __LINUX__
 #	include <sys/socket.h>
 #	include <sys/types.h>
+#	include <sys/ioctl.h>
+#	include <netdb.h>
+#	include <arpa/inet.h>
+#	include <unistd.h>
 #endif
 #include <string>
 #include <functional>
 #include <time.h>
 
 #if defined __LINUX__
+#define INVALID_SOCKET		-1
+#define SOCKET_ERROR		-1
+#define NO_ERROR			0
 typedef int SOCKET;
+typedef sockaddr SOCKADDR;
 #endif
 
 namespace Yarc

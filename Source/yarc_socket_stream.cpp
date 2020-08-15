@@ -13,7 +13,7 @@ namespace Yarc
 
 	Address::Address()
 	{
-		::strcpy_s(this->ipAddress, sizeof(this->ipAddress), "127.0.0.1");
+		::strcpy(this->ipAddress, "127.0.0.1");
 		this->hostname[0] = '\0';
 		this->port = 6379;
 	}
@@ -32,26 +32,28 @@ namespace Yarc
 
 	void Address::SetIPAddress(const char* givenIPAddress)
 	{
-		::strcpy_s(this->ipAddress, sizeof(this->ipAddress), givenIPAddress);
+		::strcpy(this->ipAddress, givenIPAddress);
 	}
 
 	void Address::SetHostname(const char* givenHostname)
 	{
-		::strcpy_s(this->hostname, sizeof(this->hostname), givenHostname);
+		::strcpy(this->hostname, givenHostname);
 	}
 
 	const char* Address::GetResolvedIPAddress() const
 	{
 		if (::strlen(this->hostname) > 0)
 		{
+#if defined __WINDOWS__
 			WSADATA data;
 			::WSAStartup(MAKEWORD(2, 2), &data);
+#endif
 
 			char portStr[16];
-			sprintf_s(portStr, sizeof(portStr), "%d", this->port);
+			sprintf(portStr, "%d", this->port);
 
-			::addrinfo* addrInfo = nullptr;
-			if (0 == ::getaddrinfo(this->hostname, portStr, nullptr, &addrInfo))
+			struct addrinfo* addrInfo = nullptr;
+			if (0 == getaddrinfo(this->hostname, portStr, nullptr, &addrInfo))
 			{
 				while (addrInfo)
 				{
@@ -63,12 +65,16 @@ namespace Yarc
 
 				if (addrInfo)
 				{
+#if defined __WINDOWS__
 					::sockaddr_in* sockAddr = (::sockaddr_in*)addrInfo->ai_addr;
-					::sprintf_s(this->ipAddress, sizeof(this->ipAddress), "%d.%d.%d.%d",
+					::sprintf(this->ipAddress, "%d.%d.%d.%d",
 						sockAddr->sin_addr.S_un.S_un_b.s_b1,
 						sockAddr->sin_addr.S_un.S_un_b.s_b2,
 						sockAddr->sin_addr.S_un.S_un_b.s_b3,
 						sockAddr->sin_addr.S_un.S_un_b.s_b4);
+#elif defined __LINUX__
+					getnameinfo(addrInfo->ai_addr, addrInfo->ai_addrlen, this->ipAddress, sizeof(this->ipAddress), nullptr, 0, NI_NAMEREQD|NI_NUMERICHOST);
+#endif
 				}
 			}
 		}
@@ -79,7 +85,7 @@ namespace Yarc
 	std::string Address::GetIPAddressAndPort() const
 	{
 		char ipPort[64];
-		sprintf_s(ipPort, sizeof(ipPort), "%s:%d", this->GetResolvedIPAddress(), this->port);
+		sprintf(ipPort, "%s:%d", this->GetResolvedIPAddress(), this->port);
 		return ipPort;
 	}
 
@@ -99,6 +105,7 @@ namespace Yarc
 	bool SocketStream::Connect(const Address& givenAddress, double timeoutSeconds /*= -1.0*/)
 	{
 		bool success = true;
+		int result = 0;
 
 		try
 		{
@@ -107,40 +114,55 @@ namespace Yarc
 			if (this->sock != INVALID_SOCKET)
 				throw new InternalException();
 
+#if defined __WINDOWS__
 			WSADATA data;
 			int result = ::WSAStartup(MAKEWORD(2, 2), &data);
 			if (result != 0)
 				throw new InternalException();
+#endif
 
-			this->socket = ::socket(AF_INET, SOCK_STREAM, 0);
-			if (this->socket == INVALID_SOCKET)
+			this->sock = ::socket(AF_INET, SOCK_STREAM, 0);
+			if (this->sock == INVALID_SOCKET)
 				throw new InternalException();
 
 			sockaddr_in sockaddr;
 			sockaddr.sin_family = AF_INET;
+#if defined __WINDOWS__
 			::InetPtonA(sockaddr.sin_family, this->address.ipAddress, &sockaddr.sin_addr);
+#elif defined __LINUX__
+			inet_pton(sockaddr.sin_family, this->address.ipAddress, &sockaddr.sin_addr);
+#endif
 			sockaddr.sin_port = ::htons(this->address.port);
 
 			if (timeoutSeconds < 0.0)
 			{
-				result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
+				result = ::connect(this->sock, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
 				if (result == SOCKET_ERROR)
 					throw new InternalException();
 			}
 			else
 			{
 				u_long arg = 1;
-				result = ::ioctlsocket(this->socket, FIONBIO, &arg);
+#if defined __WINDOWS__
+				result = ::ioctlsocket(this->sock, FIONBIO, &arg);
+#elif defined __LINUX__
+				result = ioctl(this->sock, FIONBIO, &arg);
+#endif
 				if (result != NO_ERROR)
 					throw new InternalException();
 
-				result = ::connect(this->socket, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
+				result = ::connect(this->sock, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
 				if (result != SOCKET_ERROR)
 					throw new InternalException();
 
+#if defined __WINDOWS__
 				int error = ::WSAGetLastError();
 				if (error != WSAEWOULDBLOCK)
 					throw new InternalException();
+#elif defined __LINUX__
+				if(errno == EWOULDBLOCK)
+					throw new InternalException();
+#endif
 
 				bool timedOut = true;
 				double startTime = double(::clock()) / double(CLOCKS_PER_SEC);
@@ -150,8 +172,8 @@ namespace Yarc
 					fd_set writeSet, excSet;
 					FD_ZERO(&writeSet);
 					FD_ZERO(&excSet);
-					FD_SET(this->socket, &writeSet);
-					FD_SET(this->socket, &excSet);
+					FD_SET(this->sock, &writeSet);
+					FD_SET(this->sock, &excSet);
 
 					timeval timeVal;
 					timeVal.tv_sec = 0;
@@ -161,11 +183,11 @@ namespace Yarc
 					if (count == SOCKET_ERROR)
 						throw new InternalException();
 
-					if (FD_ISSET(this->socket, &excSet))
+					if (FD_ISSET(this->sock, &excSet))
 						throw new InternalException();
 
 					// Is the socket writable?
-					if (FD_ISSET(this->socket, &writeSet))
+					if (FD_ISSET(this->sock, &writeSet))
 					{
 						timedOut = false;
 						break;
@@ -179,7 +201,11 @@ namespace Yarc
 					throw new InternalException();
 
 				arg = 0;
-				result = ::ioctlsocket(this->socket, FIONBIO, &arg);
+#if defined __WINDOWS__
+				result = ::ioctlsocket(this->sock, FIONBIO, &arg);
+#elif defined __LINUX__
+				result = ioctl(this->sock, FIONBIO, &arg);
+#endif
 				if (result != NO_ERROR)
 					throw new InternalException();
 			}
@@ -205,7 +231,11 @@ namespace Yarc
 	{
 		if (this->sock != INVALID_SOCKET)
 		{
-			::closesocket(this->socket);
+#if defined __WINDOWS__
+			::closesocket(this->sock);
+#elif defined __LINUX__
+			close(this->sock);
+#endif
 			this->sock = INVALID_SOCKET;
 		}
 
@@ -218,7 +248,7 @@ namespace Yarc
 			return -1;
 
 		uint32_t readCount = ::recv(this->sock, (char*)buffer, bufferSize, 0);
-		if (readCount == SOCKET_ERROR)
+		if (readCount == uint32_t(SOCKET_ERROR))
 		{
 			this->sock = INVALID_SOCKET;
 			return -1;
@@ -236,9 +266,9 @@ namespace Yarc
 			return -1;
 
 		uint32_t writeCount = ::send(this->sock, (const char*)buffer, bufferSize, 0);
-		if (writeCount == SOCKET_ERROR)
+		if (writeCount == uint32_t(SOCKET_ERROR))
 		{
-			this->socket = INVALID_SOCKET;
+			this->sock = INVALID_SOCKET;
 			return -1;
 		}
 

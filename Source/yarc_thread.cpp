@@ -1,4 +1,5 @@
 #include "yarc_thread.h"
+#include <string.h>
 
 namespace Yarc
 {
@@ -53,7 +54,7 @@ namespace Yarc
         if(!this->threadRunning)
             return false;
         
-        int result = pthread_join(&this->thread, nullptr);
+        int result = pthread_join(this->thread, nullptr);
         if(result != 0)
             return false;
 
@@ -101,7 +102,7 @@ namespace Yarc
 #elif defined __LINUX__
     /*static*/ void* Thread::ThreadMain(void* arg)
     {
-        Thread* thread = (Thread*)param;
+        Thread* thread = (Thread*)arg;
         thread->cachedFunc();
         thread->threadRunning = false;
         return nullptr;

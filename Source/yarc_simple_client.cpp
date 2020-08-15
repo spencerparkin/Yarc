@@ -49,7 +49,7 @@ namespace Yarc
 
 			if (!this->socketStream)
 			{
-				this->socketStream = theConnectionPool.CheckoutSocketStream(this->address);
+				this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address);
 				if (!this->socketStream || !this->socketStream->IsConnected())
 					throw new InternalException();
 			}
@@ -122,7 +122,7 @@ namespace Yarc
 		if (this->socketStream)
 		{
 			if (canRecycleConnection)
-				theConnectionPool.CheckinSocketStream(this->socketStream);
+				GetConnectionPool()->CheckinSocketStream(this->socketStream);
 			else
 				delete this->socketStream;
 

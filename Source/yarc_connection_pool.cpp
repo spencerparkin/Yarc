@@ -1,8 +1,20 @@
 #include "yarc_connection_pool.h"
+#include <assert.h>
 
 namespace Yarc
 {
-	ConnectionPool theConnectionPool;
+	static ConnectionPool* theConnectionPool = nullptr;
+
+	ConnectionPool* GetConnectionPool()
+	{
+		assert(theConnectionPool != nullptr);
+		return theConnectionPool;
+	}
+
+	void SetConnectionPool(ConnectionPool* givenConnectionPool)
+	{
+		theConnectionPool = givenConnectionPool;
+	}
 
 	ConnectionPool::ConnectionPool()
 	{

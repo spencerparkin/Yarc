@@ -20,5 +20,6 @@ namespace Yarc
 		SocketStreamMap socketStreamMap;
 	};
 
-	extern ConnectionPool theConnectionPool;
+	ConnectionPool* GetConnectionPool();
+	void SetConnectionPool(ConnectionPool* givenConnectionPool);
 }
