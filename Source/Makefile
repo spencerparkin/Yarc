@@ -36,6 +36,7 @@ clean:
 
 dep:
 	makedepend -- $(CCFLAGS) -- $(SRCS)
+	rm -f Makefile.bak
 	
 # DO NOT DELETE
 
