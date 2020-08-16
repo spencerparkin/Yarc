@@ -41,9 +41,7 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::SetupSocketConnectionAndThread(void)
 	{
-		bool success = true;
-
-		try
+		auto lambda = [&]() -> bool
 		{
 			this->callbackList->RemoveAll();
 
@@ -51,7 +49,7 @@ namespace Yarc
 			{
 				this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address);
 				if (!this->socketStream || !this->socketStream->IsConnected())
-					throw new InternalException();
+					return false;
 			}
 
 			if (!this->thread)
@@ -59,18 +57,19 @@ namespace Yarc
 				this->threadExitSignal = false;
 				this->thread = new Thread();
 				if(!this->thread->SpawnThread([=]() { this->ThreadFunc(); }))
-					throw new InternalException();
+					return false;
 			}
 
 			if (*this->postConnectCallback)
 				(*this->postConnectCallback)(this);
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
+			
+			return true;
+		};
+
+		bool success = lambda();
+		
+		if(!success)
 			this->ShutDownSocketConnectionAndThread();
-		}
 
 		return success;
 	}
@@ -250,24 +249,20 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		bool success = true;
-
-		try
+		auto lambda = [&]() -> bool
 		{
 			if (!this->socketStream)
 				if (!this->SetupSocketConnectionAndThread())
-					throw new InternalException();
+					return false;
 
 			if (!ProtocolData::PrintTree(this->socketStream, requestData))
-				throw new InternalException();
+				return false;
 
 			this->EnqueueCallback(callback);
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
-		}
+			return true;
+		};
+		
+		bool success = lambda();
 
 		if (deleteData)
 			delete requestData;
@@ -277,13 +272,12 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		bool success = true;
 		uint32_t i = 0;
 
-		try
+		auto lambda = [&]() -> bool
 		{
 			if (!this->MakeRequestAsync(ProtocolData::ParseCommand("MULTI"), [=](const ProtocolData* responseData) { return true; }))
-				throw new InternalException();
+				return false;
 
 			// It's important to point out that while in typical asynchronous systems, requests are
 			// not guarenteed to be fulfilled in the same order that they were made, that is not
@@ -297,18 +291,17 @@ namespace Yarc
 					return true;
 				}))
 				{
-					throw new InternalException();
+					return false;
 				}
 			}
 
 			if (!this->MakeRequestAsync(ProtocolData::ParseCommand("EXEC"), callback))
-				throw new InternalException();
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
-		}
+				return false;
+			
+			return true;
+		};
+
+		bool success = lambda();
 
 		if (deleteData)
 			while (i < requestDataArray.GetCount())
@@ -319,22 +312,21 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
-		bool success = true;
 		uint32_t i = 0;
 
-		try
+		auto lambda = [&]() -> bool
 		{
 			if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData))
-				throw new InternalException();
+				return false;
 
 			if (!Cast<SimpleErrorData>(responseData))
 			{
 				delete responseData;
-
+				
 				while (i < requestDataArray.GetCount())
 				{
 					if (!this->MakeRequestSync(requestDataArray[i], responseData, deleteData))
-						throw new InternalException();
+						return false;
 
 					if (!Cast<SimpleErrorData>(responseData))
 						delete responseData;
@@ -348,15 +340,14 @@ namespace Yarc
 				if (i == requestDataArray.GetCount())
 				{
 					if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData))
-						throw new InternalException();
+						return false;
 				}
 			}
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
-		}
+
+			return true;
+		};
+
+		bool success = lambda();
 
 		if (deleteData)
 			while (i < requestDataArray.GetCount())

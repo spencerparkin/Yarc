@@ -104,26 +104,25 @@ namespace Yarc
 
 	bool SocketStream::Connect(const Address& givenAddress, double timeoutSeconds /*= -1.0*/)
 	{
-		bool success = true;
 		int result = 0;
 
-		try
+		auto lambda = [&]() -> bool
 		{
 			this->address = givenAddress;
 
 			if (this->sock != INVALID_SOCKET)
-				throw new InternalException();
+				return false;
 
 #if defined __WINDOWS__
 			WSADATA data;
 			int result = ::WSAStartup(MAKEWORD(2, 2), &data);
 			if (result != 0)
-				throw new InternalException();
+				return false;
 #endif
 
 			this->sock = ::socket(AF_INET, SOCK_STREAM, 0);
 			if (this->sock == INVALID_SOCKET)
-				throw new InternalException();
+				return false;
 
 			sockaddr_in sockaddr;
 			sockaddr.sin_family = AF_INET;
@@ -138,7 +137,7 @@ namespace Yarc
 			{
 				result = ::connect(this->sock, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
 				if (result == SOCKET_ERROR)
-					throw new InternalException();
+					return false;
 			}
 			else
 			{
@@ -149,19 +148,19 @@ namespace Yarc
 				result = ioctl(this->sock, FIONBIO, &arg);
 #endif
 				if (result != NO_ERROR)
-					throw new InternalException();
+					return false;
 
 				result = ::connect(this->sock, (SOCKADDR*)&sockaddr, sizeof(sockaddr));
 				if (result != SOCKET_ERROR)
-					throw new InternalException();
+					return false;
 
 #if defined __WINDOWS__
 				int error = ::WSAGetLastError();
 				if (error != WSAEWOULDBLOCK)
-					throw new InternalException();
+					return false;
 #elif defined __LINUX__
 				if(errno == EWOULDBLOCK)
-					throw new InternalException();
+					return false;
 #endif
 
 				bool timedOut = true;
@@ -181,10 +180,10 @@ namespace Yarc
 
 					int32_t count = ::select(0, NULL, &writeSet, &excSet, &timeVal);
 					if (count == SOCKET_ERROR)
-						throw new InternalException();
+						return false;
 
 					if (FD_ISSET(this->sock, &excSet))
-						throw new InternalException();
+						return false;
 
 					// Is the socket writable?
 					if (FD_ISSET(this->sock, &writeSet))
@@ -198,7 +197,7 @@ namespace Yarc
 				}
 
 				if (timedOut)
-					throw new InternalException();
+					return false;
 
 				arg = 0;
 #if defined __WINDOWS__
@@ -207,15 +206,16 @@ namespace Yarc
 				result = ioctl(this->sock, FIONBIO, &arg);
 #endif
 				if (result != NO_ERROR)
-					throw new InternalException();
+					return false;
 			}
-		}
-		catch (InternalException* exc)
-		{
-			success = false;
+
+			return true;
+		};
+		
+		bool success = lambda();
+
+		if(!success)
 			this->Disconnect();
-			delete exc;
-		}
 
 		return success;
 	}

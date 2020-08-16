@@ -30,7 +30,7 @@ namespace Yarc
         if(!threadHandle)
             return false;
 #elif defined __LINUX__
-        if(!this->threadRunning)
+        if(this->threadRunning)
             return false;
         
         int result = pthread_create(&this->thread, nullptr, &Thread::ThreadMain, this);

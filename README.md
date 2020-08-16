@@ -17,6 +17,7 @@ Here is the hello-world of the Yarc library...
 #include <yarc_simple_client.h>
 #include <yarc_protocol_data.h>
 #include <yarc_byte_stream.h>
+#include <yarc_connection_pool.h>
 
 using namespace Yarc;
 
