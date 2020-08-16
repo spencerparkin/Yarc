@@ -27,6 +27,8 @@ namespace Yarc
 
 			Node(T givenValue)
 			{
+				this->next = nullptr;
+				this->prev = nullptr;
 				this->value = givenValue;
 				this->deleteFlag = nullptr;
 			}
