@@ -33,7 +33,6 @@
 
 # DevStudio stuff...
 .vs/
-.vscode/
 *.user
 *.rdb
 Debug/
