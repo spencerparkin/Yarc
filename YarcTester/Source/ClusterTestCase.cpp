@@ -131,18 +131,18 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 			this->testKeyMap.insert(std::pair<std::string, uint32_t>(testKey, number));
 
 			char setCommand[128];
-			sprintf_s(setCommand, sizeof(setCommand), "SET %s %d", testKey.c_str(), number);
+			sprintf(setCommand, "SET %s %d", testKey.c_str(), number);
 
-			this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(setCommand), [=](const Yarc::ProtocolData* setCommandResponse) {
+			this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(setCommand), [=, this](const Yarc::ProtocolData* setCommandResponse) {
 				const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(setCommandResponse);
 				if (error)
 					this->logStream << "SET command got error response: " << error->GetValue() << std::endl;
 				else
 				{
 					char getCommand[128];
-					sprintf_s(getCommand, sizeof(getCommand), "GET %s", testKey.c_str());
+					sprintf(getCommand, "GET %s", testKey.c_str());
 
-					this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(getCommand), [=](const Yarc::ProtocolData* getCommandResponse) {
+					this->client->MakeRequestAsync(Yarc::ProtocolData::ParseCommand(getCommand), [=, this](const Yarc::ProtocolData* getCommandResponse) {
 						const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(getCommandResponse);
 						if (error)
 							this->logStream << "GET command got error response: " << error->GetValue() << std::endl;
@@ -163,7 +163,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 								const Yarc::BlobStringData* stringData = Yarc::Cast<Yarc::BlobStringData>(getCommandResponse);
 								if (stringData)
 								{
-									if (iter->second != ::atoi(stringData->GetValue().c_str()))
+									if (iter->second != (uint32_t)::atoi(stringData->GetValue().c_str()))
 										this->logStream << "Key " << testKey << " failed round-trip!" << std::endl;
 									else
 									{

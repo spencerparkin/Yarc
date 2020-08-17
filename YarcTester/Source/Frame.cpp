@@ -198,7 +198,7 @@ void Frame::OnCharHook(wxKeyEvent& event)
 				else
 				{
 					Yarc::ClientInterface* client = this->testCase->GetClientInterface();
-					if (!client->MakeRequestAsync(commandData, [=](const Yarc::ProtocolData* responseData) {
+					if (!client->MakeRequestAsync(commandData, [=, this](const Yarc::ProtocolData* responseData) {
 							
 						const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(responseData);
 						if (error)

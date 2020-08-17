@@ -5,12 +5,33 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "Debug TestClient",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/TestClient/TestClient",
             "args": [],
             "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {"name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/Source"}
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Debug YarcTester",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/YarcTester/Source/YarcTester",
+            "args": [],
+            "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [
                 {"name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/Source"}
