@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug TestClient",
+            "name": "TestClient",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/TestClient/TestClient",
@@ -26,7 +26,7 @@
             ]
         },
         {
-            "name": "Debug YarcTester",
+            "name": "YarcTester",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/YarcTester/Source/YarcTester",
@@ -34,7 +34,8 @@
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [
-                {"name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/Source"}
+                {"name": "LD_LIBRARY_PATH", "value": "${workspaceFolder}/Source"},
+                {"name": "G_MESSAGES_DEBUG", "value": "all"}
             ],
             "externalConsole": false,
             "MIMode": "gdb",

@@ -6,7 +6,8 @@ SRCS = App.cpp \
 		SimpleTestCase.cpp \
 		TestCase.cpp
 OBJS = $(SRCS:.cpp=.o)
-CC = `wx-config --cxx`
+#CC = `wx-config --cxx`
+CC = g++-8
 CCFLAGS = `wx-config --cxxflags` -g -Wall -I../../Source -std=c++2a -D__LINUX__
 LD = `wx-config --cxx`
 LDFLAGS = `wx-config --libs` -L../../Source -lyarc
