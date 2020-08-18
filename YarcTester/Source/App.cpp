@@ -8,10 +8,13 @@ App::App()
 {
 	this->frame = nullptr;
 	this->redisBinDir = wxT("E:\\redis");
+	this->connectionPool = new Yarc::ConnectionPool();
+	Yarc::SetConnectionPool(this->connectionPool);
 }
 
 /*virtual*/ App::~App()
 {
+	delete this->connectionPool;
 }
 
 /*virtual*/ bool App::OnInit()

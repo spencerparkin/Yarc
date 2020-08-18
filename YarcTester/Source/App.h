@@ -3,6 +3,7 @@
 #include <wx/setup.h>
 #include <wx/app.h>
 #include <wx/string.h>
+#include <yarc_connection_pool.h>
 
 class Frame;
 
@@ -24,6 +25,8 @@ public:
 private:
 
 	Frame* frame;
+
+	Yarc::ConnectionPool* connectionPool;
 };
 
 wxDECLARE_APP(App);
