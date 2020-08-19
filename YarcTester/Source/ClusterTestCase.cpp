@@ -34,9 +34,10 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 
 /*virtual*/ bool ClusterTestCase::Setup()
 {
-	if (!wxFileExists(wxGetApp().GetRedisServerExectuablePath()))
+	wxString serverExePath = wxGetApp().GetRedisServerExectuablePath();
+	if (!wxFileExists(serverExePath))
 	{
-		this->logStream << "Failed to locate redis-server executable!" << std::endl;
+		this->logStream << "Failed to locate redis-server executable!  (" << serverExePath.c_str() << ")" << std::endl;
 		return false;
 	}
 
@@ -46,7 +47,7 @@ ClusterTestCase::ClusterTestCase(std::streambuf* givenLogStream) : TestCase(give
 		this->cluster->numMasters = 3;
 		this->cluster->numSlavesPerMaster = 1;
 		*this->cluster->redisBinDir = wxGetApp().redisBinDir.c_str();
-		*this->cluster->clusterRootDir = wxGetApp().redisBinDir + "\\cluster";
+		*this->cluster->clusterRootDir = wxGetApp().redisBinDir + "/cluster";
 
 		if (!this->cluster->Setup())
 		{

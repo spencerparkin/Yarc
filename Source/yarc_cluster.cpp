@@ -52,8 +52,13 @@ namespace Yarc
 			// STEP 1: Make sure we can locate the redis-server executable.
 			//
 
+
 			std::filesystem::path redisServerPath = *this->redisBinDir;
+#if defined __WINDOWS__
 			redisServerPath = redisServerPath / std::string("redis-server.exe");
+#elif defined __LINUX__
+			redisServerPath = redisServerPath / std::string("redis-server");
+#endif
 			if (!std::filesystem::exists(redisServerPath))
 				return false;
 
@@ -61,9 +66,10 @@ namespace Yarc
 			// STEP 2: Blow away the root folder where we'll run the cluster servers.
 			//
 
-			std::filesystem::path clusetrRootPath = *this->clusterRootDir;
-			std::filesystem::remove_all(clusetrRootPath);
-			std::filesystem::create_directory(clusetrRootPath);
+			std::filesystem::path clusterRootPath = *this->clusterRootDir;
+			std::filesystem::remove_all(clusterRootPath);
+			if(!std::filesystem::create_directory(clusterRootPath))
+				return false;
 
 			//
 			// STEP 3: Bring up all the cluster node servers in cluster mode.
@@ -77,12 +83,15 @@ namespace Yarc
 
 				sprintf(buffer, "%04d", port);
 
-				std::filesystem::path nodeFolderPath = clusetrRootPath / std::string(buffer);
-				std::filesystem::create_directory(nodeFolderPath);
+				std::filesystem::path nodeFolderPath = clusterRootPath / std::string(buffer);
+				if(!std::filesystem::create_directory(nodeFolderPath))
+					return false;
 
 				std::filesystem::path redisConfFilePath = nodeFolderPath / std::string("redis.conf");
 				std::ofstream redisConfStream;
 				redisConfStream.open(redisConfFilePath, std::ios::out);
+				if(redisConfStream.rdstate() & std::ios::failbit)
+					return false;
 
 				sprintf(buffer, "port %04d", port);
 				redisConfStream << std::string(buffer) << std::endl;
@@ -468,7 +477,7 @@ namespace Yarc
 				char command[512];
 				sprintf(command, "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
 
-				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
+				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=, this](const ProtocolData* responseData) {
 					const SimpleErrorData* errorData = Cast<SimpleErrorData>(responseData);
 					if (errorData)
 						this->state = State::BAIL;
@@ -491,7 +500,7 @@ namespace Yarc
 				char command[512];
 				sprintf(command, "CLUSTER SETSLOT %d MIGRATING %s", this->hashSlot, this->destinationNode->id);
 
-				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=](const ProtocolData* responseData) {
+				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=, this](const ProtocolData* responseData) {
 					if (responseData->IsError())
 						this->state = State::BAIL;
 					else

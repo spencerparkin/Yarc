@@ -321,7 +321,7 @@ namespace Yarc
 				}
 				else
 				{
-					bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
+					bool requestMade = this->MakeRequestAsync(clusterNode, [=, this](const ProtocolData* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;	// We've taken ownership of the memory.
@@ -398,7 +398,7 @@ namespace Yarc
 			}
 
 			ProtocolData* askingCommandData = ProtocolData::ParseCommand("ASKING");
-			bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=](const ProtocolData* askingResponseData) {
+			bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [=, this](const ProtocolData* askingResponseData) {
 
 				// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
 				ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
@@ -406,7 +406,7 @@ namespace Yarc
 					this->state = STATE_UNSENT;
 				else
 				{
-					bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
+					bool requestMade = this->MakeRequestAsync(clusterNode, [=, this](const ProtocolData* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;
@@ -450,7 +450,7 @@ namespace Yarc
 				this->state = STATE_UNSENT;
 			else
 			{
-				bool requestMade = this->MakeRequestAsync(clusterNode, [=](const ProtocolData* responseData) {
+				bool requestMade = this->MakeRequestAsync(clusterNode, [=, this](const ProtocolData* responseData) {
 					this->responseData = responseData;
 					this->state = STATE_READY;
 					return false;

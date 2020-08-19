@@ -56,7 +56,7 @@ namespace Yarc
 			{
 				this->threadExitSignal = false;
 				this->thread = new Thread();
-				if(!this->thread->SpawnThread([=]() { this->ThreadFunc(); }))
+				if(!this->thread->SpawnThread([=, this]() { this->ThreadFunc(); }))
 					return false;
 			}
 
@@ -155,7 +155,10 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		if (!this->socketStream)
+		if (!this->socketStream || !this->socketStream->IsConnected())
+			return false;
+
+		if (!this->thread || !this->thread->IsStillRunning())
 			return false;
 
 		while (this->serverDataList->GetCount() > 0)
@@ -191,20 +194,6 @@ namespace Yarc
 
 			if (deleteServerData)
 				delete serverData;
-		}
-
-		if (this->callbackList->GetCount() > 0)
-		{
-			// If we're expecting responses to requests and we're
-			// not connected or our thread isn't running, then our
-			// update needs to fail to break us out of any synchronous
-			// request or flush operation.
-
-			if (!this->socketStream->IsConnected())
-				return false;
-
-			if (this->thread && !this->thread->IsStillRunning())
-				return false;
 		}
 
 		return true;

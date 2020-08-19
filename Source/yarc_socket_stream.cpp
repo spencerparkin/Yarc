@@ -248,7 +248,11 @@ namespace Yarc
 			return -1;
 
 		uint32_t readCount = ::recv(this->sock, (char*)buffer, bufferSize, 0);
+#if defined __WINDOWS__
 		if (readCount == uint32_t(SOCKET_ERROR))
+#elif defined __LINUX__
+		if (readCount == 0 || readCount == uint32_t(SOCKET_ERROR))
+#endif
 		{
 			this->sock = INVALID_SOCKET;
 			return -1;

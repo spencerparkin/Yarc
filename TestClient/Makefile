@@ -2,9 +2,9 @@
 
 SRCS = TestClient.cpp
 OBJS = $(SRCS:.cpp=.o)
-CC = g++-8
+CC = g++-9
 CCFLAGS = -I../Source -g -std=c++2a -D__LINUX__
-LD = g++-8
+LD = g++-9
 LDFLAGS = -L../Source -lyarc -lpthread
 PRGM = TestClient
 
