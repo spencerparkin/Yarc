@@ -5,7 +5,7 @@
 
 namespace Yarc
 {
-	class ConnectionPool
+	class YARC_API ConnectionPool
 	{
 	public:
 		ConnectionPool();
@@ -17,8 +17,9 @@ namespace Yarc
 	private:
 
 		typedef std::map<std::string, SocketStream*> SocketStreamMap;
-		SocketStreamMap socketStreamMap;
+		SocketStreamMap* socketStreamMap;
 	};
 
-	extern ConnectionPool theConnectionPool;
+	YARC_API ConnectionPool* GetConnectionPool();
+	YARC_API void SetConnectionPool(ConnectionPool* givenConnectionPool);
 }

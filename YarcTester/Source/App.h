@@ -1,5 +1,6 @@
 #pragma once
 
+#include <yarc_connection_pool.h>
 #include <wx/setup.h>
 #include <wx/app.h>
 #include <wx/string.h>
@@ -24,6 +25,8 @@ public:
 private:
 
 	Frame* frame;
+
+	Yarc::ConnectionPool* connectionPool;
 };
 
 wxDECLARE_APP(App);

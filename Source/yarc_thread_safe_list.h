@@ -1,7 +1,7 @@
 #pragma once
 
 #include "yarc_linked_list.h"
-#include <Windows.h>
+#include "yarc_mutex.h"
 
 namespace Yarc
 {
@@ -12,12 +12,10 @@ namespace Yarc
 
 		ThreadSafeList()
 		{
-			::InitializeCriticalSection(&this->criticalSection);
 		}
 
 		virtual ~ThreadSafeList()
 		{
-			::DeleteCriticalSection(&this->criticalSection);
 		}
 
 		uint32_t GetCount() const
@@ -27,46 +25,41 @@ namespace Yarc
 
 		void AddTail(T value)
 		{
-			::EnterCriticalSection(&this->criticalSection);
+			MutexLocker locker(this->mutex);
 			this->linkedList.AddTail(value);
-			::LeaveCriticalSection(&this->criticalSection);
 		}
 
 		void AddHead(T value)
 		{
-			::EnterCriticalSection(&this->criticalSection);
+			MutexLocker locker(this->mutex);
 			this->linkedList.AddHead(value);
-			::LeaveCriticalSection(&this->criticalSection);
 		}
 
 		T RemoveTail()
 		{
-			::EnterCriticalSection(&this->criticalSection);
+			MutexLocker locker(this->mutex);
 			T value = this->linkedList.GetTail()->value;
 			this->linkedList.Remove(this->linkedList.GetTail());
-			::LeaveCriticalSection(&this->criticalSection);
 			return value;
 		}
 
 		T RemoveHead()
 		{
-			::EnterCriticalSection(&this->criticalSection);
+			MutexLocker locker(this->mutex);
 			T value = this->linkedList.GetHead()->value;
 			this->linkedList.Remove(this->linkedList.GetHead());
-			::LeaveCriticalSection(&this->criticalSection);
 			return value;
 		}
 
 		void Delete()
 		{
-			::EnterCriticalSection(&this->criticalSection);
+			MutexLocker locker(this->mutex);
 			DeleteList<T>(this->linkedList);
-			::LeaveCriticalSection(&this->criticalSection);
 		}
 
 	private:
 
-		CRITICAL_SECTION criticalSection;
+		Mutex mutex;
 		LinkedList<T> linkedList;
 	};
 }

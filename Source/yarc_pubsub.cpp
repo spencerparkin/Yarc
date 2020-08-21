@@ -23,11 +23,11 @@ namespace Yarc
 		this->outputClient = new SimpleClient();
 		this->outputClient->address = this->address;
 
-		this->inputClient->RegisterPushDataCallback([=](const ProtocolData* messageData) -> bool {
+		this->inputClient->RegisterPushDataCallback([this](const ProtocolData* messageData) -> bool {
 			return this->DispatchPubSubMessage(messageData);
 		});
 
-		this->inputClient->SetPostConnectCallback([=](SimpleClient*) -> bool {
+		this->inputClient->SetPostConnectCallback([this](SimpleClient*) -> bool {
 			return this->Resubscribe();
 		});
 	}

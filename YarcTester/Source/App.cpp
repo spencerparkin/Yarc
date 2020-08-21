@@ -7,11 +7,18 @@ wxIMPLEMENT_APP(App);
 App::App()
 {
 	this->frame = nullptr;
-	this->redisBinDir = wxT("E:\\redis");
+#if defined __LINUX__
+	this->redisBinDir = wxT("/home/sparkin/git_repos/redis/src");
+#elif defined __WINDOWS__
+	this->redisBinDir = wxT("C:\\Redis");
+#endif
+	this->connectionPool = new Yarc::ConnectionPool();
+	Yarc::SetConnectionPool(this->connectionPool);
 }
 
 /*virtual*/ App::~App()
 {
+	delete this->connectionPool;
 }
 
 /*virtual*/ bool App::OnInit()
@@ -30,13 +37,21 @@ App::App()
 wxString App::GetRedisClientExecutablePath()
 {
 	wxFileName clientExePath;
+#if defined __WINDOWS__
 	clientExePath.Assign(this->redisBinDir, wxT("redis-cli.exe"));
+#elif defined __LINUX__
+	clientExePath.Assign(this->redisBinDir, wxT("redis-cli"));
+#endif
 	return clientExePath.GetFullPath();
 }
 
 wxString App::GetRedisServerExectuablePath()
 {
-	wxFileName clientExePath;
-	clientExePath.Assign(this->redisBinDir, wxT("redis-server.exe"));
-	return clientExePath.GetFullPath();
+	wxFileName serverExePath;
+#if defined __WINDOWS__
+	serverExePath.Assign(this->redisBinDir, wxT("redis-server.exe"));
+#elif defined __LINUX__
+	serverExePath.Assign(this->redisBinDir, wxT("redis-server"));
+#endif
+	return serverExePath.GetFullPath();
 }

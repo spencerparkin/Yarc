@@ -12,7 +12,7 @@ namespace Yarc
 		this->socketStream = nullptr;
 		this->callbackList = new CallbackList();
 		this->serverDataList = new ProtocolDataList();
-		this->threadHandle = nullptr;
+		this->thread = nullptr;
 		this->postConnectCallback = new EventCallback;
 		this->preDisconnectCallback = new EventCallback;
 		this->threadExitSignal = false;
@@ -21,6 +21,7 @@ namespace Yarc
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
 		this->ShutDownSocketConnectionAndThread();
+		delete this->thread;
 		delete this->callbackList;
 		this->serverDataList->Delete();
 		delete this->serverDataList;
@@ -40,36 +41,35 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::SetupSocketConnectionAndThread(void)
 	{
-		bool success = true;
-
-		try
+		auto lambda = [&]() -> bool
 		{
 			this->callbackList->RemoveAll();
 
 			if (!this->socketStream)
 			{
-				this->socketStream = theConnectionPool.CheckoutSocketStream(this->address);
+				this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address);
 				if (!this->socketStream || !this->socketStream->IsConnected())
-					throw new InternalException();
+					return false;
 			}
 
-			if (!this->threadHandle)
+			if (!this->thread)
 			{
 				this->threadExitSignal = false;
-				this->threadHandle = ::CreateThread(nullptr, 0, &SimpleClient::ThreadMain, this, 0, nullptr);
-				if (!this->threadHandle)
-					throw new InternalException();
+				this->thread = new Thread();
+				if(!this->thread->SpawnThread([=, this]() { this->ThreadFunc(); }))
+					return false;
 			}
 
 			if (*this->postConnectCallback)
 				(*this->postConnectCallback)(this);
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
+			
+			return true;
+		};
+
+		bool success = lambda();
+		
+		if(!success)
 			this->ShutDownSocketConnectionAndThread();
-		}
 
 		return success;
 	}
@@ -78,13 +78,13 @@ namespace Yarc
 	{
 		if (*this->preDisconnectCallback)
 		{
-			if(this->socketStream && this->socketStream->IsConnected() && this->threadHandle != nullptr)
+			if(this->socketStream && this->socketStream->IsConnected() && this->thread != nullptr)
 				(*this->preDisconnectCallback)(this);
 		}
 
 		bool canRecycleConnection = false;
 
-		if (this->threadHandle)
+		if (this->thread)
 		{
 			// If the socket is disconnected/closed for any reason, the blocking I/O will fail, and the thread will exit.
 			// So that's one way to signal the thread to exit, if we need to do it that way.  Ideally, however, what we'll do is
@@ -94,7 +94,7 @@ namespace Yarc
 			if (!this->socketStream)
 			{
 				// If our socket stream pointer is null, then the thread would crash anyway.  We should never get here ever.
-				::TerminateThread(this->threadHandle, 0);
+				this->thread->KillThread();
 			}
 			else
 			{
@@ -111,16 +111,17 @@ namespace Yarc
 					}
 				}
 
-				::WaitForSingleObject(this->threadHandle, INFINITE);
+				this->thread->WaitForThreadExit();
 			}
 
-			this->threadHandle = nullptr;
+			delete this->thread;
+			this->thread = nullptr;
 		}
 
 		if (this->socketStream)
 		{
 			if (canRecycleConnection)
-				theConnectionPool.CheckinSocketStream(this->socketStream);
+				GetConnectionPool()->CheckinSocketStream(this->socketStream);
 			else
 				delete this->socketStream;
 
@@ -154,7 +155,10 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		if (!this->socketStream)
+		if (!this->socketStream || !this->socketStream->IsConnected())
+			return false;
+
+		if (!this->thread || !this->thread->IsStillRunning())
 			return false;
 
 		while (this->serverDataList->GetCount() > 0)
@@ -192,35 +196,10 @@ namespace Yarc
 				delete serverData;
 		}
 
-		if (this->callbackList->GetCount() > 0)
-		{
-			// If we're expecting responses to requests and we're
-			// not connected or our thread isn't running, then our
-			// update needs to fail to break us out of any synchronous
-			// request or flush operation.
-
-			if (!this->socketStream->IsConnected())
-				return false;
-
-			if (this->threadHandle)
-			{
-				DWORD exitCode = 0;
-				if (::GetExitCodeThread(this->threadHandle, &exitCode))
-					if (exitCode != STILL_ACTIVE)
-						return false;
-			}
-		}
-
 		return true;
 	}
 
-	/*static*/ DWORD __stdcall SimpleClient::ThreadMain(LPVOID param)
-	{
-		SimpleClient* client = (SimpleClient*)param;
-		return client->ThreadFunc();
-	}
-
-	DWORD SimpleClient::ThreadFunc(void)
+	void SimpleClient::ThreadFunc(void)
 	{
 		while (this->socketStream->IsConnected())
 		{
@@ -234,8 +213,6 @@ namespace Yarc
 			if (this->threadExitSignal)
 				break;
 		}
-
-		return 0;
 	}
 
 	/*virtual*/ bool SimpleClient::Flush(void)
@@ -261,24 +238,20 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		bool success = true;
-
-		try
+		auto lambda = [&]() -> bool
 		{
 			if (!this->socketStream)
 				if (!this->SetupSocketConnectionAndThread())
-					throw new InternalException();
+					return false;
 
 			if (!ProtocolData::PrintTree(this->socketStream, requestData))
-				throw new InternalException();
+				return false;
 
 			this->EnqueueCallback(callback);
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
-		}
+			return true;
+		};
+		
+		bool success = lambda();
 
 		if (deleteData)
 			delete requestData;
@@ -288,13 +261,12 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		bool success = true;
 		uint32_t i = 0;
 
-		try
+		auto lambda = [&]() -> bool
 		{
 			if (!this->MakeRequestAsync(ProtocolData::ParseCommand("MULTI"), [=](const ProtocolData* responseData) { return true; }))
-				throw new InternalException();
+				return false;
 
 			// It's important to point out that while in typical asynchronous systems, requests are
 			// not guarenteed to be fulfilled in the same order that they were made, that is not
@@ -308,18 +280,17 @@ namespace Yarc
 					return true;
 				}))
 				{
-					throw new InternalException();
+					return false;
 				}
 			}
 
 			if (!this->MakeRequestAsync(ProtocolData::ParseCommand("EXEC"), callback))
-				throw new InternalException();
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
-		}
+				return false;
+			
+			return true;
+		};
+
+		bool success = lambda();
 
 		if (deleteData)
 			while (i < requestDataArray.GetCount())
@@ -330,22 +301,21 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/)
 	{
-		bool success = true;
 		uint32_t i = 0;
 
-		try
+		auto lambda = [&]() -> bool
 		{
 			if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData))
-				throw new InternalException();
+				return false;
 
 			if (!Cast<SimpleErrorData>(responseData))
 			{
 				delete responseData;
-
+				
 				while (i < requestDataArray.GetCount())
 				{
 					if (!this->MakeRequestSync(requestDataArray[i], responseData, deleteData))
-						throw new InternalException();
+						return false;
 
 					if (!Cast<SimpleErrorData>(responseData))
 						delete responseData;
@@ -359,15 +329,14 @@ namespace Yarc
 				if (i == requestDataArray.GetCount())
 				{
 					if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData))
-						throw new InternalException();
+						return false;
 				}
 			}
-		}
-		catch (InternalException* exc)
-		{
-			delete exc;
-			success = false;
-		}
+
+			return true;
+		};
+
+		bool success = lambda();
 
 		if (deleteData)
 			while (i < requestDataArray.GetCount())

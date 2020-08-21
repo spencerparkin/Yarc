@@ -37,3 +37,4 @@
 *.rdb
 Debug/
 Release/
+TestClient/TestClient

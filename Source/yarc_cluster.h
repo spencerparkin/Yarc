@@ -4,6 +4,7 @@
 #include "yarc_dynamic_array.h"
 #include "yarc_linked_list.h"
 #include "yarc_reducer.h"
+#include "yarc_process.h"
 #include <stdint.h>
 #include <string>
 
@@ -34,7 +35,7 @@ namespace Yarc
 		struct Node
 		{
 			SimpleClient* client;
-			uint64_t processHandle;
+			Process* process;
 			char id[256];
 		};
 

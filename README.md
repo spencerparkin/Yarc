@@ -1,6 +1,6 @@
 # Yarc -- Yet Another Redis Client
 
-Yarc is a C++-based Windows client for Redis.  It directly supports...
+Yarc is a C++-based Linux & Windows client for Redis.  It directly supports...
 
  * RESP, RESP3 (attributes, streaming, maps, etc.)
  * Pipelining
@@ -17,11 +17,15 @@ Here is the hello-world of the Yarc library...
 #include <yarc_simple_client.h>
 #include <yarc_protocol_data.h>
 #include <yarc_byte_stream.h>
+#include <yarc_connection_pool.h>
 
 using namespace Yarc;
 
 int main()
 {
+	ConnectionPool connectionPool;
+	SetConnectionPool(&connectionPool);
+
 	// This connects to 127.0.0.1 on port 6379 by default.
 	ClientInterface* client = new SimpleClient();
 	client->MakeRequestAsync(ProtocolData::ParseCommand("SET greeting \"Hello, world!\""));

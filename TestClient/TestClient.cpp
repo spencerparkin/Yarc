@@ -3,12 +3,16 @@
 #include <yarc_simple_client.h>
 #include <yarc_byte_stream.h>
 #include <yarc_protocol_data.h>
+#include <yarc_connection_pool.h>
 #include <stdio.h>
 
 using namespace Yarc;
 
 int main()
 {
+	ConnectionPool connectionPool;
+	SetConnectionPool(&connectionPool);
+
 	ClientInterface* client = new SimpleClient();
 
 	while(true)

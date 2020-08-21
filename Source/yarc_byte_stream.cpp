@@ -23,7 +23,7 @@ namespace Yarc
 		while (remainingBytes > 0)
 		{
 			uint32_t bytesRead = this->ReadBuffer(&buffer[bufferOffset], remainingBytes);
-			if (bytesRead == -1)
+			if (bytesRead == uint32_t(-1))
 				return false;
 
 			remainingBytes -= bytesRead;
@@ -40,7 +40,7 @@ namespace Yarc
 		while (remainingBytes > 0)
 		{
 			uint32_t bytesWritten = this->WriteBuffer((const uint8_t*)&buffer[bufferOffset], remainingBytes);
-			if (bytesWritten == -1)
+			if (bytesWritten == uint32_t(-1))
 				return false;
 
 			remainingBytes -= bytesWritten;
@@ -55,7 +55,11 @@ namespace Yarc
 		va_list args;
 		va_start(args, format);
 		char buffer[1024];
+#if defined __WINDOWS__
 		vsprintf_s(buffer, sizeof(buffer), format, args);
+#elif defined __LINUX__
+		vsprintf(buffer, format, args);
+#endif
 		va_end(args);
 
 		return this->WriteBufferNow((const uint8_t*)buffer, (uint32_t)::strlen(buffer));

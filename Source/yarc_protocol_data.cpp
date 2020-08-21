@@ -80,7 +80,7 @@ namespace Yarc
 		va_list args;
 		va_start(args, commandFormat);
 		char command[1024];
-		vsprintf_s(command, sizeof(command), commandFormat, args);
+		vsprintf(command, commandFormat, args);
 		va_end(args);
 
 		struct Word
@@ -222,7 +222,7 @@ namespace Yarc
 
 		while (true)
 		{
-			if (i >= sizeof(buffer) - 1)
+			if (unsigned(i) >= sizeof(buffer) - 1)
 				return false;
 
 			if (!byteStream->ReadByte(byte))
@@ -234,15 +234,16 @@ namespace Yarc
 				return ParseCRLF(byteStream);
 			}
 
-			if (!::isdigit(byte))
+			if (!::isdigit(byte) && byte != '-')
 				break;
 
 			buffer[i++] = byte;
 		}
 
-		// TODO: Did the number parse succeed?
 		buffer[i] = '\0';
 		count = (uint32_t)::strtol(buffer, nullptr, 10);
+		if(count == 0 && errno != 0)
+			return false;
 
 		if (byte != '\r')
 			return false;
@@ -345,7 +346,7 @@ namespace Yarc
 		if (!ParseCount(byteStream, count, streamed))
 			return false;
 
-		if (!streamed && count == -1)
+		if (!streamed && count == uint32_t(-1))
 		{
 			// This is for backwards compatibility.
 			this->isNull = true;
@@ -380,6 +381,9 @@ namespace Yarc
 
 	/*virtual*/ bool ArrayData::Print(ByteStream* byteStream) const
 	{
+		if(this->isNull)
+			return byteStream->WriteFormat("-1\r\n");
+
 		if (!byteStream->WriteFormat("%d", this->nestedDataArray->GetCount()))
 			return false;
 
@@ -500,7 +504,7 @@ namespace Yarc
 		if (!ParseCount(byteStream, count, streamed))
 			return false;
 
-		if (!streamed && count == -1)
+		if (!streamed && count == uint32_t(-1))
 		{
 			// This is for backwards compatibility.
 			this->isNull = true;
@@ -554,6 +558,9 @@ namespace Yarc
 
 	/*virtual*/ bool BlobStringData::Print(ByteStream* byteStream) const
 	{
+		if(this->isNull)
+			return byteStream->WriteFormat("-1\r\n");
+
 		if (!byteStream->WriteFormat("%d\r\n", this->byteArray->GetCount()))
 			return false;
 

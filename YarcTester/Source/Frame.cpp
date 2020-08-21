@@ -44,6 +44,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_ClusterTestCase);
 	this->Bind(wxEVT_UPDATE_UI, &Frame::OnUpdateMenuItemUI, this, ID_AutomatedTesting);
 	this->Bind(wxEVT_TIMER, &Frame::OnTimer, this, ID_Timer);
+	this->Bind(wxEVT_CHAR_HOOK, &Frame::OnCharHook, this);
 
 	this->SetStatusBar(new wxStatusBar(this));
 
@@ -61,9 +62,8 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	boxSizer->Add(this->inputText, 0, wxGROW);
 	this->SetSizer(boxSizer);
 
-	this->Bind(wxEVT_CHAR_HOOK, &Frame::OnCharHook, this);
-
-	this->timer.Start(0);
+	// Note that a value of zero given here will cause GTK to hang.
+	this->timer.Start(100);
 }
 
 /*virtual*/ Frame::~Frame()
@@ -198,7 +198,7 @@ void Frame::OnCharHook(wxKeyEvent& event)
 				else
 				{
 					Yarc::ClientInterface* client = this->testCase->GetClientInterface();
-					if (!client->MakeRequestAsync(commandData, [=](const Yarc::ProtocolData* responseData) {
+					if (!client->MakeRequestAsync(commandData, [=, this](const Yarc::ProtocolData* responseData) {
 							
 						const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(responseData);
 						if (error)
