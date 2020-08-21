@@ -477,7 +477,7 @@ namespace Yarc
 				char command[512];
 				sprintf(command, "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
 
-				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=, this](const ProtocolData* responseData) {
+				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [this](const ProtocolData* responseData) {
 					const SimpleErrorData* errorData = Cast<SimpleErrorData>(responseData);
 					if (errorData)
 						this->state = State::BAIL;
@@ -500,7 +500,7 @@ namespace Yarc
 				char command[512];
 				sprintf(command, "CLUSTER SETSLOT %d MIGRATING %s", this->hashSlot, this->destinationNode->id);
 
-				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [=, this](const ProtocolData* responseData) {
+				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [this](const ProtocolData* responseData) {
 					if (responseData->IsError())
 						this->state = State::BAIL;
 					else

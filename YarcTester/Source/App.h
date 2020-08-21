@@ -1,9 +1,9 @@
 #pragma once
 
+#include <yarc_connection_pool.h>
 #include <wx/setup.h>
 #include <wx/app.h>
 #include <wx/string.h>
-#include <yarc_connection_pool.h>
 
 class Frame;
 

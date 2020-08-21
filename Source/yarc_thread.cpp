@@ -98,6 +98,7 @@ namespace Yarc
     {
         Thread* thread = (Thread*)param;
         thread->cachedFunc();
+        return 0;
     }
 #elif defined __LINUX__
     /*static*/ void* Thread::ThreadMain(void* arg)

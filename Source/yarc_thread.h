@@ -2,6 +2,7 @@
 
 #include <functional>
 #if defined __WINDOWS__
+#	include <WS2tcpip.h>
 #	include <Windows.h>
 #elif defined __LINUX__
 #	include <pthread.h>

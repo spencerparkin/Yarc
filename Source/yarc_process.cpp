@@ -12,7 +12,7 @@ namespace Yarc
     Process::Process(void)
     {
 #if defined __WINDOWS__
-        ::ZeroMemory(&procInfo, sizeof(procInfo));
+        ::ZeroMemory(&this->procInfo, sizeof(this->procInfo));
 #elif defined __LINUX__
         this->childPid = 0;
 #endif
@@ -25,15 +25,14 @@ namespace Yarc
     bool Process::Spawn(const std::string& command)
     {
 #if defined __WINDOWS__
-        if(procInfo.processHandle != NULL)
+        if(this->procInfo.hProcess != NULL)
             return false;
         
-        STARTUPINFO startupInfo;
+        STARTUPINFOA startupInfo;
         ::ZeroMemory(&startupInfo, sizeof(startupInfo));
         startupInfo.cb = sizeof(startupInfo);
         
-        std::wstring wCommand(command.c_str());
-        if (!::CreateProcessW(nullptr, (LPWSTR)command.c_str(), nullptr, nullptr, FALSE, 0, nullptr, nodeFolderPathCStr, &startupInfo, &procInfo))
+        if (!::CreateProcessA(nullptr, (LPSTR)command.c_str(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startupInfo, &this->procInfo))
             return false;
 #elif defined __LINUX__
         if(this->childPid > 0)
@@ -71,13 +70,17 @@ namespace Yarc
     void Process::WaitForExit(void)
     {
 #if defined __WINDOWS__
-        if(node.processHandle)
-            ::WaitForSingleObject((HANDLE)node.processHandle, INFINITE);
+        if (this->procInfo.hProcess)
+        {
+            ::WaitForSingleObject(this->procInfo.hProcess, INFINITE);
+            ::ZeroMemory(&this->procInfo, sizeof(this->procInfo));
+        }
 #elif defined __LINUX__
         if(this->childPid > 0)
         {
             int status = 0;
             waitpid(this->childPid, &status, 0);
+            this->childPid = 0;
         }
 #endif
     }

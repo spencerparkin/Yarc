@@ -26,12 +26,14 @@
     <ClCompile Include="Source\yarc_connection_pool.cpp" />
     <ClCompile Include="Source\yarc_crc16.cpp" />
     <ClCompile Include="Source\yarc_misc.cpp" />
+    <ClCompile Include="Source\yarc_process.cpp" />
     <ClCompile Include="Source\yarc_protocol_data.cpp" />
     <ClCompile Include="Source\yarc_pubsub.cpp" />
     <ClCompile Include="Source\yarc_reducer.cpp" />
     <ClCompile Include="Source\yarc_simple_client.cpp" />
     <ClCompile Include="Source\yarc_dllmain.cpp" />
     <ClCompile Include="Source\yarc_socket_stream.cpp" />
+    <ClCompile Include="Source\yarc_thread.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\yarc_cluster.h" />
@@ -40,6 +42,8 @@
     <ClInclude Include="Source\yarc_dynamic_array.h" />
     <ClInclude Include="Source\yarc_cluster_client.h" />
     <ClInclude Include="Source\yarc_misc.h" />
+    <ClInclude Include="Source\yarc_mutex.h" />
+    <ClInclude Include="Source\yarc_process.h" />
     <ClInclude Include="Source\yarc_protocol_data.h" />
     <ClInclude Include="Source\yarc_pubsub.h" />
     <ClInclude Include="Source\yarc_reducer.h" />
@@ -49,6 +53,7 @@
     <ClInclude Include="Source\yarc_linked_list.h" />
     <ClInclude Include="Source\yarc_byte_stream.h" />
     <ClInclude Include="Source\yarc_socket_stream.h" />
+    <ClInclude Include="Source\yarc_thread.h" />
     <ClInclude Include="Source\yarc_thread_safe_list.h" />
   </ItemGroup>
   <ItemGroup>
@@ -124,10 +129,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>YARC_EXPORT;_CRT_SECURE_NO_WARNING;WIN32;_DEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WINDOWS__;YARC_EXPORT;_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -141,10 +147,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>YARC_EXPORT;_CRT_SECURE_NO_WARNING;_DEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WINDOWS__;YARC_EXPORT;_CRT_SECURE_NO_WARNINGS;_DEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -160,10 +167,11 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>YARC_EXPORT;_CRT_SECURE_NO_WARNING;WIN32;NDEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WINDOWS__;YARC_EXPORT;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -181,10 +189,11 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>YARC_EXPORT;_CRT_SECURE_NO_WARNING;NDEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__WINDOWS__;YARC_EXPORT;_CRT_SECURE_NO_WARNINGS;NDEBUG;YARC_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
