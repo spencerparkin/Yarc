@@ -1,8 +1,10 @@
 #pragma once
 
 #include <string>
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#if defined __WINDOWS__
+#   define WIN32_LEAN_AND_MEAN
+#   include <Windows.h>
+#endif
 
 namespace Yarc
 {
