@@ -7,7 +7,11 @@ wxIMPLEMENT_APP(App);
 App::App()
 {
 	this->frame = nullptr;
+#if defined __LINUX__
 	this->redisBinDir = wxT("/home/sparkin/git_repos/redis/src");
+#elif defined __WINDOWS__
+	this->redisBinDir = wxT("C:\\Redis");
+#endif
 	this->connectionPool = new Yarc::ConnectionPool();
 	Yarc::SetConnectionPool(this->connectionPool);
 }
