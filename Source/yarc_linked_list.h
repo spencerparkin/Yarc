@@ -109,10 +109,10 @@ namespace Yarc
 			else
 			{
 				node->next = before;
-				node->prev = before->pref;
+				node->prev = before->prev;
 				node->Couple();
 				if (!node->prev)
-					this->prev = node;
+					this->head = node;
 			}
 
 			this->count++;
