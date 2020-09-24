@@ -5,6 +5,16 @@ namespace Yarc
 {
 	static ConnectionPool* theConnectionPool = nullptr;
 
+	/*static*/ ConnectionPool* ConnectionPool::Create()
+	{
+		return new ConnectionPool();
+	}
+
+	/*static*/ void ConnectionPool::Destroy(ConnectionPool* connectionPool)
+	{
+		delete connectionPool;
+	}
+
 	ConnectionPool* GetConnectionPool()
 	{
 		assert(theConnectionPool != nullptr);

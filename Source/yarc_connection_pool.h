@@ -11,6 +11,9 @@ namespace Yarc
 		ConnectionPool();
 		virtual ~ConnectionPool();
 
+		static ConnectionPool* Create();
+		static void Destroy(ConnectionPool* connectionPool);
+
 		SocketStream* CheckoutSocketStream(const Address& address);
 		void CheckinSocketStream(SocketStream* socketStream);
 
