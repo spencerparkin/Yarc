@@ -13,15 +13,11 @@ namespace Yarc
 		delete pubSub;
 	}
 
-	PubSub::PubSub()
+	PubSub::PubSub(void)
 	{
 		this->callbackMap = new CallbackMap;
-
 		this->inputClient = new SimpleClient();
-		this->inputClient->address = this->address;
-
 		this->outputClient = new SimpleClient();
-		this->outputClient->address = this->address;
 
 		this->inputClient->RegisterPushDataCallback([this](const ProtocolData* messageData) -> bool {
 			return this->DispatchPubSubMessage(messageData);
@@ -37,6 +33,18 @@ namespace Yarc
 		delete this->inputClient;
 		delete this->outputClient;
 		delete this->callbackMap;
+	}
+
+	void PubSub::SetAddress(const Address& address)
+	{
+		this->inputClient->address = address;
+		this->outputClient->address = address;
+	}
+
+	void PubSub::SetAddress(const char* address)
+	{
+		this->inputClient->address.SetIPAddress(address);
+		this->outputClient->address.SetIPAddress(address);
 	}
 
 	bool PubSub::Subscribe(const std::string& channel, ClientInterface::Callback callback)

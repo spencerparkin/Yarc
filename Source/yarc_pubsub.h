@@ -12,13 +12,14 @@ namespace Yarc
 	{
 	public:
 
-		PubSub();
+		PubSub(void);
 		virtual ~PubSub();
-
-		Address address;
 
 		static PubSub* Create(void);
 		static void Destroy(PubSub* pubSub);
+
+		void SetAddress(const Address& address);
+		void SetAddress(const char* address);
 
 		bool Subscribe(const std::string& channel, ClientInterface::Callback callback);
 		bool Subscribe(const char* channel, ClientInterface::Callback callback);
