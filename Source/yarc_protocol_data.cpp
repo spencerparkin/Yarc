@@ -75,6 +75,11 @@ namespace Yarc
 		return crc16(key + s + 1, e - s - 1) & 16383;
 	}
 
+	/*static*/ void ProtocolData::Destroy(ProtocolData* protocolData)
+	{
+		delete protocolData;
+	}
+
 	/*static*/ ProtocolData* ProtocolData::ParseCommand(const char* commandFormat, ...)
 	{
 		va_list args;
@@ -725,6 +730,11 @@ namespace Yarc
 	std::string SimpleStringData::GetValue() const
 	{
 		return *this->value;
+	}
+
+	const char* SimpleStringData::GetValueCPtr() const
+	{
+		return this->value->c_str();
 	}
 
 	bool SimpleStringData::SetValue(const std::string& givenValue)

@@ -2,6 +2,7 @@
 
 #include "yarc_socket_stream.h"
 #include <map>
+#include <list>
 
 namespace Yarc
 {
@@ -19,7 +20,8 @@ namespace Yarc
 
 	private:
 
-		typedef std::map<std::string, SocketStream*> SocketStreamMap;
+		typedef std::list<SocketStream*> SocketStreamList;
+		typedef std::map<std::string, SocketStreamList*> SocketStreamMap;
 		SocketStreamMap* socketStreamMap;
 	};
 

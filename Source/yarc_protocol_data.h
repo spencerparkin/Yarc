@@ -21,6 +21,7 @@ namespace Yarc
 		static uint16_t CalcKeyHashSlot(const std::string& keyStr);
 
 		static ProtocolData* ParseCommand(const char* commandFormat, ...);
+		static void Destroy(ProtocolData* protocolData);
 
 		static bool ParseTree(ByteStream* byteStream, ProtocolData*& protocolData);
 		static bool PrintTree(ByteStream* byteStream, const ProtocolData* protocolData);
@@ -173,6 +174,7 @@ namespace Yarc
 		static uint8_t StaticDiscriminant() { return '+'; }
 
 		std::string GetValue() const;
+		const char* GetValueCPtr() const;
 		bool SetValue(const std::string& givenValue);
 
 	protected:

@@ -33,10 +33,16 @@ namespace Yarc
 
 	/*virtual*/ ConnectionPool::~ConnectionPool()
 	{
-		for (SocketStreamMap::iterator iter = this->socketStreamMap->begin(); iter != this->socketStreamMap->end(); iter++)
+		for (SocketStreamMap::iterator mapIter = this->socketStreamMap->begin(); mapIter != this->socketStreamMap->end(); mapIter++)
 		{
-			SocketStream* socketStream = iter->second;
-			delete socketStream;
+			SocketStreamList* socketStreamList = mapIter->second;
+			for (SocketStreamList::iterator listIter = socketStreamList->begin(); listIter != socketStreamList->end(); listIter++)
+			{
+				SocketStream* socketStream = *listIter;
+				delete socketStream;
+			}
+
+			delete socketStreamList;
 		}
 
 		delete this->socketStreamMap;
@@ -48,10 +54,19 @@ namespace Yarc
 
 		std::string ipPort = address.GetIPAddressAndPort();
 
-		SocketStreamMap::iterator iter = this->socketStreamMap->find(ipPort);
-		if (iter != this->socketStreamMap->end())
-			socketStream = iter->second;
-		else
+		SocketStreamMap::iterator mapIter = this->socketStreamMap->find(ipPort);
+		if (mapIter != this->socketStreamMap->end())
+		{
+			SocketStreamList* socketStreamList = mapIter->second;
+			if (socketStreamList->size() > 0)
+			{
+				SocketStreamList::iterator listIter = socketStreamList->begin();
+				socketStream = *listIter;
+				socketStreamList->erase(listIter);
+			}
+		}
+		
+		if (!socketStream)
 		{
 			socketStream = new SocketStream();
 			if (!socketStream->Connect(address))
@@ -68,10 +83,16 @@ namespace Yarc
 	{
 		std::string ipPort = socketStream->GetAddress().GetIPAddressAndPort();
 
-		SocketStreamMap::iterator iter = this->socketStreamMap->find(ipPort);
-		if (iter != this->socketStreamMap->end())
-			delete socketStream;
+		SocketStreamList* socketStreamList = nullptr;
+		SocketStreamMap::iterator mapIter = this->socketStreamMap->find(ipPort);
+		if (mapIter != this->socketStreamMap->end())
+			socketStreamList = mapIter->second;
 		else
-			this->socketStreamMap->insert(std::pair<std::string, SocketStream*>(ipPort, socketStream));
+		{
+			socketStreamList = new SocketStreamList;
+			this->socketStreamMap->insert(std::pair<std::string, SocketStreamList*>(ipPort, socketStreamList));
+		}
+
+		socketStreamList->push_back(socketStream);
 	}
 }
