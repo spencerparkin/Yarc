@@ -91,14 +91,12 @@ namespace Yarc
 	{
 		uint32_t i = 0;
 		
-		while (i < bufferSize)
+		for (i = 0; i < bufferSize; i++)
 		{
 			if (this->readOffset >= this->stringBuffer->length())
 				break;
 
-			buffer[i] = this->stringBuffer->c_str()[i];
-
-			i++;
+			buffer[i] = this->stringBuffer->c_str()[this->readOffset++];
 		}
 
 		return i;
