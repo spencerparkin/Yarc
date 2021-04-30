@@ -97,6 +97,7 @@ namespace Yarc
 		static uint8_t StaticDiscriminant() { return '$'; }
 
 		std::string GetValue() const;
+		bool GetValue(char* buffer, uint32_t bufferSize) const;
 		bool SetValue(const std::string& givenValue);
 		bool SetValue(const char* givenValue);
 

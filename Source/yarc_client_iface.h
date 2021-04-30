@@ -21,7 +21,8 @@ namespace Yarc
 		// There is no need to explicitly connect or disconnect a client from a Redis instance.
 		// Configure the address of the Redis end-point, then just start using the client.
 		// The client will then manage the connection for you.  In part, this is so that we
-		// can take advantage of connection pooling.
+		// can take advantage of connection pooling.  It's also so that we can provide a
+		// persistent connection in the face of connection interruptions.
 		Address address;
 
 		// The return value indicates whether the callback takes ownership of the memory.
@@ -39,10 +40,18 @@ namespace Yarc
 		// reaches somewhere around ~1000 requests.
 		virtual bool Flush(void) = 0;
 
-		// In the synchronous case, the caller takes ownership of the response data.
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.
-		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) = 0;
-		virtual bool MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData = true);
+		// The returned identifier can be used when canceling the request.  See below.
+		virtual int MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) = 0;
+		
+		// In the synchronous case, the caller takes ownership of the response data.
+		virtual bool MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData = true, double timeoutSeconds = 5.0);
+
+		// There is no way to cancel a request given to the Redis server, but it is
+		// sometimes important that we cancel the calling of the request's callback before
+		// the said request is fulfilled.  Internally, the response will still be
+		// gathered from the server, but the callback won't get called.
+		virtual bool CancelAsyncRequest(int requestID) = 0;
 
 		// This is a convenience routine for issuing a sequence of commands that are executed
 		// by the database server as a single atomic operation that fails or succeeds as a whole.
@@ -53,7 +62,7 @@ namespace Yarc
 		// Transactions also guarentee that no command from any other client is serviced in the middle
 		// of the transaction.  This is an important property needed for matters of concurrancy.
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) = 0;
-		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true);
+		virtual bool MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData = true, double timeoutSeconds = 5.0);
 
 		// This callback is used in conjunction with the pub-sub mechanism.  The client can be
 		// thought of as always in pipelining mode.  However, when it receives a message from the

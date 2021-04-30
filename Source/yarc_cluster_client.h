@@ -28,7 +28,8 @@ namespace Yarc
 
 		virtual bool Update(void) override;
 		virtual bool Flush(void) override;
-		virtual bool MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual int MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
+		virtual bool CancelAsyncRequest(int requestID) override;
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool RegisterPushDataCallback(Callback givenPushDataCallback) override;
 
@@ -53,7 +54,7 @@ namespace Yarc
 			Request(Callback givenCallback, ClusterClient* givenClusterClient);
 			virtual ~Request();
 
-			virtual ReductionResult Reduce() override;
+			virtual ReductionResult Reduce(void* userData) override;
 
 			virtual uint16_t CalcHashSlot() = 0;
 			virtual bool MakeRequestAsync(ClusterNode* clusterNode, Callback callback) = 0;
@@ -110,7 +111,7 @@ namespace Yarc
 			ClusterNode();
 			virtual ~ClusterNode();
 
-			virtual ReductionResult Reduce() override;
+			virtual ReductionResult Reduce(void* userData) override;
 
 			bool HandlesSlot(uint16_t slot) const;
 

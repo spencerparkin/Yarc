@@ -10,7 +10,7 @@ namespace Yarc
 	{
 	}
 
-	/*static*/ void ReductionObject::ReduceList(ReductionObjectList* reductionObjectList)
+	/*static*/ void ReductionObject::ReduceList(ReductionObjectList* reductionObjectList, void* userData /*= nullptr*/)
 	{
 		ReductionObjectList::Node* node = reductionObjectList->GetHead();
 		while (node)
@@ -20,7 +20,7 @@ namespace Yarc
 			node->deleteFlag = &deleteFlag;
 
 			ReductionObject* object = node->value;
-			ReductionResult result = object->Reduce();	// This call might mutate the list we're processing here!
+			ReductionResult result = object->Reduce(userData);	// This call might mutate the list we're processing here!
 			
 			node->deleteFlag = otherDeleteFlag;
 			if (otherDeleteFlag)

@@ -15,7 +15,7 @@ namespace Yarc
 
 	PubSub::PubSub(void)
 	{
-		this->callbackMap = new CallbackMap;
+		this->subscriptionMap = new SubscriptionMap;
 		this->inputClient = new SimpleClient();
 		this->outputClient = new SimpleClient();
 
@@ -32,7 +32,7 @@ namespace Yarc
 	{
 		delete this->inputClient;
 		delete this->outputClient;
-		delete this->callbackMap;
+		delete this->subscriptionMap;
 	}
 
 	void PubSub::SetAddress(const Address& address)
@@ -54,17 +54,14 @@ namespace Yarc
 
 	bool PubSub::Subscribe(const char* channel, ClientInterface::Callback callback)
 	{
-		ProtocolData* responseData = nullptr;
-		if (!this->inputClient->MakeRequestSync(ProtocolData::ParseCommand("SUBSCRIBE %s", channel), responseData))
-			return false;
+		SubscriptionMap::iterator iter = this->subscriptionMap->find(channel);
+		if (iter != this->subscriptionMap->end())
+			this->subscriptionMap->erase(iter);
 
-		// TODO: Make sure we got +OK from the server.
-
-		CallbackMap::iterator iter = this->callbackMap->find(channel);
-		if (iter != this->callbackMap->end())
-			this->callbackMap->erase(iter);
-
-		this->callbackMap->insert(std::pair<std::string, ClientInterface::Callback>(channel, callback));
+		SubscriptionData subData;
+		subData.callback = callback;
+		subData.subscribed = false;
+		this->subscriptionMap->insert(std::pair<std::string, SubscriptionData>(channel, subData));
 		return true;
 	}
 
@@ -75,17 +72,15 @@ namespace Yarc
 
 	bool PubSub::Unsubscribe(const char* channel)
 	{
-		CallbackMap::iterator iter = this->callbackMap->find(channel);
-		if (iter != this->callbackMap->end())
-			this->callbackMap->erase(iter);
+		SubscriptionMap::iterator iter = this->subscriptionMap->find(channel);
+		if (iter != this->subscriptionMap->end())
+			this->subscriptionMap->erase(iter);
 		else
 			return false;
 
 		ProtocolData* responseData = nullptr;
 		if (!this->inputClient->MakeRequestSync(ProtocolData::ParseCommand("UNSUBSCRIBE %s", channel), responseData))
 			return false;
-
-		// TODO: Make sure we got +OK from the server.
 
 		return true;
 	}
@@ -143,10 +138,10 @@ namespace Yarc
 				if (channelData)
 				{
 					std::string channel = channelData->GetValue();
-					CallbackMap::iterator iter = this->callbackMap->find(channel);
-					if (iter != this->callbackMap->end())
+					SubscriptionMap::iterator iter = this->subscriptionMap->find(channel);
+					if (iter != this->subscriptionMap->end())
 					{
-						ClientInterface::Callback callback = iter->second;
+						ClientInterface::Callback callback = iter->second.callback;
 						deleteData = callback(messageData);
 					}
 				}
@@ -158,6 +153,17 @@ namespace Yarc
 
 	bool PubSub::Update(void)
 	{
+		for (SubscriptionMap::iterator iter = this->subscriptionMap->begin(); iter != this->subscriptionMap->end(); iter++)
+		{
+			SubscriptionData& subData = iter->second;
+			if (!subData.subscribed)
+			{
+				std::string channel = iter->first;
+				this->inputClient->MakeRequestAsync(ProtocolData::ParseCommand("SUBSCRIBE %s", channel.c_str()));
+				subData.subscribed = true;
+			}
+		}
+
 		this->inputClient->Update();
 		this->outputClient->Update();
 		return true;
@@ -165,22 +171,12 @@ namespace Yarc
 
 	bool PubSub::Resubscribe(void)
 	{
-		for (CallbackMap::iterator iter = this->callbackMap->begin(); iter != this->callbackMap->end(); iter++)
+		for (SubscriptionMap::iterator iter = this->subscriptionMap->begin(); iter != this->subscriptionMap->end(); iter++)
 		{
-			const std::string& channel = iter->first;
-			if (!this->inputClient->MakeRequestAsync(ProtocolData::ParseCommand("SUBSCRIBE %s", channel.c_str())))
-				return false;
+			SubscriptionData& subData = iter->second;
+			subData.subscribed = false;
 		}
 
-		this->inputClient->Flush();
 		return true;
-	}
-
-	// For one of my use-cases, this function cannot be made inline,
-	// because however the compiler impliments it, it gives the wrong
-	// answer, which is quite odd.
-	uint32_t PubSub::GetSubscriptionCount()
-	{
-		return (uint32_t)this->callbackMap->size();
 	}
 }

@@ -466,7 +466,7 @@ namespace Yarc
 	{
 	}
 
-	/*virtual*/ ReductionObject::ReductionResult Cluster::Migration::Reduce()
+	/*virtual*/ ReductionObject::ReductionResult Cluster::Migration::Reduce(void* userData)
 	{
 		ReductionResult result = RESULT_NONE;
 
@@ -477,22 +477,16 @@ namespace Yarc
 				char command[512];
 				sprintf(command, "CLUSTER SETSLOT %d IMPORTING %s", this->hashSlot, this->sourceNode->id);
 
-				if (!this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [this](const ProtocolData* responseData) {
+				this->destinationNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [this](const ProtocolData* responseData) {
 					const SimpleErrorData* errorData = Cast<SimpleErrorData>(responseData);
 					if (errorData)
 						this->state = State::BAIL;
 					else
 						this->state = State::MARK_MIGRATING;
 					return true;
-				}))
-				{
-					this->state = State::BAIL;
-				}
-				else
-				{
-					this->state = State::WAITING;
-				}
-
+				});
+				
+				this->state = State::WAITING;
 				break;
 			}
 			case State::MARK_MIGRATING:
@@ -500,21 +494,15 @@ namespace Yarc
 				char command[512];
 				sprintf(command, "CLUSTER SETSLOT %d MIGRATING %s", this->hashSlot, this->destinationNode->id);
 
-				if (!this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [this](const ProtocolData* responseData) {
+				this->sourceNode->client->MakeRequestAsync(ProtocolData::ParseCommand(command), [this](const ProtocolData* responseData) {
 					if (responseData->IsError())
 						this->state = State::BAIL;
 					else
 						this->state = State::MIGRATING_KEYS;
 					return true;
-				}))
-				{
-					this->state = State::BAIL;
-				}
-				else
-				{
-					this->state = State::WAITING;
-				}
-
+				});
+				
+				this->state = State::WAITING;
 				break;
 			}
 			case State::MIGRATING_KEYS:

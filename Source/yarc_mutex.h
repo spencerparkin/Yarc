@@ -9,7 +9,7 @@
 
 namespace Yarc
 {
-    class Mutex
+    class YARC_API Mutex
     {
     public:
         Mutex()

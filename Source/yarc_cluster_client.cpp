@@ -163,13 +163,19 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
+	/*virtual*/ int ClusterClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		SingleRequest* request = new SingleRequest(callback, this);
 		request->requestData = requestData;
 		request->deleteData = deleteData;
 		this->requestList->AddTail(request);
-		return true;
+		return 0;
+	}
+
+	/*virtual*/ bool ClusterClient::CancelAsyncRequest(int requestID)
+	{
+		// TODO: Write this.
+		return false;
 	}
 
 	/*virtual*/ bool ClusterClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
@@ -178,7 +184,10 @@ namespace Yarc
 			return false;
 
 		if (requestDataArray.GetCount() == 1)
-			return this->MakeRequestAsync(requestDataArray[0], callback);
+		{
+			this->MakeRequestAsync(requestDataArray[0], callback);
+			return true;
+		}
 
 		MultiRequest* request = new MultiRequest(callback, this);
 		request->requestDataArray = requestDataArray;
@@ -304,7 +313,7 @@ namespace Yarc
 		delete this->responseData;
 	}
 
-	/*virtual*/ ReductionObject::ReductionResult ClusterClient::Request::Reduce()
+	/*virtual*/ ReductionObject::ReductionResult ClusterClient::Request::Reduce(void* userData)
 	{
 		ReductionResult result = RESULT_NONE;
 
@@ -321,14 +330,13 @@ namespace Yarc
 				}
 				else
 				{
-					bool requestMade = this->MakeRequestAsync(clusterNode, [this](const ProtocolData* responseData) {
+					this->MakeRequestAsync(clusterNode, [this](const ProtocolData* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;	// We've taken ownership of the memory.
 					});
 
-					if (requestMade)
-						this->state = STATE_PENDING;
+					this->state = STATE_PENDING;
 				}
 				
 				break;
@@ -398,7 +406,7 @@ namespace Yarc
 			}
 
 			ProtocolData* askingCommandData = ProtocolData::ParseCommand("ASKING");
-			bool askingRequestMade = clusterNode->client->MakeRequestAsync(askingCommandData, [this](const ProtocolData* askingResponseData) {
+			clusterNode->client->MakeRequestAsync(askingCommandData, [this](const ProtocolData* askingResponseData) {
 
 				// Note that we re-find the cluster node here just to be sure it hasn't gone stale on us.
 				ClusterNode* clusterNode = this->clusterClient->FindClusterNodeForAddress(this->redirectAddress);
@@ -406,26 +414,19 @@ namespace Yarc
 					this->state = STATE_UNSENT;
 				else
 				{
-					bool requestMade = this->MakeRequestAsync(clusterNode, [this](const ProtocolData* responseData) {
+					this->MakeRequestAsync(clusterNode, [this](const ProtocolData* responseData) {
 						this->responseData = responseData;
 						this->state = STATE_READY;
 						return false;
 					});
 
-					if (requestMade)
-						this->state = STATE_PENDING;
-					else
-						this->state = STATE_UNSENT;
+					this->state = STATE_PENDING;
 				}
 
 				return true;
 			});
 
-			if (askingRequestMade)
-				this->state = STATE_PENDING;
-			else
-				this->state = STATE_UNSENT;
-
+			this->state = STATE_PENDING;
 			return true;
 		}
 		else if (errorCode == "MOVED")
@@ -450,16 +451,13 @@ namespace Yarc
 				this->state = STATE_UNSENT;
 			else
 			{
-				bool requestMade = this->MakeRequestAsync(clusterNode, [this](const ProtocolData* responseData) {
+				this->MakeRequestAsync(clusterNode, [this](const ProtocolData* responseData) {
 					this->responseData = responseData;
 					this->state = STATE_READY;
 					return false;
 				});
 
-				if (requestMade)
-					this->state = STATE_PENDING;
-				else
-					this->state = STATE_UNSENT;
+				this->state = STATE_PENDING;
 			}
 
 			return true;
@@ -508,7 +506,8 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::SingleRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		return clusterNode->client->MakeRequestAsync(this->requestData, callback, false);
+		clusterNode->client->MakeRequestAsync(this->requestData, callback, false);
+		return true;
 	}
 
 	//----------------------------------------- MultiRequest -----------------------------------------
@@ -532,7 +531,8 @@ namespace Yarc
 
 	/*virtual*/ bool ClusterClient::MultiRequest::MakeRequestAsync(ClusterNode* clusterNode, Callback callback)
 	{
-		return clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback, false);
+		clusterNode->client->MakeTransactionRequestAsync(this->requestDataArray, callback, false);
+		return true;
 	}
 
 	//----------------------------------------- ClusterNode -----------------------------------------
@@ -578,7 +578,7 @@ namespace Yarc
 		return false;
 	}
 
-	/*virtual*/ ReductionObject::ReductionResult ClusterClient::ClusterNode::Reduce()
+	/*virtual*/ ReductionObject::ReductionResult ClusterClient::ClusterNode::Reduce(void* userData)
 	{
 		if (this->client)
 			this->client->Update();

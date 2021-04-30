@@ -22,8 +22,8 @@ namespace Yarc
 			RESULT_BAIL
 		};
 
-		virtual ReductionResult Reduce() = 0;
+		virtual ReductionResult Reduce(void* userData) = 0;
 
-		static void ReduceList(ReductionObjectList* reductionObjectList);
+		static void ReduceList(ReductionObjectList* reductionObjectList, void* userData = nullptr);
 	};
 }

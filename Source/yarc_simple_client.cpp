@@ -7,11 +7,12 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient()
+	SimpleClient::SimpleClient(bool tryToRecycleConnection /*= true*/)
 	{
+		this->tryToRecycleConnection = tryToRecycleConnection;
 		this->socketStream = nullptr;
-		this->callbackList = new CallbackList();
-		this->serverDataList = new ProtocolDataList();
+		this->requestList = new ReductionObjectList();
+		this->messageList = new ReductionObjectList();
 		this->thread = nullptr;
 		this->postConnectCallback = new EventCallback;
 		this->preDisconnectCallback = new EventCallback;
@@ -20,11 +21,45 @@ namespace Yarc
 
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
-		this->ShutDownSocketConnectionAndThread();
-		delete this->thread;
-		delete this->callbackList;
-		this->serverDataList->Delete();
-		delete this->serverDataList;
+		if (this->tryToRecycleConnection)
+		{
+			if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
+			{
+				this->Flush();
+
+				if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
+				{
+					this->threadExitSignal = true;
+
+					// Here the reception thread should exit without us having to close the socket.
+					ProtocolData* responseData = nullptr;
+					if (this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
+					{
+						delete responseData;
+						GetConnectionPool()->CheckinSocketStream(this->socketStream);
+						this->socketStream = nullptr;
+					}
+				}
+			}
+		}
+		
+		if (this->socketStream)
+		{
+			// This should cause our reception thread to exit.
+			this->socketStream->Disconnect();
+			delete this->socketStream;
+		}
+
+		if (this->thread)
+		{
+			this->thread->WaitForThreadExit();
+			delete this->thread;
+		}
+		
+		DeleteList<ReductionObject*>(*this->requestList);
+		DeleteList<ReductionObject*>(*this->messageList);
+		delete this->requestList;
+		delete this->messageList;
 		delete this->postConnectCallback;
 		delete this->preDisconnectCallback;
 	}
@@ -37,100 +72,6 @@ namespace Yarc
 	/*static*/ void SimpleClient::Destroy(SimpleClient* client)
 	{
 		delete client;
-	}
-
-	/*virtual*/ bool SimpleClient::SetupSocketConnectionAndThread(void)
-	{
-		auto lambda = [&]() -> bool
-		{
-			this->callbackList->RemoveAll();
-
-			if (!this->socketStream)
-			{
-				this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address);
-				if (!this->socketStream || !this->socketStream->IsConnected())
-					return false;
-			}
-
-			if (!this->thread)
-			{
-				this->threadExitSignal = false;
-				this->thread = new Thread();
-				if(!this->thread->SpawnThread([=, this]() { this->ThreadFunc(); }))
-					return false;
-			}
-
-			if (*this->postConnectCallback)
-				(*this->postConnectCallback)(this);
-			
-			return true;
-		};
-
-		bool success = lambda();
-		
-		if(!success)
-			this->ShutDownSocketConnectionAndThread();
-
-		return success;
-	}
-
-	/*virtual*/ bool SimpleClient::ShutDownSocketConnectionAndThread(void)
-	{
-		if (*this->preDisconnectCallback)
-		{
-			if(this->socketStream && this->socketStream->IsConnected() && this->thread != nullptr)
-				(*this->preDisconnectCallback)(this);
-		}
-
-		bool canRecycleConnection = false;
-
-		if (this->thread)
-		{
-			// If the socket is disconnected/closed for any reason, the blocking I/O will fail, and the thread will exit.
-			// So that's one way to signal the thread to exit, if we need to do it that way.  Ideally, however, what we'll do is
-			// simply set a flag, send a PING, get a PONG, and then exit based on that flag.  This not only accomplishes
-			// the thread exit cleanly, but it also lets us recycle the connection in the connection pool with the
-			// connection resting at a proper protocol boundary, both for sending and receiving protocol data.
-			if (!this->socketStream)
-			{
-				// If our socket stream pointer is null, then the thread would crash anyway.  We should never get here ever.
-				this->thread->KillThread();
-			}
-			else
-			{
-				if (this->socketStream->IsConnected())
-				{
-					this->threadExitSignal = true;
-					ProtocolData* responseData = nullptr;
-					if (!this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
-						this->socketStream->Disconnect();
-					else
-					{
-						delete responseData;
-						canRecycleConnection = true;
-					}
-				}
-
-				this->thread->WaitForThreadExit();
-			}
-
-			delete this->thread;
-			this->thread = nullptr;
-		}
-
-		if (this->socketStream)
-		{
-			if (canRecycleConnection)
-				GetConnectionPool()->CheckinSocketStream(this->socketStream);
-			else
-				delete this->socketStream;
-
-			this->socketStream = nullptr;
-		}
-
-		this->callbackList->RemoveAll();
-
-		return true;
 	}
 
 	void SimpleClient::SetPostConnectCallback(EventCallback givenCallback)
@@ -155,45 +96,68 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
-		if (!this->socketStream || !this->socketStream->IsConnected())
-			return false;
-
-		if (!this->thread || !this->thread->IsStillRunning())
-			return false;
-
-		while (this->serverDataList->GetCount() > 0)
+		// Make sure we have a connection to the Redis database.
+		if (!this->socketStream)
 		{
-			ProtocolData* serverData = this->serverDataList->RemoveHead();
-			
-			bool deleteServerData = true;
+			this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address);
+			if (!this->socketStream)
+				return true;
 
-			ProtocolData* messageData = Cast<PushData>(serverData);
-			if (!messageData)
+			if (this->socketStream->IsConnected() && *this->postConnectCallback)
+				(*this->postConnectCallback)(this);
+		}
+		
+		// If we lose our connection, we can't continue or recycle our connection in the pool.
+		if (!this->socketStream->IsConnected())
+		{
+			if (this->thread && this->thread->IsStillRunning())
 			{
-				// For backwards compatibility with RESP1, here we check for the old message structure.
-				const ArrayData* arrayData = Cast<ArrayData>(serverData);
-				if (arrayData && arrayData->GetCount() > 0)
-				{
-					const BlobStringData* blobStringData = Cast<BlobStringData>(arrayData->GetElement(0));
-					if (blobStringData && blobStringData->GetValue() == "message")
-						messageData = serverData;
-				}
+				this->thread->WaitForThreadExit();
+				delete this->thread;
+				this->thread = nullptr;
 			}
 
-			if (messageData)
-			{
-				if (*this->pushDataCallback)
-					deleteServerData = (*this->pushDataCallback)(messageData);
-			}
-			else if (this->callbackList->GetCount() > 0)
-			{
-				Callback callback = this->DequeueCallback();
-				if (callback)
-					deleteServerData = callback(serverData);
-			}
+			delete this->socketStream;
+			this->socketStream = nullptr;
 
-			if (deleteServerData)
-				delete serverData;
+			// We must also purge our current request list since it has become invalid.
+			DeleteList<ReductionObject*>(*this->requestList);
+
+			return true;
+		}
+		
+		// Make sure our reception thread is running.
+		if (!this->thread)
+		{
+			this->thread = new Thread();
+			if (!this->thread->SpawnThread([=]() { this->ThreadFunc(); }))
+			{
+				delete this->thread;
+				this->thread = nullptr;
+				return true;
+			}
+		}
+
+		// The thread will exit if the server closes its connection.
+		if (!this->thread->IsStillRunning())
+		{
+			delete this->thread;
+			this->thread = nullptr;
+			return true;
+		}
+		
+		// We're in business!  Make a pass on the request list.
+		if(this->requestList->GetCount() > 0)
+		{
+			MutexLocker locker(this->requestListMutex);
+			ReductionObject::ReduceList(this->requestList, this);
+		}
+
+		// And make a pass on the message list as well.
+		if(this->messageList->GetCount() > 0)
+		{
+			MutexLocker locker(this->messageListMutex);
+			ReductionObject::ReduceList(this->messageList, this);
 		}
 
 		return true;
@@ -201,62 +165,101 @@ namespace Yarc
 
 	void SimpleClient::ThreadFunc(void)
 	{
-		while (this->socketStream->IsConnected())
+		while (this->socketStream->IsConnected() && !this->threadExitSignal)
 		{
+			// Here we block on the socket until woken up.
 			ProtocolData* serverData = nullptr;
 			if (!ProtocolData::ParseTree(this->socketStream, serverData))
 				break;
 
 			if (serverData)
-				this->serverDataList->AddTail(serverData);
+			{
+				// Whenever we get something from the server, we have to determine if
+				// it's a response to a request or data that has been pushed to us without
+				// a request having first been sent for the it.
+				ProtocolData* messageData = Cast<PushData>(serverData);
+				if (!messageData)
+				{
+					// For backwards compatibility with RESP1, here we check for the old message structure.
+					const ArrayData* arrayData = Cast<ArrayData>(serverData);
+					if (arrayData && arrayData->GetCount() > 0)
+					{
+						const BlobStringData* blobStringData = Cast<BlobStringData>(arrayData->GetElement(0));
+						if (blobStringData && blobStringData->GetValue() == "message")
+							messageData = serverData;
+					}
+				}
 
-			if (this->threadExitSignal)
-				break;
+				if (messageData)
+				{
+					MutexLocker locker(this->messageListMutex);
+					Message* message = new Message();
+					message->messageData = messageData;
+					this->messageList->AddTail(message);
+				}
+				else
+				{
+					// In the usual case, the server data is a response to the next pending request.
+					MutexLocker locker(this->requestListMutex);
+					bool foundRequest = false;
+					for (ReductionObjectList::Node* node = this->requestList->GetHead(); node; node = node->GetNext())
+					{
+						Request* request = static_cast<Request*>(node->value);
+						if (request->state == Request::State::SENT)
+						{
+							request->responseData = serverData;
+							request->state = Request::State::SERVED;
+							foundRequest = true;
+							break;
+						}
+					}
+
+					// This shouldn't happen, but if it does, we need to handle it!
+					if (!foundRequest)
+						delete serverData;
+				}
+			}
 		}
 	}
 
 	/*virtual*/ bool SimpleClient::Flush(void)
 	{
-		while (this->callbackList->GetCount() > 0)
+		while (this->requestList->GetCount() > 0)
 			if (!this->Update())
 				return false;
 
 		return true;
 	}
 
-	void SimpleClient::EnqueueCallback(Callback callback)
+	/*virtual*/ int SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		this->callbackList->AddTail(callback);
+		Request* request = new Request();
+		request->requestData = requestData;
+		request->ownsRequestDataMem = deleteData;
+		request->callback = callback;
+		request->state = Request::State::UNSENT;
+
+		MutexLocker locker(this->requestListMutex);
+		this->requestList->AddTail(request);
+
+		return request->requestID;
 	}
 
-	SimpleClient::Callback SimpleClient::DequeueCallback()
+	/*virtual*/ bool SimpleClient::CancelAsyncRequest(int requestID)
 	{
-		Callback callback = this->callbackList->GetHead()->value;
-		this->callbackList->Remove(this->callbackList->GetHead());
-		return callback;
-	}
+		MutexLocker locker(this->requestListMutex);
 
-	/*virtual*/ bool SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
-	{
-		auto lambda = [&]() -> bool
+		for (ReductionObjectList::Node* node = this->requestList->GetHead(); node; node = node->GetNext())
 		{
-			if (!this->socketStream)
-				if (!this->SetupSocketConnectionAndThread())
-					return false;
+			Request* request = static_cast<Request*>(node->value);
+			if (request->requestID == requestID)
+			{
+				request->callback = [](const ProtocolData*) -> bool { return true; };
+				return true;
+			}
+		}
 
-			if (!ProtocolData::PrintTree(this->socketStream, requestData))
-				return false;
-
-			this->EnqueueCallback(callback);
-			return true;
-		};
-		
-		bool success = lambda();
-
-		if (deleteData)
-			delete requestData;
-
-		return success;
+		return false;
 	}
 
 	/*virtual*/ bool SimpleClient::MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
@@ -265,8 +268,7 @@ namespace Yarc
 
 		auto lambda = [&]() -> bool
 		{
-			if (!this->MakeRequestAsync(ProtocolData::ParseCommand("MULTI"), [=](const ProtocolData* responseData) { return true; }))
-				return false;
+			this->MakeRequestAsync(ProtocolData::ParseCommand("MULTI"), [=](const ProtocolData* responseData) { return true; });
 
 			// It's important to point out that while in typical asynchronous systems, requests are
 			// not guarenteed to be fulfilled in the same order that they were made, that is not
@@ -274,19 +276,14 @@ namespace Yarc
 			// server in the same order that they're given here.
 			while(i < requestDataArray.GetCount())
 			{
-				if (!this->MakeRequestAsync(requestDataArray[i++], [=](const ProtocolData* responseData) {
+				this->MakeRequestAsync(requestDataArray[i++], [=](const ProtocolData* responseData) {
 					// Note that we don't need to worry if there was an error queueing the command.
 					// The server will remember the error, and discard the transaction when EXEC is called.
 					return true;
-				}))
-				{
-					return false;
-				}
+				});
 			}
 
-			if (!this->MakeRequestAsync(ProtocolData::ParseCommand("EXEC"), callback))
-				return false;
-			
+			this->MakeRequestAsync(ProtocolData::ParseCommand("EXEC"), callback);
 			return true;
 		};
 
@@ -299,13 +296,13 @@ namespace Yarc
 		return success;
 	}
 
-	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool SimpleClient::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/, double timeoutSeconds /*= 5.0*/)
 	{
 		uint32_t i = 0;
 
 		auto lambda = [&]() -> bool
 		{
-			if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData))
+			if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData, timeoutSeconds))
 				return false;
 
 			if (!Cast<SimpleErrorData>(responseData))
@@ -314,7 +311,7 @@ namespace Yarc
 				
 				while (i < requestDataArray.GetCount())
 				{
-					if (!this->MakeRequestSync(requestDataArray[i], responseData, deleteData))
+					if (!this->MakeRequestSync(requestDataArray[i], responseData, deleteData, timeoutSeconds))
 						return false;
 
 					if (!Cast<SimpleErrorData>(responseData))
@@ -328,7 +325,7 @@ namespace Yarc
 
 				if (i == requestDataArray.GetCount())
 				{
-					if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData))
+					if (!this->MakeRequestSync(ProtocolData::ParseCommand("EXEC"), responseData, true, timeoutSeconds))
 						return false;
 				}
 			}
@@ -343,5 +340,88 @@ namespace Yarc
 				delete requestDataArray[i++];
 
 		return success;
+	}
+
+	//------------------------------ SimpleClient::Request ------------------------------
+
+	int SimpleClient::Request::nextRequestID = 0;
+
+	SimpleClient::Request::Request()
+	{
+		this->requestID = this->nextRequestID++;
+		this->requestData = nullptr;
+		this->responseData = nullptr;
+		this->ownsRequestDataMem = false;
+		this->ownsResponseDataMem = false;
+		this->state = State::UNSENT;
+	}
+
+	/*virtual*/ SimpleClient::Request::~Request()
+	{
+		if (this->ownsRequestDataMem)
+			delete this->requestData;
+
+		if (this->ownsResponseDataMem)
+			delete this->responseData;
+	}
+
+	/*virtual*/ ReductionObject::ReductionResult SimpleClient::Request::Reduce(void* userData)
+	{
+		SimpleClient* client = static_cast<SimpleClient*>(userData);
+
+		switch (this->state)
+		{
+			case State::UNSENT:
+			{
+				// Send the request over the socket.
+				if (!ProtocolData::PrintTree(client->socketStream, this->requestData))
+				{
+					// We must bail here, because requests can't be sent out of order.
+					return ReductionResult::RESULT_BAIL;
+				}
+
+				this->state = State::SENT;
+				return ReductionResult::RESULT_NONE;
+			}
+			case State::SENT:
+			{
+				// Nothing we can do here but wait.  The reception thread advances this state of the request.
+				return ReductionResult::RESULT_NONE;
+			}
+			case State::SERVED:
+			{
+				// Simply dispatch the response to the user's callback.
+				this->ownsResponseDataMem = this->callback(this->responseData);
+				return ReductionResult::RESULT_DELETE;
+			}
+		}
+
+		return ReductionResult::RESULT_NONE;
+	}
+
+	//------------------------------ SimpleClient::Request ------------------------------
+
+	SimpleClient::Message::Message()
+	{
+		this->messageData = nullptr;
+		this->ownsMessageData = false;
+	}
+
+	/*virtual*/ SimpleClient::Message::~Message()
+	{
+		if (this->ownsMessageData)
+			delete this->messageData;
+	}
+
+	/*virtual*/ ReductionObject::ReductionResult SimpleClient::Message::Reduce(void* userData)
+	{
+		SimpleClient* client = static_cast<SimpleClient*>(userData);
+		
+		if (*client->pushDataCallback)
+			this->ownsMessageData = (*client->pushDataCallback)(this->messageData);
+		else
+			this->ownsMessageData = true;
+
+		return ReductionResult::RESULT_DELETE;
 	}
 }

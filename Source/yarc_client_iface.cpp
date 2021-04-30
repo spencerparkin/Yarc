@@ -5,6 +5,7 @@
 #elif defined __LINUX__
 #	include <sys/socket.h>
 #endif
+#include <time.h>
 
 namespace Yarc
 {
@@ -20,8 +21,9 @@ namespace Yarc
 		delete this->pushDataCallback;
 	}
 
-	/*virtual*/ bool ClientInterface::MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool ClientInterface::MakeRequestSync(const ProtocolData* requestData, ProtocolData*& responseData, bool deleteData /*= true*/, double timeoutSeconds /*= 5.0*/)
 	{
+		responseData = nullptr;
 		bool requestServiced = false;
 
 		Callback callback = [&](const ProtocolData* givenResponseData) {
@@ -30,36 +32,27 @@ namespace Yarc
 			return false;
 		};
 
-		if (!this->MakeRequestAsync(requestData, callback, deleteData))
-			return false;
-
-		// Note that by blocking here, we ensure that we don't starve socket
-		// threads that need to run for us to get the data from the server.
+		int requestID = this->MakeRequestAsync(requestData, callback, deleteData);
+		clock_t startTime = ::clock();
 		while (!requestServiced)
-			if (!this->Update())
-				return false;
+		{
+			this->Update();
+			
+			clock_t currentTime = ::clock();
+			double elapsedTimeSeconds = double(currentTime - startTime) / double(CLOCKS_PER_SEC);
+			if (elapsedTimeSeconds >= timeoutSeconds)
+				break;
+		}
+
+		if (!requestServiced)
+			this->CancelAsyncRequest(requestID);
 
 		return requestServiced;
 	}
 
-	/*virtual*/ bool ClientInterface::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/)
+	/*virtual*/ bool ClientInterface::MakeTransactionRequestSync(DynamicArray<const ProtocolData*>& requestDataArray, ProtocolData*& responseData, bool deleteData /*= true*/, double timeoutSeconds /*= 5.0*/)
 	{
-		bool requestServiced = false;
-
-		Callback callback = [&](const ProtocolData* givenResponseData) {
-			responseData = const_cast<ProtocolData*>(givenResponseData);
-			requestServiced = true;
-			return false;
-		};
-
-		if (!this->MakeTransactionRequestAsync(requestDataArray, callback, deleteData))
-			return false;
-
-		while (!requestServiced)
-			if (!this->Update())
-				return false;
-
-		return requestServiced;
+		return false;
 	}
 
 	/*virtual*/ bool ClientInterface::RegisterPushDataCallback(Callback givenPushDataCallback)

@@ -39,8 +39,6 @@ namespace Yarc
 
 		bool Update(void);
 
-		uint32_t GetSubscriptionCount();
-
 	private:
 
 		bool Resubscribe(void);
@@ -50,7 +48,13 @@ namespace Yarc
 		SimpleClient* inputClient;
 		SimpleClient* outputClient;
 
-		typedef std::map<std::string, ClientInterface::Callback> CallbackMap;
-		CallbackMap* callbackMap;
+		struct SubscriptionData
+		{
+			ClientInterface::Callback callback;
+			bool subscribed;
+		};
+
+		typedef std::map<std::string, SubscriptionData> SubscriptionMap;
+		SubscriptionMap* subscriptionMap;
 	};
 }

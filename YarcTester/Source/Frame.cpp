@@ -198,8 +198,8 @@ void Frame::OnCharHook(wxKeyEvent& event)
 				else
 				{
 					Yarc::ClientInterface* client = this->testCase->GetClientInterface();
-					if (!client->MakeRequestAsync(commandData, [=, this](const Yarc::ProtocolData* responseData) {
-							
+					client->MakeRequestAsync(commandData, [=, this](const Yarc::ProtocolData* responseData) {
+
 						const Yarc::SimpleErrorData* error = Yarc::Cast<Yarc::SimpleErrorData>(responseData);
 						if (error)
 						{
@@ -215,14 +215,10 @@ void Frame::OnCharHook(wxKeyEvent& event)
 							this->outputText->SetDefaultStyle(wxTextAttr(*wxGREEN));
 							this->outputText->AppendText(responseText);
 						}
-							
+
 						this->outputText->AppendText("\n");
 						return true;
-					}))
-					{
-						this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
-						this->outputText->AppendText("Failed to send command!\n");
-					}
+					});
 				}
 			}
 

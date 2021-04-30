@@ -618,6 +618,16 @@ namespace Yarc
 		return byteArrayStr;
 	}
 
+	bool BlobStringData::GetValue(char* buffer, uint32_t bufferSize) const
+	{
+		std::string byteArrayStr = this->GetValue();
+		if (bufferSize < byteArrayStr.size() + 1)
+			return false;
+
+		strcpy(buffer, byteArrayStr.c_str());
+		return true;
+	}
+
 	bool BlobStringData::SetValue(const std::string& givenValue)
 	{
 		this->byteArray->SetCount((uint32_t)givenValue.length());

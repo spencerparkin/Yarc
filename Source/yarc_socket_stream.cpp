@@ -224,6 +224,7 @@ namespace Yarc
 	{
 		// There's really no way to know until you try to read or write on the socket.
 		// But as far as we know, if we have a valid socket handle, then we should assume we're connected.
+		// If we try and fail to read or write on the socket, we'll set our socket handle to INVALID_SOCKET.
 		return this->sock != INVALID_SOCKET;
 	}
 

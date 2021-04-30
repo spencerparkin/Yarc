@@ -56,7 +56,7 @@ namespace Yarc
 			Migration(Node* givenSourceNode, Node* givenDestinationNode, uint16_t givenHashSlot);
 			virtual ~Migration();
 
-			virtual ReductionResult Reduce() override;
+			virtual ReductionResult Reduce(void* userData) override;
 
 			enum class State
 			{
