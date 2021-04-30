@@ -38,7 +38,7 @@ namespace Yarc
 		// be called periodically to prevent server overload.  The server can queue up
 		// a great deal many requests, but a flush should be called if the queue size
 		// reaches somewhere around ~1000 requests.
-		virtual bool Flush(void) = 0;
+		virtual bool Flush(double timeoutSeconds = 0.0) = 0;
 
 		// In the asynchronous case, the caller takes owership of the data if the callback returns false.
 		// The returned identifier can be used when canceling the request.  See below.

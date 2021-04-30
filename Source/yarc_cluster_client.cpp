@@ -155,7 +155,7 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::Flush(void)
+	/*virtual*/ bool ClusterClient::Flush(double timeoutSeconds /*= 0.0*/)
 	{
 		while (this->requestList->GetCount() > 0)
 			this->Update();

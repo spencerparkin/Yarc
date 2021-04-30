@@ -25,19 +25,20 @@ namespace Yarc
 		{
 			if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
 			{
-				this->Flush();
-
-				if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
+				if (this->Flush(5.0))
 				{
-					this->threadExitSignal = true;
-
-					// Here the reception thread should exit without us having to close the socket.
-					ProtocolData* responseData = nullptr;
-					if (this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
+					if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
 					{
-						delete responseData;
-						GetConnectionPool()->CheckinSocketStream(this->socketStream);
-						this->socketStream = nullptr;
+						this->threadExitSignal = true;
+
+						// Here the reception thread should exit without us having to close the socket.
+						ProtocolData* responseData = nullptr;
+						if (this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
+						{
+							delete responseData;
+							GetConnectionPool()->CheckinSocketStream(this->socketStream);
+							this->socketStream = nullptr;
+						}
 					}
 				}
 			}
@@ -101,7 +102,7 @@ namespace Yarc
 		{
 			this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address);
 			if (!this->socketStream)
-				return true;
+				return false;
 
 			if (this->socketStream->IsConnected() && *this->postConnectCallback)
 				(*this->postConnectCallback)(this);
@@ -123,7 +124,7 @@ namespace Yarc
 			// We must also purge our current request list since it has become invalid.
 			DeleteList<ReductionObject*>(*this->requestList);
 
-			return true;
+			return false;
 		}
 		
 		// Make sure our reception thread is running.
@@ -134,7 +135,7 @@ namespace Yarc
 			{
 				delete this->thread;
 				this->thread = nullptr;
-				return true;
+				return false;
 			}
 		}
 
@@ -143,7 +144,7 @@ namespace Yarc
 		{
 			delete this->thread;
 			this->thread = nullptr;
-			return true;
+			return false;
 		}
 		
 		// We're in business!  Make a pass on the request list.
@@ -222,11 +223,22 @@ namespace Yarc
 		}
 	}
 
-	/*virtual*/ bool SimpleClient::Flush(void)
+	/*virtual*/ bool SimpleClient::Flush(double timeoutSeconds /*= 0.0*/)
 	{
+		clock_t startTime = ::clock();
+
 		while (this->requestList->GetCount() > 0)
-			if (!this->Update())
-				return false;
+		{
+			this->Update();
+
+			if (timeoutSeconds > 0.0)
+			{
+				clock_t currentTime = ::clock();
+				double elapsedTimeSeconds = double(currentTime - startTime) / double(CLOCKS_PER_SEC);
+				if (elapsedTimeSeconds >= timeoutSeconds)
+					return false;
+			}
+		}
 
 		return true;
 	}
@@ -254,7 +266,16 @@ namespace Yarc
 			Request* request = static_cast<Request*>(node->value);
 			if (request->requestID == requestID)
 			{
-				request->callback = [](const ProtocolData*) -> bool { return true; };
+				if (request->state == Request::State::UNSENT)
+				{
+					delete request;
+					this->requestList->Remove(node);
+				}
+				else
+				{
+					request->callback = [](const ProtocolData*) -> bool { return true; };
+				}
+
 				return true;
 			}
 		}
