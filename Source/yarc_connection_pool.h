@@ -15,7 +15,7 @@ namespace Yarc
 		static ConnectionPool* Create();
 		static void Destroy(ConnectionPool* connectionPool);
 
-		SocketStream* CheckoutSocketStream(const Address& address);
+		SocketStream* CheckoutSocketStream(const Address& address, double connectionTimeoutSeconds = 0.5);
 		void CheckinSocketStream(SocketStream* socketStream);
 
 	private:

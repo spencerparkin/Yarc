@@ -48,7 +48,7 @@ namespace Yarc
 		delete this->socketStreamMap;
 	}
 
-	SocketStream* ConnectionPool::CheckoutSocketStream(const Address& address)
+	SocketStream* ConnectionPool::CheckoutSocketStream(const Address& address, double connectionTimeoutSeconds /*= 0.5*/)
 	{
 		SocketStream* socketStream = nullptr;
 
@@ -69,7 +69,7 @@ namespace Yarc
 		if (!socketStream)
 		{
 			socketStream = new SocketStream();
-			if (!socketStream->Connect(address))
+			if (!socketStream->Connect(address, connectionTimeoutSeconds))
 			{
 				delete socketStream;
 				socketStream = nullptr;

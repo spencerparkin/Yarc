@@ -7,8 +7,11 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(bool tryToRecycleConnection /*= true*/)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/)
 	{
+		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
+		this->connectionRetrySeconds = connectionRetrySeconds;
+		this->lastFailedConnectionAttemptTime = 0;
 		this->tryToRecycleConnection = tryToRecycleConnection;
 		this->socketStream = nullptr;
 		this->requestList = new ReductionObjectList();
@@ -97,12 +100,24 @@ namespace Yarc
 
 	/*virtual*/ bool SimpleClient::Update(void)
 	{
+		// Are we still waiting between connection retry attempts?
+		if (this->lastFailedConnectionAttemptTime != 0)
+		{
+			::clock_t currentTime = ::clock();
+			double elapsedTimeSeconds = (double(currentTime) - double(this->lastFailedConnectionAttemptTime)) / double(CLOCKS_PER_SEC);
+			if (elapsedTimeSeconds >= this->connectionRetrySeconds)
+				this->lastFailedConnectionAttemptTime = 0;
+		}
+
 		// Make sure we have a connection to the Redis database.
 		if (!this->socketStream)
 		{
-			this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address);
+			this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address, this->connectionTimeoutSeconds);
 			if (!this->socketStream)
+			{
+				this->lastFailedConnectionAttemptTime = ::clock();
 				return false;
+			}
 
 			if (this->socketStream->IsConnected() && *this->postConnectCallback)
 				(*this->postConnectCallback)(this);
