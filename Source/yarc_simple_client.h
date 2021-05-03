@@ -9,6 +9,7 @@
 #include "yarc_reducer.h"
 #include <stdint.h>
 #include <string>
+#include <time.h>
 
 namespace Yarc
 {
@@ -19,7 +20,7 @@ namespace Yarc
 
 	public:
 
-		SimpleClient(bool tryToRecycleConnection = true);
+		SimpleClient(double connectionTimeoutSeconds = 0.5, double connectionRetrySeconds = 5.0, bool tryToRecycleConnection = true);
 		virtual ~SimpleClient();
 
 		// When used as a DLL, these ensure that the client is allocated and freed in the proper heap.
@@ -97,5 +98,8 @@ namespace Yarc
 		SocketStream* socketStream;
 		bool tryToRecycleConnection;
 		volatile bool threadExitSignal;
+		double connectionTimeoutSeconds;
+		double connectionRetrySeconds;
+		::clock_t lastFailedConnectionAttemptTime;
 	};
 }
