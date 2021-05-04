@@ -417,9 +417,13 @@ namespace Yarc
 
 			if (minHashSlot <= hashSlot && hashSlot <= maxHashSlot)
 			{
-				std::string sourceID = Cast<BlobStringData>(Cast<ArrayData>(entryData->GetElement(2))->GetElement(2))->GetValue();
-				sourceNode = this->FindNodeWithID(sourceID.c_str());
-				break;
+				ArrayData* addressArrayData = Cast<ArrayData>(entryData->GetElement(2));
+				if (addressArrayData && addressArrayData->GetCount() >= 3)
+				{
+					std::string sourceID = Cast<BlobStringData>(addressArrayData->GetElement(2))->GetValue();
+					sourceNode = this->FindNodeWithID(sourceID.c_str());
+					break;
+				}
 			}
 		}
 
