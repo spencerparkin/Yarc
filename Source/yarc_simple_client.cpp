@@ -107,6 +107,8 @@ namespace Yarc
 			double elapsedTimeSeconds = (double(currentTime) - double(this->lastFailedConnectionAttemptTime)) / double(CLOCKS_PER_SEC);
 			if (elapsedTimeSeconds >= this->connectionRetrySeconds)
 				this->lastFailedConnectionAttemptTime = 0;
+			else
+				return false;
 		}
 
 		// Make sure we have a connection to the Redis database.
