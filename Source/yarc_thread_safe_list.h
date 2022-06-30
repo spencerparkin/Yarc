@@ -41,10 +41,10 @@ namespace Yarc
 
 		T RemoveTail()
 		{
+			MutexLocker locker(this->mutex);
 			T value = nullptr;
 			if (this->linkedList.GetCount() > 0)
 			{
-				MutexLocker locker(this->mutex);
 				value = this->linkedList.GetTail()->value;
 				this->linkedList.Remove(this->linkedList.GetTail());
 			}
@@ -53,10 +53,10 @@ namespace Yarc
 
 		T RemoveHead()
 		{
+			MutexLocker locker(this->mutex);
 			T value = nullptr;
 			if (this->linkedList.GetCount() > 0)
 			{
-				MutexLocker locker(this->mutex);
 				value = this->linkedList.GetHead()->value;
 				this->linkedList.Remove(this->linkedList.GetHead());
 			}
