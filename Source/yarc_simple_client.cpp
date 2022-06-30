@@ -177,10 +177,9 @@ namespace Yarc
 		this->updateSemaphore.Decrement(semaphoreTimeoutSeconds * 1000.0);
 
 		// Are there any pending unsent requests?
-		if (this->unsentRequestList->GetCount() > 0)
+		Request* request = this->unsentRequestList->RemoveHead();
+		if (request)
 		{
-			Request* request = this->unsentRequestList->RemoveHead();
-
 			if (ProtocolData::PrintTree(this->socketStream, request->requestData))
 				this->sentRequestList->AddTail(request);
 			else
@@ -193,19 +192,18 @@ namespace Yarc
 		}
 
 		// Are there any pending served requests?
-		if (this->servedRequestList->GetCount() > 0)
+		request = this->servedRequestList->RemoveHead();
+		if (request)
 		{
-			Request* request = this->servedRequestList->RemoveHead();
 			request->ownsResponseDataMem = request->callback(request->responseData);
 			delete request;
 			return true;
 		}
 
 		// Lastly, are there any spending messages?
-		if(this->messageList->GetCount() > 0)
+		Message* message = this->messageList->RemoveHead();
+		if (message)
 		{
-			Message* message = this->messageList->RemoveHead();
-
 			if (*this->pushDataCallback)
 				message->ownsMessageData = (*this->pushDataCallback)(message->messageData);
 			else
@@ -250,17 +248,23 @@ namespace Yarc
 					Message* message = new Message();
 					message->messageData = messageData;
 					this->messageList->AddTail(message);
+					this->updateSemaphore.Increment();
 				}
 				else
 				{
 					// In the usual case, the server data is a response to the next pending request.
 					Request* request = this->sentRequestList->RemoveHead();
-					request->responseData = serverData;
-					this->servedRequestList->AddTail(request);
+					if (!request)
+					{
+						// TODO: Uh...how can this happen?  What do we do?
+					}
+					else
+					{
+						request->responseData = serverData;
+						this->servedRequestList->AddTail(request);
+						this->updateSemaphore.Increment();
+					}
 				}
-
-				// In either case, signal the main thread that there is something for it to process.
-				this->updateSemaphore.Increment();
 			}
 		}
 	}
