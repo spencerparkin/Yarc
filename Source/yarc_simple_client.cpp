@@ -7,8 +7,9 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : updateSemaphore(MAXINT32)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) //: updateSemaphore(MAXINT32)
 	{
+		this->numRequestsInFlight = 0;
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
 		this->connectionRetrySeconds = connectionRetrySeconds;
 		this->lastFailedConnectionAttemptTime = 0;
@@ -171,10 +172,14 @@ namespace Yarc
 			return false;
 		}
 		
+		// Avoid any mutex locks if we know they're not necessary.
+		if (this->unsentRequestList->GetCount() == 0 && this->servedRequestList->GetCount() == 0 && this->messageList->GetCount() == 0)
+			return true;
+
 		// Don't eat up CPU time if there is nothing for us to do.  This is especially important
 		// during a flush operation so that we're not busy-waiting.  Doing so can starve the very
 		// threads for which we are busy-waiting.
-		this->updateSemaphore.Decrement(semaphoreTimeoutSeconds * 1000.0);
+		//this->updateSemaphore.Decrement(semaphoreTimeoutSeconds * 1000.0);		This has some problems, so punt on it for now.
 
 		// Are there any pending unsent requests?
 		Request* request = this->unsentRequestList->RemoveHead();
@@ -185,7 +190,7 @@ namespace Yarc
 			else
 			{
 				// TODO: Error handling?
-				delete request;
+				this->DeallocRequest(request);
 			}
 
 			return true;
@@ -196,7 +201,7 @@ namespace Yarc
 		if (request)
 		{
 			request->ownsResponseDataMem = request->callback(request->responseData);
-			delete request;
+			this->DeallocRequest(request);
 			return true;
 		}
 
@@ -214,6 +219,18 @@ namespace Yarc
 		}
 
 		return true;
+	}
+
+	SimpleClient::Request* SimpleClient::AllocRequest()
+	{
+		this->numRequestsInFlight++;
+		return new Request();
+	}
+
+	void SimpleClient::DeallocRequest(Request* request)
+	{
+		delete request;
+		this->numRequestsInFlight--;
 	}
 
 	void SimpleClient::ThreadFunc(void)
@@ -248,7 +265,7 @@ namespace Yarc
 					Message* message = new Message();
 					message->messageData = messageData;
 					this->messageList->AddTail(message);
-					this->updateSemaphore.Increment();
+					//this->updateSemaphore.Increment();
 				}
 				else
 				{
@@ -260,9 +277,10 @@ namespace Yarc
 					}
 					else
 					{
+						// Assign the payload and send it on its way!
 						request->responseData = serverData;
 						this->servedRequestList->AddTail(request);
-						this->updateSemaphore.Increment();
+						//this->updateSemaphore.Increment();
 					}
 				}
 			}
@@ -273,7 +291,7 @@ namespace Yarc
 	{
 		clock_t startTime = ::clock();
 
-		while (this->unsentRequestList->GetCount() > 0 || this->sentRequestList->GetCount() > 0 || this->servedRequestList->GetCount() > 0)
+		while (this->numRequestsInFlight > 0)
 		{
 			this->Update(3.0);
 
@@ -292,13 +310,13 @@ namespace Yarc
 	// Note that it should be safe to call this from any thread.
 	/*virtual*/ int SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
-		Request* request = new Request();
+		Request* request = this->AllocRequest();
 		request->requestData = requestData;
 		request->ownsRequestDataMem = deleteData;
 		request->callback = callback;
 
 		this->unsentRequestList->AddTail(request);
-		this->updateSemaphore.Increment();
+		//this->updateSemaphore.Increment();
 
 		return request->requestID;
 	}
@@ -312,7 +330,7 @@ namespace Yarc
 		Request* request = this->unsentRequestList->Find(predicate, nullptr, true);
 		if(request)
 		{
-			delete request;
+			this->DeallocRequest(request);
 			return true;
 		}
 

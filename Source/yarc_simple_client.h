@@ -80,12 +80,15 @@ namespace Yarc
 
 		MessageList* messageList;
 		
-		Semaphore updateSemaphore;
+//		Semaphore updateSemaphore;		Punting on this for now.
 
 		EventCallback* postConnectCallback;
 		EventCallback* preDisconnectCallback;
 
 		void ThreadFunc(void);
+
+		Request* AllocRequest();
+		void DeallocRequest(Request* request);
 
 		Thread* thread;
 		SocketStream* socketStream;
@@ -94,5 +97,6 @@ namespace Yarc
 		double connectionTimeoutSeconds;
 		double connectionRetrySeconds;
 		::clock_t lastFailedConnectionAttemptTime;
+		int numRequestsInFlight;
 	};
 }
