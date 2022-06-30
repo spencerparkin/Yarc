@@ -42,19 +42,6 @@ namespace Yarc
 #endif
 		}
 
-		static void DecrementMulti(int semaphoreCount, Semaphore** semaphoreArray, double timeoutMilliseconds = 0.0, bool waitAll = false)
-		{
-			if (timeoutMilliseconds == 0.0)
-				return;
-#if defined __WINDOWS__
-			HANDLE* semaphoreHandleArray = new HANDLE[semaphoreCount];
-			for (int i = 0; i < semaphoreCount; i++)
-				semaphoreHandleArray[i] = semaphoreArray[i]->semaphoreHandle;
-			::WaitForMultipleObjects(semaphoreCount, semaphoreHandleArray, waitAll, (DWORD)timeoutMilliseconds);
-			delete[] semaphoreHandleArray;
-#endif
-		}
-
 #if defined __WINDOWS__
 		HANDLE semaphoreHandle;
 #endif

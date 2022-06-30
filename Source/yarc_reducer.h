@@ -8,6 +8,7 @@ namespace Yarc
 
 	typedef LinkedList<ReductionObject*> ReductionObjectList;
 
+	// TODO: I think this class is stupid and should be phased entirely out of use.
 	class ReductionObject
 	{
 	public:

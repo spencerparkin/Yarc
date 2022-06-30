@@ -7,19 +7,18 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) :
-		unsentSemaphore(MAXINT32),
-		servedSemaphore(MAXINT32),
-		messageSemaphore(MAXINT32)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : updateSemaphore(MAXINT32)
 	{
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
 		this->connectionRetrySeconds = connectionRetrySeconds;
 		this->lastFailedConnectionAttemptTime = 0;
 		this->tryToRecycleConnection = tryToRecycleConnection;
 		this->socketStream = nullptr;
-		this->requestList = new ReductionObjectList();
-		this->messageList = new ReductionObjectList();
 		this->thread = nullptr;
+		this->unsentRequestList = new RequestList();
+		this->sentRequestList = new RequestList();
+		this->servedRequestList = new RequestList();
+		this->messageList = new MessageList();
 		this->postConnectCallback = new EventCallback;
 		this->preDisconnectCallback = new EventCallback;
 		this->threadExitSignal = false;
@@ -63,9 +62,14 @@ namespace Yarc
 			delete this->thread;
 		}
 		
-		DeleteList<ReductionObject*>(*this->requestList);
-		DeleteList<ReductionObject*>(*this->messageList);
-		delete this->requestList;
+		this->unsentRequestList->Delete();
+		this->sentRequestList->Delete();
+		this->servedRequestList->Delete();
+		this->messageList->Delete();
+
+		delete this->unsentRequestList;
+		delete this->sentRequestList;
+		delete this->servedRequestList;
 		delete this->messageList;
 		delete this->postConnectCallback;
 		delete this->preDisconnectCallback;
@@ -141,8 +145,8 @@ namespace Yarc
 			delete this->socketStream;
 			this->socketStream = nullptr;
 
-			// We must also purge our current request list since it has become invalid.
-			DeleteList<ReductionObject*>(*this->requestList);
+			// We must also purge our current list of sent requests since it has become invalid.
+			this->sentRequestList->Delete();
 
 			return false;
 		}
@@ -170,27 +174,45 @@ namespace Yarc
 		// Don't eat up CPU time if there is nothing for us to do.  This is especially important
 		// during a flush operation so that we're not busy-waiting.  Doing so can starve the very
 		// threads for which we are busy-waiting.
-		Semaphore* semaphoreArray[] = { &this->unsentSemaphore, &this->servedSemaphore, &this->messageSemaphore };
-		Semaphore::DecrementMulti(3, semaphoreArray, semaphoreTimeoutSeconds * 1000.0, false);
+		this->updateSemaphore.Decrement(semaphoreTimeoutSeconds * 1000.0);
 
-		// TODO: I've been trying to figure out why some of my applications that do a lot of async requests
-		//       and then wait for them all to finish with a flush are slow, and I think the problem may be
-		//       that I'm not making my mutex locks tight enough.  In other words, the locks are wrapping
-		//       too much processing.  A much better approach is to lock a mutex only long enough to remove
-		//       or add an item from the list, then process that item outside of the list.
-
-		// We're in business!  Make a pass on the request list.
-		if(this->requestList->GetCount() > 0)
+		// Are there any pending unsent requests?
+		if (this->unsentRequestList->GetCount() > 0)
 		{
-			MutexLocker locker(this->requestListMutex);
-			ReductionObject::ReduceList(this->requestList, this);
+			Request* request = this->unsentRequestList->RemoveHead();
+
+			if (ProtocolData::PrintTree(this->socketStream, request->requestData))
+				this->sentRequestList->AddTail(request);
+			else
+			{
+				// TODO: Error handling?
+				delete request;
+			}
+
+			return true;
 		}
 
-		// And make a pass on the message list as well.
+		// Are there any pending served requests?
+		if (this->servedRequestList->GetCount() > 0)
+		{
+			Request* request = this->servedRequestList->RemoveHead();
+			request->ownsResponseDataMem = request->callback(request->responseData);
+			delete request;
+			return true;
+		}
+
+		// Lastly, are there any spending messages?
 		if(this->messageList->GetCount() > 0)
 		{
-			MutexLocker locker(this->messageListMutex);
-			ReductionObject::ReduceList(this->messageList, this);
+			Message* message = this->messageList->RemoveHead();
+
+			if (*this->pushDataCallback)
+				message->ownsMessageData = (*this->pushDataCallback)(message->messageData);
+			else
+				message->ownsMessageData = true;
+
+			delete message;
+			return true;
 		}
 
 		return true;
@@ -209,7 +231,7 @@ namespace Yarc
 			{
 				// Whenever we get something from the server, we have to determine if
 				// it's a response to a request or data that has been pushed to us without
-				// a request having first been sent for the it.
+				// a request having first been sent for it.
 				ProtocolData* messageData = Cast<PushData>(serverData);
 				if (!messageData)
 				{
@@ -225,34 +247,20 @@ namespace Yarc
 
 				if (messageData)
 				{
-					MutexLocker locker(this->messageListMutex);
 					Message* message = new Message();
 					message->messageData = messageData;
 					this->messageList->AddTail(message);
-					this->messageSemaphore.Increment();
 				}
 				else
 				{
 					// In the usual case, the server data is a response to the next pending request.
-					MutexLocker locker(this->requestListMutex);
-					bool foundRequest = false;
-					for (ReductionObjectList::Node* node = this->requestList->GetHead(); node; node = node->GetNext())
-					{
-						Request* request = static_cast<Request*>(node->value);
-						if (request->state == Request::State::SENT)
-						{
-							request->responseData = serverData;
-							request->state = Request::State::SERVED;
-							this->servedSemaphore.Increment();
-							foundRequest = true;
-							break;
-						}
-					}
-
-					// This shouldn't happen, but if it does, we need to handle it!
-					if (!foundRequest)
-						delete serverData;
+					Request* request = this->sentRequestList->RemoveHead();
+					request->responseData = serverData;
+					this->servedRequestList->AddTail(request);
 				}
+
+				// In either case, signal the main thread that there is something for it to process.
+				this->updateSemaphore.Increment();
 			}
 		}
 	}
@@ -261,7 +269,7 @@ namespace Yarc
 	{
 		clock_t startTime = ::clock();
 
-		while (this->requestList->GetCount() > 0)
+		while (this->unsentRequestList->GetCount() > 0 || this->sentRequestList->GetCount() > 0 || this->servedRequestList->GetCount() > 0)
 		{
 			this->Update(3.0);
 
@@ -277,42 +285,45 @@ namespace Yarc
 		return true;
 	}
 
+	// Note that it should be safe to call this from any thread.
 	/*virtual*/ int SimpleClient::MakeRequestAsync(const ProtocolData* requestData, Callback callback /*= [](const ProtocolData*) -> bool { return true; }*/, bool deleteData /*= true*/)
 	{
 		Request* request = new Request();
 		request->requestData = requestData;
 		request->ownsRequestDataMem = deleteData;
 		request->callback = callback;
-		request->state = Request::State::UNSENT;
 
-		MutexLocker locker(this->requestListMutex);
-		this->requestList->AddTail(request);
-		this->unsentSemaphore.Increment();
+		this->unsentRequestList->AddTail(request);
+		this->updateSemaphore.Increment();
 
 		return request->requestID;
 	}
 
 	/*virtual*/ bool SimpleClient::CancelAsyncRequest(int requestID)
 	{
-		MutexLocker locker(this->requestListMutex);
+		auto predicate = [=](Request* request) {
+			return request->requestID == requestID;
+		};
 
-		for (ReductionObjectList::Node* node = this->requestList->GetHead(); node; node = node->GetNext())
+		Request* request = this->unsentRequestList->Find(predicate, nullptr, true);
+		if(request)
 		{
-			Request* request = static_cast<Request*>(node->value);
-			if (request->requestID == requestID)
-			{
-				if (request->state == Request::State::UNSENT)
-				{
-					delete request;
-					this->requestList->Remove(node);
-				}
-				else
-				{
-					request->callback = [](const ProtocolData*) -> bool { return true; };
-				}
+			delete request;
+			return true;
+		}
 
-				return true;
-			}
+		request = this->sentRequestList->Find(predicate, nullptr, false);
+		if (request)
+		{
+			request->callback = [](const ProtocolData*) -> bool { return true; };
+			return true;
+		}
+
+		request = this->servedRequestList->Find(predicate, nullptr, false);
+		if (request)
+		{
+			request->callback = [](const ProtocolData*) -> bool { return true; };
+			return true;
 		}
 
 		return false;
@@ -409,7 +420,6 @@ namespace Yarc
 		this->responseData = nullptr;
 		this->ownsRequestDataMem = false;
 		this->ownsResponseDataMem = false;
-		this->state = State::UNSENT;
 	}
 
 	/*virtual*/ SimpleClient::Request::~Request()
@@ -419,40 +429,6 @@ namespace Yarc
 
 		if (this->ownsResponseDataMem)
 			delete this->responseData;
-	}
-
-	/*virtual*/ ReductionObject::ReductionResult SimpleClient::Request::Reduce(void* userData)
-	{
-		SimpleClient* client = static_cast<SimpleClient*>(userData);
-
-		switch (this->state)
-		{
-			case State::UNSENT:
-			{
-				// Send the request over the socket.
-				if (!ProtocolData::PrintTree(client->socketStream, this->requestData))
-				{
-					// We must bail here, because requests can't be sent out of order.
-					return ReductionResult::RESULT_BAIL;
-				}
-
-				this->state = State::SENT;
-				return ReductionResult::RESULT_NONE;
-			}
-			case State::SENT:
-			{
-				// Nothing we can do here but wait.  The reception thread advances this state of the request.
-				return ReductionResult::RESULT_NONE;
-			}
-			case State::SERVED:
-			{
-				// Simply dispatch the response to the user's callback.
-				this->ownsResponseDataMem = this->callback(this->responseData);
-				return ReductionResult::RESULT_DELETE;
-			}
-		}
-
-		return ReductionResult::RESULT_NONE;
 	}
 
 	//------------------------------ SimpleClient::Request ------------------------------
@@ -467,17 +443,5 @@ namespace Yarc
 	{
 		if (this->ownsMessageData)
 			delete this->messageData;
-	}
-
-	/*virtual*/ ReductionObject::ReductionResult SimpleClient::Message::Reduce(void* userData)
-	{
-		SimpleClient* client = static_cast<SimpleClient*>(userData);
-		
-		if (*client->pushDataCallback)
-			this->ownsMessageData = (*client->pushDataCallback)(this->messageData);
-		else
-			this->ownsMessageData = true;
-
-		return ReductionResult::RESULT_DELETE;
 	}
 }

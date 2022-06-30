@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 namespace Yarc
 {
 	template<typename T>
@@ -135,6 +137,26 @@ namespace Yarc
 		{
 			while (this->count > 0)
 				this->Remove(this->head);
+		}
+
+		T Find(std::function<bool(T)> predicate, T notFoundValue, bool removeIfFound = false)
+		{
+			T returnValue = notFoundValue;
+
+			for (Node* node = this->head; node; node = node->next)
+			{
+				if (predicate(node->value))
+				{
+					returnValue = node->value;
+
+					if (removeIfFound)
+						this->Remove(node);
+
+					break;
+				}
+			}
+
+			return returnValue;
 		}
 
 		Node* GetHead() { return this->head; }

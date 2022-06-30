@@ -6,7 +6,6 @@
 #include "yarc_linked_list.h"
 #include "yarc_socket_stream.h"
 #include "yarc_thread_safe_list.h"
-#include "yarc_reducer.h"
 #include "yarc_semaphore.h"
 #include <stdint.h>
 #include <string>
@@ -47,48 +46,41 @@ namespace Yarc
 
 	protected:
 
-		class Request : public ReductionObject
+		class Request
 		{
 		public:
-			enum class State
-			{
-				UNSENT,
-				SENT,
-				SERVED
-			};
-
 			Request();
 			virtual ~Request();
-
-			virtual ReductionResult Reduce(void* userData) override;
 
 			const ProtocolData* requestData;
 			ProtocolData* responseData;
 			Callback callback;
 			bool ownsRequestDataMem;
 			bool ownsResponseDataMem;
-			State state;
 			int requestID;
 			static int nextRequestID;
 		};
 
-		class Message : public ReductionObject
+		class Message
 		{
 		public:
 			Message();
 			virtual ~Message();
 
-			virtual ReductionResult Reduce(void* userData) override;
-
 			ProtocolData* messageData;
 			bool ownsMessageData;
 		};
 
-		ReductionObjectList* requestList;
-		Mutex requestListMutex;
+		typedef ThreadSafeList<Request*> RequestList;
+		typedef ThreadSafeList<Message*> MessageList;
 
-		ReductionObjectList* messageList;
-		Mutex messageListMutex;
+		RequestList* unsentRequestList;
+		RequestList* sentRequestList;
+		RequestList* servedRequestList;
+
+		MessageList* messageList;
+		
+		Semaphore updateSemaphore;
 
 		EventCallback* postConnectCallback;
 		EventCallback* preDisconnectCallback;
@@ -102,8 +94,5 @@ namespace Yarc
 		double connectionTimeoutSeconds;
 		double connectionRetrySeconds;
 		::clock_t lastFailedConnectionAttemptTime;
-		Semaphore unsentSemaphore;
-		Semaphore servedSemaphore;
-		Semaphore messageSemaphore;
 	};
 }
