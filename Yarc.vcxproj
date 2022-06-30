@@ -47,6 +47,7 @@
     <ClInclude Include="Source\yarc_protocol_data.h" />
     <ClInclude Include="Source\yarc_pubsub.h" />
     <ClInclude Include="Source\yarc_reducer.h" />
+    <ClInclude Include="Source\yarc_semaphore.h" />
     <ClInclude Include="Source\yarc_simple_client.h" />
     <ClInclude Include="Source\yarc_client_iface.h" />
     <ClInclude Include="Source\yarc_api.h" />

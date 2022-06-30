@@ -7,7 +7,10 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) :
+		unsentSemaphore(MAXINT32),
+		servedSemaphore(MAXINT32),
+		messageSemaphore(MAXINT32)
 	{
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
 		this->connectionRetrySeconds = connectionRetrySeconds;
@@ -98,7 +101,7 @@ namespace Yarc
 		return *this->preDisconnectCallback;
 	}
 
-	/*virtual*/ bool SimpleClient::Update(void)
+	/*virtual*/ bool SimpleClient::Update(double semaphoreTimeoutSeconds /*= 0.0*/)
 	{
 		// Are we still waiting between connection retry attempts?
 		if (this->lastFailedConnectionAttemptTime != 0)
@@ -143,7 +146,7 @@ namespace Yarc
 
 			return false;
 		}
-		
+
 		// Make sure our reception thread is running.
 		if (!this->thread)
 		{
@@ -164,6 +167,12 @@ namespace Yarc
 			return false;
 		}
 		
+		// Don't eat up CPU time if there is nothing for us to do.  This is especially important
+		// during a flush operation so that we're not busy-waiting.  Doing so can starve the very
+		// threads for which we are busy-waiting.
+		Semaphore* semaphoreArray[] = { &this->unsentSemaphore, &this->servedSemaphore, &this->messageSemaphore };
+		Semaphore::DecrementMulti(3, semaphoreArray, semaphoreTimeoutSeconds * 1000.0, false);
+
 		// We're in business!  Make a pass on the request list.
 		if(this->requestList->GetCount() > 0)
 		{
@@ -214,6 +223,7 @@ namespace Yarc
 					Message* message = new Message();
 					message->messageData = messageData;
 					this->messageList->AddTail(message);
+					this->messageSemaphore.Increment();
 				}
 				else
 				{
@@ -227,6 +237,7 @@ namespace Yarc
 						{
 							request->responseData = serverData;
 							request->state = Request::State::SERVED;
+							this->servedSemaphore.Increment();
 							foundRequest = true;
 							break;
 						}
@@ -246,7 +257,7 @@ namespace Yarc
 
 		while (this->requestList->GetCount() > 0)
 		{
-			this->Update();
+			this->Update(3.0);
 
 			if (timeoutSeconds > 0.0)
 			{
@@ -270,6 +281,7 @@ namespace Yarc
 
 		MutexLocker locker(this->requestListMutex);
 		this->requestList->AddTail(request);
+		this->unsentSemaphore.Increment();
 
 		return request->requestID;
 	}

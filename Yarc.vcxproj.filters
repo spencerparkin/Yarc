@@ -111,6 +111,9 @@
     <ClInclude Include="Source\yarc_process.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\yarc_semaphore.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />

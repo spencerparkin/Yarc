@@ -36,7 +36,7 @@ namespace Yarc
 		clock_t startTime = ::clock();
 		while (!requestServiced)
 		{
-			this->Update();
+			this->Update(3.0);
 			
 			clock_t currentTime = ::clock();
 			double elapsedTimeSeconds = double(currentTime - startTime) / double(CLOCKS_PER_SEC);

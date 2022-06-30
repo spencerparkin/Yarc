@@ -26,7 +26,7 @@ namespace Yarc
 		static ClusterClient* Create();
 		static void Destroy(ClusterClient* client);
 
-		virtual bool Update(void) override;
+		virtual bool Update(double semaphoreTimeoutSeconds = 0.0) override;
 		virtual bool Flush(double timeoutSeconds = 0.0) override;
 		virtual int MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool CancelAsyncRequest(int requestID) override;
