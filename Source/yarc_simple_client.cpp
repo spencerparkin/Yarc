@@ -173,6 +173,12 @@ namespace Yarc
 		Semaphore* semaphoreArray[] = { &this->unsentSemaphore, &this->servedSemaphore, &this->messageSemaphore };
 		Semaphore::DecrementMulti(3, semaphoreArray, semaphoreTimeoutSeconds * 1000.0, false);
 
+		// TODO: I've been trying to figure out why some of my applications that do a lot of async requests
+		//       and then wait for them all to finish with a flush are slow, and I think the problem may be
+		//       that I'm not making my mutex locks tight enough.  In other words, the locks are wrapping
+		//       too much processing.  A much better approach is to lock a mutex only long enough to remove
+		//       or add an item from the list, then process that item outside of the list.
+
 		// We're in business!  Make a pass on the request list.
 		if(this->requestList->GetCount() > 0)
 		{
