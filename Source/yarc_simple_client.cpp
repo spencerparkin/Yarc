@@ -7,7 +7,7 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) //: updateSemaphore(MAXINT32)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : semaphore(MAXINT32)
 	{
 		this->numRequestsInFlight = 0;
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
@@ -106,7 +106,7 @@ namespace Yarc
 		return *this->preDisconnectCallback;
 	}
 
-	/*virtual*/ bool SimpleClient::Update(double semaphoreTimeoutSeconds /*= 0.0*/)
+	/*virtual*/ bool SimpleClient::Update(double timeoutMilliseconds /*= 1.0*/)
 	{
 		// Are we still waiting between connection retry attempts?
 		if (this->lastFailedConnectionAttemptTime != 0)
@@ -171,20 +171,14 @@ namespace Yarc
 			this->thread = nullptr;
 			return false;
 		}
-		
-		// Avoid any mutex locks if we know they're not necessary.
-		if (this->unsentRequestList->GetCount() == 0 && this->servedRequestList->GetCount() == 0 && this->messageList->GetCount() == 0)
-			return true;
 
-		// Don't eat up CPU time if there is nothing for us to do.  This is especially important
-		// during a flush operation so that we're not busy-waiting.  Doing so can starve the very
-		// threads for which we are busy-waiting.
-		//this->updateSemaphore.Decrement(semaphoreTimeoutSeconds * 1000.0);		This has some problems, so punt on it for now.
-
-		// Are there any pending unsent requests?
-		Request* request = this->unsentRequestList->RemoveHead();
-		if (request)
+		// Flush all pending unsent requests.
+		while (true)
 		{
+			Request* request = this->unsentRequestList->RemoveHead();
+			if (!request)
+				break;
+			
 			if (ProtocolData::PrintTree(this->socketStream, request->requestData))
 				this->sentRequestList->AddTail(request);
 			else
@@ -192,30 +186,36 @@ namespace Yarc
 				// TODO: Error handling?
 				this->DeallocRequest(request);
 			}
-
-			return true;
 		}
 
-		// Are there any pending served requests?
-		request = this->servedRequestList->RemoveHead();
-		if (request)
+		// Avoid busy waiting so that we don't starve the thread we're waiting on.
+		if (this->sentRequestList->GetCount() > 0)
+			this->semaphore.Decrement(timeoutMilliseconds);
+
+		// Flush all pending served requests.
+		while (true)
 		{
+			Request* request = this->servedRequestList->RemoveHead();
+			if (!request)
+				break;
+			
 			request->ownsResponseDataMem = request->callback(request->responseData);
 			this->DeallocRequest(request);
-			return true;
 		}
 
-		// Lastly, are there any spending messages?
-		Message* message = this->messageList->RemoveHead();
-		if (message)
+		// Flush all pending messages.
+		while (true)
 		{
+			Message* message = this->messageList->RemoveHead();
+			if (!message)
+				break;
+			
 			if (*this->pushDataCallback)
 				message->ownsMessageData = (*this->pushDataCallback)(message->messageData);
 			else
 				message->ownsMessageData = true;
 
 			delete message;
-			return true;
 		}
 
 		return true;
@@ -283,17 +283,20 @@ namespace Yarc
 						//this->updateSemaphore.Increment();
 					}
 				}
+
+				// Whether message or response, signal the main thread that we have data for it to consume.
+				this->semaphore.Increment();
 			}
 		}
 	}
 
-	/*virtual*/ bool SimpleClient::Flush(double timeoutSeconds /*= 0.0*/)
+	/*virtual*/ bool SimpleClient::Flush(double timeoutSeconds /*= 5.0*/)
 	{
 		clock_t startTime = ::clock();
 
 		while (this->numRequestsInFlight > 0)
 		{
-			this->Update(3.0);
+			this->Update(timeoutSeconds * 1000.0);
 
 			if (timeoutSeconds > 0.0)
 			{

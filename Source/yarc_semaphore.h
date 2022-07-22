@@ -12,7 +12,7 @@ namespace Yarc
 	class YARC_API Semaphore
 	{
 	public:
-		Semaphore(int count)
+		Semaphore(int32_t count)
 		{
 #if defined __WINDOWS__
 			this->semaphoreHandle = ::CreateSemaphore(NULL, 0, count, NULL);
@@ -35,10 +35,10 @@ namespace Yarc
 #endif
 		}
 
-		void Decrement(double timeoutMilliseconds)
+		bool Decrement(double timeoutMilliseconds)
 		{
 #if defined __WINDOWS__
-			::WaitForSingleObject(this->semaphoreHandle, (DWORD)timeoutMilliseconds);
+			return WAIT_OBJECT_0 == ::WaitForSingleObject(this->semaphoreHandle, (timeoutMilliseconds >= 0.0f) ? (DWORD)timeoutMilliseconds : INFINITE);
 #endif
 		}
 

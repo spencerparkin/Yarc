@@ -41,24 +41,30 @@ namespace Yarc
 
 		T RemoveTail()
 		{
-			MutexLocker locker(this->mutex);
 			T value = nullptr;
-			if (this->linkedList.GetCount() > 0)
+			if (this->linkedList.GetCount() > 0)	// Avoid mutex luck if unnecessary.
 			{
-				value = this->linkedList.GetTail()->value;
-				this->linkedList.Remove(this->linkedList.GetTail());
+				MutexLocker locker(this->mutex);
+				if (this->linkedList.GetCount() > 0)	// Avoid race condition.
+				{
+					value = this->linkedList.GetTail()->value;
+					this->linkedList.Remove(this->linkedList.GetTail());
+				}
 			}
 			return value;
 		}
 
 		T RemoveHead()
 		{
-			MutexLocker locker(this->mutex);
 			T value = nullptr;
-			if (this->linkedList.GetCount() > 0)
+			if (this->linkedList.GetCount() > 0)	// Avoid mutex luck if unnecessary.
 			{
-				value = this->linkedList.GetHead()->value;
-				this->linkedList.Remove(this->linkedList.GetHead());
+				MutexLocker locker(this->mutex);
+				if (this->linkedList.GetCount() > 0)	// Avoid race condition.
+				{
+					value = this->linkedList.GetHead()->value;
+					this->linkedList.Remove(this->linkedList.GetHead());
+				}
 			}
 			return value;
 		}

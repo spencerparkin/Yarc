@@ -27,8 +27,8 @@ namespace Yarc
 		static SimpleClient* Create();
 		static void Destroy(SimpleClient* client);
 
-		virtual bool Update(double semaphoreTimeoutSeconds = 0.0) override;
-		virtual bool Flush(double timeoutSeconds = 0.0) override;
+		virtual bool Update(double timeoutMilliseconds = 1.0) override;
+		virtual bool Flush(double timeoutSeconds = 5.0) override;
 		virtual int MakeRequestAsync(const ProtocolData* requestData, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
 		virtual bool CancelAsyncRequest(int requestID) override;
 		virtual bool MakeTransactionRequestAsync(DynamicArray<const ProtocolData*>& requestDataArray, Callback callback = [](const ProtocolData*) -> bool { return true; }, bool deleteData = true) override;
@@ -80,7 +80,7 @@ namespace Yarc
 
 		MessageList* messageList;
 		
-//		Semaphore updateSemaphore;		Punting on this for now.
+		Semaphore semaphore;
 
 		EventCallback* postConnectCallback;
 		EventCallback* preDisconnectCallback;

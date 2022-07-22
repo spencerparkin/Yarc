@@ -38,7 +38,7 @@ namespace Yarc
 			this->state = STATE_CLUSTER_CONFIG_DIRTY;
 	}
 
-	/*virtual*/ bool ClusterClient::Update(double semaphoreTimeoutSeconds /*= 0.0*/)
+	/*virtual*/ bool ClusterClient::Update(double timeoutSeconds /*= 10.0*/)
 	{
 		ReductionObject::ReduceList(this->clusterNodeList);
 
@@ -155,10 +155,10 @@ namespace Yarc
 		return true;
 	}
 
-	/*virtual*/ bool ClusterClient::Flush(double timeoutSeconds /*= 0.0*/)
+	/*virtual*/ bool ClusterClient::Flush(double timeoutSeconds /*= 5.0*/)
 	{
 		while (this->requestList->GetCount() > 0)
-			this->Update(3.0);
+			this->Update(timeoutSeconds);
 		
 		return true;
 	}
