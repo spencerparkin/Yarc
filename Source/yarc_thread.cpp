@@ -18,6 +18,15 @@ namespace Yarc
         this->KillThread();
     }
 
+    /*static*/ void Thread::Sleep(double timeoutMilliseconds)
+    {
+#if defined __WINDOWS__
+        ::Sleep((DWORD)timeoutMilliseconds);
+#elif defined __LINUX__
+        // TODO: Write this.
+#endif
+    }
+
     bool Thread::SpawnThread(Func func)
     {
         this->cachedFunc = func;

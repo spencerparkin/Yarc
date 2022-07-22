@@ -189,14 +189,11 @@ namespace Yarc
 		}
 
 		// Flush all pending served requests.
-		while (true)
+		while (this->numRequestsInFlight > 0 && this->responseSemaphore.Decrement(timeoutMilliseconds))
 		{
-			if (this->numRequestsInFlight > 0)
-				this->responseSemaphore.Decrement(timeoutMilliseconds);
-
 			Request* request = this->servedRequestList->RemoveHead();
 			if (!request)
-				break;
+				break;		// This should never happen.
 			
 			request->ownsResponseDataMem = request->callback(request->responseData);
 			this->DeallocRequest(request);
@@ -325,27 +322,36 @@ namespace Yarc
 			return request->requestID == requestID;
 		};
 
-		Request* request = this->unsentRequestList->Find(predicate, nullptr, true);
-		if(request)
+		// There is a very small chance that a request in flight fails to be
+		// canceled because at the time of our checks, it was between lists.
+		// Therefore, make two passes; wait a bit before making the second pass.
+		// This doesn't necessarily solve the problem, but it makes me feel better.
+		for (int i = 0; i < 2; i++)
 		{
-			this->DeallocRequest(request);
-			return true;
-		}
+			Request* request = this->unsentRequestList->Find(predicate, nullptr, true);
+			if (request)
+			{
+				this->DeallocRequest(request);
+				return true;
+			}
 
-		request = this->sentRequestList->Find(predicate, nullptr, false);
-		if (request)
-		{
-			request->callback = [](const ProtocolData*) -> bool { return true; };
-			return true;
-		}
+			request = this->sentRequestList->Find(predicate, nullptr, false);
+			if (request)
+			{
+				request->callback = [](const ProtocolData*) -> bool { return true; };
+				return true;
+			}
 
-		request = this->servedRequestList->Find(predicate, nullptr, false);
-		if (request)
-		{
-			request->callback = [](const ProtocolData*) -> bool { return true; };
-			return true;
-		}
+			request = this->servedRequestList->Find(predicate, nullptr, false);
+			if (request)
+			{
+				request->callback = [](const ProtocolData*) -> bool { return true; };
+				return true;
+			}
 
+			Thread::Sleep(100);
+		}
+		
 		return false;
 	}
 

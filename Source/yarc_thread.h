@@ -31,6 +31,8 @@ namespace Yarc
 
 		bool IsStillRunning(void);
 
+		static void Sleep(double timeoutMilliseconds);
+
 private:
 
 #if defined __WINDOWS__
