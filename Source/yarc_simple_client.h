@@ -80,7 +80,7 @@ namespace Yarc
 
 		MessageList* messageList;
 		
-		Semaphore semaphore;
+		Semaphore responseSemaphore;
 
 		EventCallback* postConnectCallback;
 		EventCallback* preDisconnectCallback;

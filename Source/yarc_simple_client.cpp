@@ -7,7 +7,7 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : semaphore(MAXINT32)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : responseSemaphore(MAXINT32)
 	{
 		this->numRequestsInFlight = 0;
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
@@ -188,13 +188,12 @@ namespace Yarc
 			}
 		}
 
-		// Avoid busy waiting so that we don't starve the thread we're waiting on.
-		if (this->sentRequestList->GetCount() > 0)
-			this->semaphore.Decrement(timeoutMilliseconds);
-
 		// Flush all pending served requests.
 		while (true)
 		{
+			if (this->numRequestsInFlight > 0)
+				this->responseSemaphore.Decrement(timeoutMilliseconds);
+
 			Request* request = this->servedRequestList->RemoveHead();
 			if (!request)
 				break;
@@ -265,7 +264,6 @@ namespace Yarc
 					Message* message = new Message();
 					message->messageData = messageData;
 					this->messageList->AddTail(message);
-					//this->updateSemaphore.Increment();
 				}
 				else
 				{
@@ -280,12 +278,9 @@ namespace Yarc
 						// Assign the payload and send it on its way!
 						request->responseData = serverData;
 						this->servedRequestList->AddTail(request);
-						//this->updateSemaphore.Increment();
+						this->responseSemaphore.Increment();
 					}
 				}
-
-				// Whether message or response, signal the main thread that we have data for it to consume.
-				this->semaphore.Increment();
 			}
 		}
 	}
