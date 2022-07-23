@@ -7,7 +7,7 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : responseSemaphore(MAXINT32)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) //: responseSemaphore(MAXINT32)
 	{
 		this->numRequestsInFlight = 0;
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
@@ -189,7 +189,7 @@ namespace Yarc
 		}
 
 		// Flush all pending served requests.
-		while (this->numRequestsInFlight > 0 && this->responseSemaphore.Decrement(timeoutMilliseconds))
+		while (this->numRequestsInFlight > 0) // && this->responseSemaphore.Decrement(timeoutMilliseconds))
 		{
 			Request* request = this->servedRequestList->RemoveHead();
 			if (!request)
@@ -275,7 +275,7 @@ namespace Yarc
 						// Assign the payload and send it on its way!
 						request->responseData = serverData;
 						this->servedRequestList->AddTail(request);
-						this->responseSemaphore.Increment();
+						//this->responseSemaphore.Increment();
 					}
 				}
 			}
