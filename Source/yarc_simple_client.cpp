@@ -179,13 +179,11 @@ namespace Yarc
 			if (!request)
 				break;
 			
-			if (ProtocolData::PrintTree(this->socketStream, request->requestData))
-				this->sentRequestList->AddTail(request);
-			else
-			{
-				// TODO: Error handling?
-				this->DeallocRequest(request);
-			}
+			// Notice that we must add it to the sent list before printing it to the socket,
+			// because it's possible for the server to respond before it gets there, and the
+			// reception thread needs it to be there to match the request with the response.
+			this->sentRequestList->AddTail(request);
+			ProtocolData::PrintTree(this->socketStream, request->requestData);
 		}
 
 		// Flush all pending served requests.
@@ -268,7 +266,7 @@ namespace Yarc
 					Request* request = this->sentRequestList->RemoveHead();
 					if (!request)
 					{
-						// TODO: Uh...how can this happen?  What do we do?
+						// This *should* never happen.
 					}
 					else
 					{
