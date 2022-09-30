@@ -29,6 +29,11 @@ namespace Yarc
 	ConnectionPool::ConnectionPool()
 	{
 		this->socketStreamMap = new SocketStreamMap;
+
+#if defined __WINDOWS__
+		WSADATA data;
+		::WSAStartup(MAKEWORD(2, 2), &data);
+#endif
 	}
 
 	/*virtual*/ ConnectionPool::~ConnectionPool()
@@ -46,6 +51,10 @@ namespace Yarc
 		}
 
 		delete this->socketStreamMap;
+
+#if defined __WINDOWS__
+		::WSACleanup();
+#endif
 	}
 
 	SocketStream* ConnectionPool::CheckoutSocketStream(const Address& address, double connectionTimeoutSeconds /*= 0.5*/)

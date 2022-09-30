@@ -113,13 +113,6 @@ namespace Yarc
 			if (this->sock != INVALID_SOCKET)
 				return false;
 
-#if defined __WINDOWS__
-			WSADATA data;
-			int result = ::WSAStartup(MAKEWORD(2, 2), &data);
-			if (result != 0)
-				return false;
-#endif
-
 			this->sock = ::socket(AF_INET, SOCK_STREAM, 0);
 			if (this->sock == INVALID_SOCKET)
 				return false;
