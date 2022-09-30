@@ -63,7 +63,7 @@ Frame::Frame(wxWindow* parent, const wxPoint& pos, const wxSize& size) : wxFrame
 	this->SetSizer(boxSizer);
 
 	// Note that a value of zero given here will cause GTK to hang.
-	this->timer.Start(100);
+	this->timer.Start(1);
 }
 
 /*virtual*/ Frame::~Frame()
