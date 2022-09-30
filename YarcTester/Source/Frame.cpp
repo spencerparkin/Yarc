@@ -88,12 +88,17 @@ void Frame::OnTimer(wxTimerEvent& event)
 		Yarc::ClientInterface* client = this->testCase->GetClientInterface();
 		if (client)
 		{
+#if 0
 			if (!client->Update())
 			{
 				this->outputText->SetDefaultStyle(wxTextAttr(*wxRED));
 				this->outputText->AppendText("Client update failed!\n");
 				this->SetTestCase(nullptr);
 			}
+#else
+			// Ignore the return value in order to test the connection management.
+			client->Update();
+#endif
 		}
 
 		if (this->performAutomatedTesting)
