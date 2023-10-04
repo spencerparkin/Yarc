@@ -297,6 +297,7 @@ namespace Yarc
 
 		while (this->numRequestsInFlight > 0)
 		{
+			// This will block on a semaphore so that we're not exactly busy-waiting.
 			this->Update(timeoutSeconds * 1000.0);
 
 			if (timeoutSeconds > 0.0)
