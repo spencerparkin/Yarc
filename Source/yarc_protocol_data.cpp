@@ -334,6 +334,11 @@ namespace Yarc
 		delete this->nestedDataArray;
 	}
 
+	ArrayData* ArrayData::Create()
+	{
+		return new ArrayData();
+	}
+
 	void ArrayData::Clear(void)
 	{
 		for (int i = 0; i < (signed)this->nestedDataArray->GetCount(); i++)
@@ -455,6 +460,11 @@ namespace Yarc
 	{
 	}
 
+	EndData* EndData::Create()
+	{
+		return new EndData();
+	}
+
 	/*virtual*/ bool EndData::Parse(ByteStream* byteStream)
 	{
 		return ParseCRLF(byteStream);
@@ -500,6 +510,11 @@ namespace Yarc
 	/*virtual*/ BlobStringData::~BlobStringData()
 	{
 		delete this->byteArray;
+	}
+
+	BlobStringData* BlobStringData::Create()
+	{
+		return new BlobStringData();
 	}
 
 	/*virtual*/ bool BlobStringData::Parse(ByteStream* byteStream)
@@ -588,7 +603,7 @@ namespace Yarc
 		return *this->byteArray;
 	}
 
-	bool BlobStringData::GetToBuffer(uint8_t* buffer, uint32_t bufferSize) const
+	bool BlobStringData::GetToBuffer(uint8_t* buffer, uint32_t& bufferSize) const
 	{
 		if (bufferSize < this->byteArray->GetCount())
 			return false;
@@ -596,6 +611,7 @@ namespace Yarc
 		for (int i = 0; i < (signed)this->byteArray->GetCount(); i++)
 			buffer[i] = (*this->byteArray)[i];
 
+		bufferSize = this->byteArray->GetCount();
 		return true;
 	}
 
@@ -656,6 +672,11 @@ namespace Yarc
 	{
 	}
 
+	ChunkData* ChunkData::Create()
+	{
+		return new ChunkData();
+	}
+
 	/*virtual*/ bool ChunkData::Parse(ByteStream* byteStream)
 	{
 		uint32_t count = 0;
@@ -682,6 +703,11 @@ namespace Yarc
 	{
 	}
 
+	BlobErrorData* BlobErrorData::Create()
+	{
+		return new BlobErrorData();
+	}
+
 	std::string BlobErrorData::GetErrorCode(void) const
 	{
 		// TODO: Write this.
@@ -696,6 +722,11 @@ namespace Yarc
 
 	/*virtual*/ VerbatimStreamData::~VerbatimStreamData()
 	{
+	}
+
+	VerbatimStreamData* VerbatimStreamData::Create()
+	{
+		return new VerbatimStreamData();
 	}
 
 	std::string VerbatimStreamData::GetFormatCode(void) const
@@ -719,12 +750,17 @@ namespace Yarc
 
 	SimpleStringData::SimpleStringData(const std::string& givenValue)
 	{
-		this->value = new std::string(givenValue);
+		this->value = new std::string(givenValue.c_str());
 	}
 
 	/*virtual*/ SimpleStringData::~SimpleStringData()
 	{
 		delete this->value;
+	}
+
+	SimpleStringData* SimpleStringData::Create()
+	{
+		return new SimpleStringData();
 	}
 
 	/*virtual*/ bool SimpleStringData::Parse(ByteStream* byteStream)
@@ -763,6 +799,11 @@ namespace Yarc
 	{
 	}
 
+	SimpleErrorData* SimpleErrorData::Create()
+	{
+		return new SimpleErrorData();
+	}
+
 	std::string SimpleErrorData::GetErrorCode(void) const
 	{
 		uint32_t i = (uint32_t)this->value->find(' ');
@@ -785,6 +826,11 @@ namespace Yarc
 		this->Clear();
 		delete this->fieldValuePairList;
 		delete this->nestedDataMap;
+	}
+
+	MapData* MapData::Create()
+	{
+		return new MapData();
 	}
 
 	void MapData::Clear(void)
@@ -940,6 +986,11 @@ namespace Yarc
 	{
 	}
 
+	SetData* SetData::Create()
+	{
+		return new SetData();
+	}
+
 	//-------------------------- AttributeData --------------------------
 
 	AttributeData::AttributeData()
@@ -950,6 +1001,11 @@ namespace Yarc
 	{
 	}
 
+	AttributeData* AttributeData::Create()
+	{
+		return new AttributeData();
+	}
+
 	//-------------------------- PushData --------------------------
 
 	PushData::PushData()
@@ -958,6 +1014,11 @@ namespace Yarc
 
 	/*virtual*/ PushData::~PushData()
 	{
+	}
+
+	PushData* PushData::Create()
+	{
+		return new PushData();
 	}
 
 	//-------------------------- DoubleData --------------------------
@@ -974,6 +1035,11 @@ namespace Yarc
 
 	/*virtual*/ DoubleData::~DoubleData()
 	{
+	}
+
+	DoubleData* DoubleData::Create()
+	{
+		return new DoubleData();
 	}
 
 	/*virtual*/ bool DoubleData::Parse(ByteStream* byteStream)
@@ -1040,6 +1106,11 @@ namespace Yarc
 	{
 	}
 
+	NumberData* NumberData::Create()
+	{
+		return new NumberData();
+	}
+
 	/*virtual*/ bool NumberData::Parse(ByteStream* byteStream)
 	{
 		std::string valueString;
@@ -1083,6 +1154,11 @@ namespace Yarc
 	{
 	}
 
+	BooleanData* BooleanData::Create()
+	{
+		return new BooleanData();
+	}
+
 	/*virtual*/ bool BooleanData::Parse(ByteStream* byteStream)
 	{
 		uint8_t byte = 0;
@@ -1122,6 +1198,11 @@ namespace Yarc
 		delete this->value;
 	}
 
+	BigNumberData* BigNumberData::Create()
+	{
+		return new BigNumberData();
+	}
+
 	/*virtual*/ bool BigNumberData::Parse(ByteStream* byteStream)
 	{
 		if (!ParseCRLFTerminatedString(byteStream, *this->value))
@@ -1147,6 +1228,11 @@ namespace Yarc
 
 	/*virtual*/ NullData::~NullData()
 	{
+	}
+
+	NullData* NullData::Create()
+	{
+		return new NullData();
 	}
 
 	/*virtual*/ bool NullData::Parse(ByteStream* byteStream)

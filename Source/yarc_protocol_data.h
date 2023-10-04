@@ -90,6 +90,8 @@ namespace Yarc
 		BlobStringData(const uint8_t* buffer, uint32_t bufferSize);
 		virtual ~BlobStringData();
 
+		static BlobStringData* Create();
+
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
@@ -101,7 +103,7 @@ namespace Yarc
 		bool SetValue(const std::string& givenValue);
 		bool SetValue(const char* givenValue);
 
-		bool GetToBuffer(uint8_t* buffer, uint32_t bufferSize) const;
+		bool GetToBuffer(uint8_t* buffer, uint32_t& bufferSize) const;
 		bool SetFromBuffer(const uint8_t* buffer, uint32_t bufferSize);
 
 		DynamicArray<uint8_t>& GetByteArray(void);
@@ -125,6 +127,8 @@ namespace Yarc
 		ChunkData();
 		virtual ~ChunkData();
 
+		static ChunkData* Create();
+
 		virtual uint8_t DynamicDiscriminant() const override { return ';'; }
 		static uint8_t StaticDiscriminant() { return ';'; }
 
@@ -137,6 +141,8 @@ namespace Yarc
 
 		BlobErrorData();
 		virtual ~BlobErrorData();
+
+		static BlobErrorData* Create();
 
 		virtual uint8_t DynamicDiscriminant() const override { return '!'; }
 		static uint8_t StaticDiscriminant() { return '!'; }
@@ -153,6 +159,8 @@ namespace Yarc
 		VerbatimStreamData();
 		virtual ~VerbatimStreamData();
 
+		static VerbatimStreamData* Create();
+
 		virtual uint8_t DynamicDiscriminant() const override { return '='; }
 		static uint8_t StaticDiscriminant() { return '='; }
 
@@ -167,6 +175,8 @@ namespace Yarc
 		SimpleStringData();
 		SimpleStringData(const std::string& givenValue);
 		virtual ~SimpleStringData();
+
+		static SimpleStringData* Create();
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
@@ -190,6 +200,8 @@ namespace Yarc
 		SimpleErrorData();
 		virtual ~SimpleErrorData();
 
+		static SimpleErrorData* Create();
+
 		virtual uint8_t DynamicDiscriminant() const override { return '-'; }
 		static uint8_t StaticDiscriminant() { return '-'; }
 
@@ -205,6 +217,8 @@ namespace Yarc
 		NumberData();
 		NumberData(int64_t givenValue);
 		virtual ~NumberData();
+
+		static NumberData* Create();
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
@@ -228,6 +242,8 @@ namespace Yarc
 		DoubleData(double givenValue);
 		virtual ~DoubleData();
 
+		static DoubleData* Create();
+
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
@@ -250,6 +266,8 @@ namespace Yarc
 		BooleanData(bool givenValue);
 		virtual ~BooleanData();
 
+		static BooleanData* Create();
+
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
@@ -271,6 +289,8 @@ namespace Yarc
 		BigNumberData();
 		virtual ~BigNumberData();
 
+		static BigNumberData* Create();
+
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
@@ -289,6 +309,8 @@ namespace Yarc
 		EndData();
 		virtual ~EndData();
 
+		static EndData* Create();
+
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
 
@@ -302,6 +324,8 @@ namespace Yarc
 
 		NullData();
 		virtual ~NullData();
+
+		static NullData* Create();
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
@@ -329,6 +353,8 @@ namespace Yarc
 
 		ArrayData();
 		virtual ~ArrayData();
+
+		static ArrayData* Create();
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
@@ -361,6 +387,8 @@ namespace Yarc
 
 		MapData();
 		virtual ~MapData();
+
+		static MapData* Create();
 
 		virtual bool Parse(ByteStream* byteStream) override;
 		virtual bool Print(ByteStream* byteStream) const override;
@@ -400,6 +428,8 @@ namespace Yarc
 		SetData();
 		virtual ~SetData();
 
+		static SetData* Create();
+
 		virtual uint8_t DynamicDiscriminant() const override { return '~'; }
 		static uint8_t StaticDiscriminant() { return '~'; }
 	};
@@ -411,6 +441,8 @@ namespace Yarc
 		AttributeData();
 		virtual ~AttributeData();
 
+		static AttributeData* Create();
+
 		virtual uint8_t DynamicDiscriminant() const override { return '|'; }
 		static uint8_t StaticDiscriminant() { return '|'; }
 	};
@@ -421,6 +453,8 @@ namespace Yarc
 
 		PushData();
 		virtual ~PushData();
+
+		static PushData* Create();
 
 		virtual uint8_t DynamicDiscriminant() const override { return '>'; }
 		static uint8_t StaticDiscriminant() { return '>'; }
