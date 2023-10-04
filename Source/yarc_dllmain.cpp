@@ -1,6 +1,8 @@
 #if defined __WINDOWS__
 
-#define WIN32_LEAN_AND_MEAN
+#if !defined WIN32_LEAN_AND_MEAN
+#   define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved)
