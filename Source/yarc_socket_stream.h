@@ -3,7 +3,9 @@
 #include "yarc_byte_stream.h"
 #if defined __WINDOWS__
 #	include <WS2tcpip.h>
-#	define WIN32_LEAN_AND_MEAN
+#	if !defined WIN32_LEAN_AND_MEAN
+#		define WIN32_LEAN_AND_MEAN
+#	endif
 #	include <Windows.h>
 #elif defined __LINUX__
 #	include <sys/socket.h>
