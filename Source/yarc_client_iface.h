@@ -32,7 +32,7 @@ namespace Yarc
 		// callbacks will be called and where the connection is managed.  Programs will
 		// typically call this once per iteration of the main program loop.  If there is
 		// no such loop, just use the Flush() method.
-		virtual bool Update(double timeoutMilliseconds = 1.0) = 0;
+		virtual bool Update(double timeoutMilliseconds = 0.0) = 0;
 
 		// Wait for all pending requests to get responses.  When pipelining, flush should
 		// be called periodically to prevent server overload.  The server can queue up

@@ -38,7 +38,7 @@ namespace Yarc
 			this->state = STATE_CLUSTER_CONFIG_DIRTY;
 	}
 
-	/*virtual*/ bool ClusterClient::Update(double timeoutSeconds /*= 10.0*/)
+	/*virtual*/ bool ClusterClient::Update(double timeoutSeconds /*= 0.0*/)
 	{
 		ReductionObject::ReduceList(this->clusterNodeList);
 

@@ -217,7 +217,7 @@ void Frame::OnCharHook(wxKeyEvent& event)
 							Yarc::StringStream stringStream(&protocolDataStr);
 							Yarc::ProtocolData::PrintTree(&stringStream, responseData);
 							wxString responseText = protocolDataStr;
-							this->outputText->SetDefaultStyle(wxTextAttr(*wxGREEN));
+							this->outputText->SetDefaultStyle(wxTextAttr(wxColour(0, 128, 0)));
 							this->outputText->AppendText(responseText);
 						}
 

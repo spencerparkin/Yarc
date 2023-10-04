@@ -7,7 +7,7 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) //: responseSemaphore(MAXINT32)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : servedRequestListSemaphore(MAXINT32)
 	{
 		this->numRequestsInFlight = 0;
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
@@ -106,7 +106,7 @@ namespace Yarc
 		return *this->preDisconnectCallback;
 	}
 
-	/*virtual*/ bool SimpleClient::Update(double timeoutMilliseconds /*= 1.0*/)
+	/*virtual*/ bool SimpleClient::Update(double timeoutMilliseconds /*= 0.0*/)
 	{
 		// Are we still waiting between connection retry attempts?
 		if (this->lastFailedConnectionAttemptTime != 0)
@@ -186,15 +186,25 @@ namespace Yarc
 			ProtocolData::PrintTree(this->socketStream, request->requestData);
 		}
 
-		// Flush all pending served requests.
-		while (this->numRequestsInFlight > 0) // && this->responseSemaphore.Decrement(timeoutMilliseconds))
+		// Serve pending requests for as long as they're coming off the queue.
+		while (this->numRequestsInFlight > 0)
 		{
-			Request* request = this->servedRequestList->RemoveHead();
-			if (!request)
-				break;		// This should never happen.
+			Request* request = nullptr;
+
+			// The typical time-out here is zero milliseconds so that a call to Update() is as fast as possible.
+			if (!this->servedRequestListSemaphore.Decrement(timeoutMilliseconds))
+				break;		// There is nothing to serve right now, so bail out.
+			else
+			{
+				request = this->servedRequestList->RemoveHead();
+				//assert(request != nullptr);
+			}
 			
-			request->ownsResponseDataMem = request->callback(request->responseData);
-			this->DeallocRequest(request);
+			if (request)
+			{
+				request->ownsResponseDataMem = request->callback(request->responseData);
+				this->DeallocRequest(request);
+			}
 		}
 
 		// Flush all pending messages.
@@ -267,13 +277,14 @@ namespace Yarc
 					if (!request)
 					{
 						// This *should* never happen.
+						//assert(false);
 					}
 					else
 					{
 						// Assign the payload and send it on its way!
 						request->responseData = serverData;
 						this->servedRequestList->AddTail(request);
-						//this->responseSemaphore.Increment();
+						this->servedRequestListSemaphore.Increment();
 					}
 				}
 			}
