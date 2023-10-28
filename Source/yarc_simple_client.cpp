@@ -321,7 +321,6 @@ namespace Yarc
 		request->callback = callback;
 
 		this->unsentRequestList->AddTail(request);
-		//this->updateSemaphore.Increment();
 
 		return request->requestID;
 	}
