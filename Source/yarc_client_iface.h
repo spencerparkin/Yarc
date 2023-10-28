@@ -11,6 +11,7 @@ namespace Yarc
 {
 	class ProtocolData;
 
+	// TODO: Not sold on this interface at all.  Would be much better to use something like promises or async/await.
 	class YARC_API ClientInterface
 	{
 	public:
