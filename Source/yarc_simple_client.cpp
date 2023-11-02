@@ -27,6 +27,11 @@ namespace Yarc
 
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
+		// This code was very stupid, because we're trying to do too much in a destructor of all places.
+		// This procedure might be okay, but maybe the v-tables are half-way gone at this point?!
+		// This all needs to be revisited when I have time.  Maybe have a function the user can
+		// cal to destroy a client, but recycle it's connection if possible.
+#if 0
 		if (this->tryToRecycleConnection)
 		{
 			if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
@@ -49,6 +54,7 @@ namespace Yarc
 				}
 			}
 		}
+#endif
 		
 		if (this->socketStream)
 		{
