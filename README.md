@@ -23,11 +23,8 @@ using namespace Yarc;
 
 int main()
 {
-	ConnectionPool connectionPool;
-	SetConnectionPool(&connectionPool);
-
 	// This connects to 127.0.0.1 on port 6379 by default.
-	ClientInterface* client = new SimpleClient();
+	auto client = Yarc::SimpleClient::Create();
 	client->MakeRequestAsync(ProtocolData::ParseCommand("SET greeting \"Hello, world!\""));
 
 	ProtocolData* responseData = nullptr;
@@ -37,14 +34,14 @@ int main()
 		if (blobStringData)
 			std::cout << "greeting = " << blobStringData->GetValue() << std::endl;
 		
-		delete responseData;
+		Yarc::ProtocolData::Destroy(responseData);  // Be sure to free it in the proper heap!
 	}
 		
-	delete client;
+	Yarc::SimpleClient::Destroy(client);    // Again, free in proper heap.
 	return 0;
 }
 ```
 
-Redis Cluster support is obtained by simply replacing `SimpleClient` with `ClusterClient`, and then replacing `#include <yarc_simple_client.h>` with `#include <yarc_cluster_client.h>`.
+Redis Cluster support is obtained by simply replacing `SimpleClient` with `ClusterClient`, and then replacing `#include <yarc_simple_client.h>` with `#include <yarc_cluster_client.h>`.  It has not be well tested!  I wouldn't trust it.
 
 The client is fairly stable, and I have one production use-case for it.  The tester application thrashes a mini local cluster of 6 nodes (3 masters, 3 slaves, 1 slave per master) all while performing live resharding of the hash slots.  This is as far as the cluster client has been tested.
