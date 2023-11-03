@@ -14,7 +14,7 @@ SimpleTestCase::SimpleTestCase(std::streambuf* givenLogStream) : TestCase(givenL
 
 /*virtual*/ bool SimpleTestCase::Setup()
 {
-	this->client = new Yarc::SimpleClient();
+	this->client = Yarc::SimpleClient::Create();
 
 	Yarc::ProtocolData* pongData = nullptr;
 	if (this->client->MakeRequestSync(Yarc::ProtocolData::ParseCommand("PING"), pongData))
@@ -45,7 +45,7 @@ SimpleTestCase::SimpleTestCase(std::streambuf* givenLogStream) : TestCase(givenL
 
 /*virtual*/ bool SimpleTestCase::Shutdown()
 {
-	delete this->client;
+	Yarc::SimpleClient::Destroy((Yarc::SimpleClient*)this->client, true);
 	this->client = nullptr;
 
 	this->logStream << "Disconnected from Redis server!" << std::endl;

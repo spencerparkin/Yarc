@@ -80,7 +80,7 @@ namespace Yarc
 					if (this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
 					{
 						delete responseData;
-						GetConnectionPool()->CheckinSocketStream(this->socketStream);
+						ConnectionPool::Get()->CheckinSocketStream(this->socketStream);
 						this->socketStream = nullptr;
 					}
 				}
@@ -124,7 +124,7 @@ namespace Yarc
 		// Make sure we have a connection to the Redis database.
 		if (!this->socketStream)
 		{
-			this->socketStream = GetConnectionPool()->CheckoutSocketStream(this->address, this->connectionTimeoutSeconds);
+			this->socketStream = ConnectionPool::Get()->CheckoutSocketStream(this->address, this->connectionTimeoutSeconds);
 			if (!this->socketStream)
 			{
 				this->lastFailedConnectionAttemptTime = ::clock();

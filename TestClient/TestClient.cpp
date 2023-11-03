@@ -10,9 +10,6 @@ using namespace Yarc;
 
 int main()
 {
-	ConnectionPool connectionPool;
-	SetConnectionPool(&connectionPool);
-
 	ClientInterface* client = new SimpleClient();
 
 	while(true)

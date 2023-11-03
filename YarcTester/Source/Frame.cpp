@@ -119,12 +119,20 @@ void Frame::OnLocateRedisBinDir(wxCommandEvent& event)
 
 void Frame::OnSimpleTestCase(wxCommandEvent& event)
 {
-	this->SetTestCase(new SimpleTestCase(this->outputText));
+	TestCase* testCase = this->GetTestCase();
+	if (!dynamic_cast<SimpleTestCase*>(testCase))
+		this->SetTestCase(new SimpleTestCase(this->outputText));
+	else
+		this->SetTestCase(nullptr);
 }
 
 void Frame::OnClusterTestCase(wxCommandEvent& event)
 {
-	this->SetTestCase(new ClusterTestCase(this->outputText));
+	TestCase* testCase = this->GetTestCase();
+	if (!dynamic_cast<ClusterTestCase*>(testCase))
+		this->SetTestCase(new ClusterTestCase(this->outputText));
+	else
+		this->SetTestCase(nullptr);
 }
 
 void Frame::SetTestCase(TestCase* givenTestCase)

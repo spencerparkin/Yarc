@@ -12,13 +12,10 @@ App::App()
 #elif defined __WINDOWS__
 	this->redisBinDir = wxT("C:\\Redis");
 #endif
-	this->connectionPool = new Yarc::ConnectionPool();
-	Yarc::SetConnectionPool(this->connectionPool);
 }
 
 /*virtual*/ App::~App()
 {
-	delete this->connectionPool;
 }
 
 /*virtual*/ bool App::OnInit()
