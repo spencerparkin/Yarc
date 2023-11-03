@@ -7,13 +7,12 @@ namespace Yarc
 {
 	//------------------------------ SimpleClient ------------------------------
 
-	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/, bool tryToRecycleConnection /*= true*/) : servedRequestListSemaphore(MAXINT32)
+	SimpleClient::SimpleClient(double connectionTimeoutSeconds /*= 0.5*/, double connectionRetrySeconds /*= 5.0*/) : servedRequestListSemaphore(MAXINT32)
 	{
 		this->numRequestsInFlight = 0;
 		this->connectionTimeoutSeconds = connectionTimeoutSeconds;
 		this->connectionRetrySeconds = connectionRetrySeconds;
 		this->lastFailedConnectionAttemptTime = 0;
-		this->tryToRecycleConnection = tryToRecycleConnection;
 		this->socketStream = nullptr;
 		this->thread = nullptr;
 		this->unsentRequestList = new RequestList();
@@ -27,35 +26,6 @@ namespace Yarc
 
 	/*virtual*/ SimpleClient::~SimpleClient()
 	{
-		// This code was very stupid, because we're trying to do too much in a destructor of all places.
-		// This procedure might be okay, but maybe the v-tables are half-way gone at this point?!
-		// This all needs to be revisited when I have time.  Maybe have a function the user can
-		// cal to destroy a client, but recycle it's connection if possible.
-#if 0
-		if (this->tryToRecycleConnection)
-		{
-			if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
-			{
-				if (this->Flush(5.0))
-				{
-					if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
-					{
-						this->threadExitSignal = true;
-
-						// Here the reception thread should exit without us having to close the socket.
-						ProtocolData* responseData = nullptr;
-						if (this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
-						{
-							delete responseData;
-							GetConnectionPool()->CheckinSocketStream(this->socketStream);
-							this->socketStream = nullptr;
-						}
-					}
-				}
-			}
-		}
-#endif
-		
 		if (this->socketStream)
 		{
 			// This should cause our reception thread to exit.
@@ -87,9 +57,35 @@ namespace Yarc
 		return new SimpleClient();
 	}
 
-	/*static*/ void SimpleClient::Destroy(SimpleClient* client)
+	/*static*/ void SimpleClient::Destroy(SimpleClient* client, bool tryToRecycleConnection /*= false*/)
 	{
+		if (tryToRecycleConnection)
+			client->TryToRecycleConnection();
+
 		delete client;
+	}
+
+	void SimpleClient::TryToRecycleConnection()
+	{
+		if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
+		{
+			if (this->Flush(5.0))
+			{
+				if (this->thread && this->thread->IsStillRunning() && this->socketStream && this->socketStream->IsConnected())
+				{
+					this->threadExitSignal = true;
+
+					// Here the reception thread should exit without us having to close the socket.
+					ProtocolData* responseData = nullptr;
+					if (this->MakeRequestSync(ProtocolData::ParseCommand("PING"), responseData))
+					{
+						delete responseData;
+						GetConnectionPool()->CheckinSocketStream(this->socketStream);
+						this->socketStream = nullptr;
+					}
+				}
+			}
+		}
 	}
 
 	void SimpleClient::SetPostConnectCallback(EventCallback givenCallback)

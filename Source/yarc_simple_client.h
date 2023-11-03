@@ -20,12 +20,12 @@ namespace Yarc
 
 	public:
 
-		SimpleClient(double connectionTimeoutSeconds = 0.5, double connectionRetrySeconds = 5.0, bool tryToRecycleConnection = true);
+		SimpleClient(double connectionTimeoutSeconds = 0.5, double connectionRetrySeconds = 5.0);
 		virtual ~SimpleClient();
 
 		// When used as a DLL, these ensure that the client is allocated and freed in the proper heap.
 		static SimpleClient* Create();
-		static void Destroy(SimpleClient* client);
+		static void Destroy(SimpleClient* client, bool tryToRecycleConnection = false);
 
 		virtual bool Update(double timeoutMilliseconds = 0.0) override;
 		virtual bool Flush(double timeoutSeconds = 5.0) override;
@@ -45,6 +45,8 @@ namespace Yarc
 		EventCallback GetPreDisconnectCallback(void);
 
 	protected:
+
+		void TryToRecycleConnection();
 
 		class Request
 		{
@@ -92,7 +94,6 @@ namespace Yarc
 
 		Thread* thread;
 		SocketStream* socketStream;
-		bool tryToRecycleConnection;
 		volatile bool threadExitSignal;
 		double connectionTimeoutSeconds;
 		double connectionRetrySeconds;
